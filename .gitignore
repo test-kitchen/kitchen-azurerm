@@ -1,0 +1,6 @@
+*.sw[opn]
+Gemfile.lock
+*.gem
+/docs/examples
+coverage
+*.log
