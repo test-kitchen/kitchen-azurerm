@@ -16,7 +16,7 @@ module Kitchen
         if File.file?(config_file)
           @credentials = IniFile.load(File.expand_path(config_file))
         else
-          Chef::Log.warn "#{CONFIG_PATH} was not found or not accessible." unless File.file?(config_file)
+          warn "#{CONFIG_PATH} was not found or not accessible."
         end
       end
 
