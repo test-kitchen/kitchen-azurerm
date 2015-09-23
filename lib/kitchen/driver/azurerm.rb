@@ -7,9 +7,9 @@ require 'azure_mgmt_network'
 module Kitchen
   module Driver
     #
-    # AzureRM
+    # Azurerm
     #
-    class AzureRM < Kitchen::Driver::Base
+    class Azurerm < Kitchen::Driver::Base
       attr_accessor :resource_management_client
 
       default_config(:azure_resource_group_name) do |config|
