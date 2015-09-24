@@ -47,7 +47,7 @@ Here's an example ```.kitchen.yml``` file that provisions 3 different types of U
 ```yml
 ---
 driver:
-  name: AzureRM
+  name: azurerm
 
 driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
@@ -87,7 +87,7 @@ Here's a further example ```.kitchen.yml``` file that will provision a Windows S
 ```yml
 ---
 driver:
-  name: AzureRM
+  name: azurerm
 
 driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
