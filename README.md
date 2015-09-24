@@ -4,8 +4,11 @@
 
 [![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm)
 
+This version has been tested on Windows only, and may not work on OSX/Linux. 
+
 ## Known issues
-- WinRM support is not complete, Windows machines will not converge. They will provision fine however.
+- WinRM support is not complete, Windows machines will not converge. They will provision (and destroy) correctly, however.
+- Azure SDK for Ruby has blocking issues on OSX/Linux environments, this is being tracked here: (https://github.com/Azure/azure-sdk-for-ruby/pull/282) 
 
 ## Quick-start
 ### Installation
@@ -17,11 +20,11 @@ Note if you are running the ChefDK you may need to prefix the command with chef,
 
 ### Configuration
 
-For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Owner rights against the specific subscription being targeted.  Using an Organization account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, follow the instructions in the article: [Authenticating a service principal with Azure Resource Manager](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli)   
+For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Owner rights against the specific subscription being targeted.  Using an Organizational (AAD) account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, follow the instructions in the article: [Authenticating a service principal with Azure Resource Manager](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli)   
 
-You will essentially need 4 parameters from the above article to configure Chef Provisioning: **Subscription ID**, **Client ID**, **Client Secret/Password** and **Tenant ID**.  These can be easily obtained using the azure-cli tools (v0.9.8 or higher) on any platform.
+You will essentially need 4 parameters from the above article to configure kitchen-azurerm: **Subscription ID**, **Client ID**, **Client Secret/Password** and **Tenant ID**.  These can be easily obtained using the azure-cli tools (v0.9.8 or higher) on any platform.
 
-Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section:
+Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.
 
 ```ruby
 [abcd1234-YOUR-GUID-HERE-abcdef123456]
@@ -30,7 +33,7 @@ client_secret = "your-client-secret-here"
 tenant_id = "9c117323-YOUR-GUID-HERE-9ee430723ba3"
 ```
 
-If preferred, you may also set the following environment variables.
+If preferred, you may also set the following environment variables, however this would be incompatible with supporting multiple Azure subscriptions.
 
 ```ruby
 AZURE_CLIENT_ID="48b9bba3-YOUR-GUID-HERE-90f0b68ce8ba"
@@ -116,7 +119,7 @@ You can use the azure (azure-cli) command line tools to interrogate for the Urn.
 
 ```$ azure vm image list "West Europe" Canonical UbuntuServer```
 
-This will return a list like the following:
+This will return a list like the following, from which you can derive the Urn.
 
 ```
 data:    Publisher  Offer         Sku                OS         Version          Location    Urn
