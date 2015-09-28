@@ -35,6 +35,7 @@ module Kitchen
         state[:subscription_id] = config[:subscription_id]
         state[:username] = config[:username]
         state[:password] = config[:password]
+        state[:server_id] = "vm#{state[:uuid]}"
         image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
         deployment_parameters = {
           location: config[:location],
@@ -82,7 +83,6 @@ module Kitchen
         network_management_client.subscription_id = config[:subscription_id]
         result = network_management_client.public_ip_addresses.get(state[:azure_resource_group_name], 'publicip').value!
         puts "IP Address is: #{result.body.properties.ip_address} [#{result.body.properties.dns_settings.fqdn}]"
-        state[:server_id] = "vm#{state[:uuid]}"
         state[:hostname] = result.body.properties.ip_address
       end
 
