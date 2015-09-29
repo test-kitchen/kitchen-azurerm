@@ -4,15 +4,14 @@
 
 [![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm)
 
-This version has been tested on Windows only, and may not work on OSX/Linux. 
+This version has been tested on Windows and OS/X only, and may not work on Linux. 
 
 ## Known issues
-- WinRM support is not complete, Windows machines will not converge. They will provision (and destroy) correctly, however.
-- Azure SDK for Ruby has blocking issues on OSX/Linux environments, this is being tracked here: (https://github.com/Azure/azure-sdk-for-ruby/pull/282) 
+- Azure SDK for Ruby has blocking issues on Linux environments, this is being tracked here: (https://github.com/Azure/azure-sdk-for-ruby/pull/282) 
 
 ## Quick-start
 ### Installation
-This plugin is distributed as a Ruby Gem. To install it, run:
+This plugin is distributed as a [Ruby Gem](https://rubygems.org/gems/kitchen-azurerm). To install it, run:
 
 ```$ gem install kitchen-azurerm```
 
@@ -79,13 +78,15 @@ suites:
 ```
 
 ### Parallel execution
-Parallel execution of create/converge/destroy is supported via the --parallel parameter.
-
-### .kitchen.yml example 2 - Windows
+Parallel execution of create/converge/destroy is supported via the --parallel parameter. Each machine is created in it's own Azure Resource Group so has no shared lifecycle with the other machines in the test run. To take advantage of parallel execution use the following command:
 
 ```kitchen test --parallel```
 
-Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2012 R2 instance, using WinRM as the transport:
+### .kitchen.yml example 2 - Windows
+
+Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2012 R2 instance, using WinRM as the transport. The resource created in Azure will enable itself for remote access at deployment time:
+
+**Note: Test Kitchen currently uses WinRM over HTTP rather than HTTPS. This means the temporary machine credentials traverse the internet in the clear. This will be changed once Test Kitchen fully supports WinRM over a secure channel.**
 
 ```yml
 ---
@@ -120,143 +121,31 @@ You can use the azure (azure-cli) command line tools to interrogate for the Urn.
 ```$ azure vm image list "West Europe" Canonical UbuntuServer```
 
 This will return a list like the following, from which you can derive the Urn.
+*this list has been shortened for readability*
 
 ```
-data:    Publisher  Offer         Sku                OS         Version          Location    Urn
-data:    ---------  ------------  -----------------  ---------  ---------------  ----------  --------------------------------------------------------
-data:    Canonical  UbuntuServer  12.04.2-LTS        undefined  12.04.201302250  westeurope  Canonical:UbuntuServer:12.04.2-LTS:12.04.201302250
-data:    Canonical  UbuntuServer  12.04.2-LTS        undefined  12.04.201303250  westeurope  Canonical:UbuntuServer:12.04.2-LTS:12.04.201303250
-data:    Canonical  UbuntuServer  12.04.2-LTS        undefined  12.04.201304150  westeurope  Canonical:UbuntuServer:12.04.2-LTS:12.04.201304150
-data:    Canonical  UbuntuServer  12.04.2-LTS        undefined  12.04.201305160  westeurope  Canonical:UbuntuServer:12.04.2-LTS:12.04.201305160
-data:    Canonical  UbuntuServer  12.04.2-LTS        undefined  12.04.201305270  westeurope  Canonical:UbuntuServer:12.04.2-LTS:12.04.201305270
-data:    Canonical  UbuntuServer  12.04.2-LTS        undefined  12.04.201306030  westeurope  Canonical:UbuntuServer:12.04.2-LTS:12.04.201306030
-data:    Canonical  UbuntuServer  12.04.2-LTS        undefined  12.04.201306240  westeurope  Canonical:UbuntuServer:12.04.2-LTS:12.04.201306240
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201308270  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201308270
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201309090  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201309090
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201309161  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201309161
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201310030  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201310030
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201310240  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201310240
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201311110  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201311110
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201311140  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201311140
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201312050  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201312050
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201401270  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201401270
-data:    Canonical  UbuntuServer  12.04.3-LTS        undefined  12.04.201401300  westeurope  Canonical:UbuntuServer:12.04.3-LTS:12.04.201401300
-data:    Canonical  UbuntuServer  12.04.4-LTS        undefined  12.04.201402270  westeurope  Canonical:UbuntuServer:12.04.4-LTS:12.04.201402270
-data:    Canonical  UbuntuServer  12.04.4-LTS        undefined  12.04.201404080  westeurope  Canonical:UbuntuServer:12.04.4-LTS:12.04.201404080
-data:    Canonical  UbuntuServer  12.04.4-LTS        undefined  12.04.201404280  westeurope  Canonical:UbuntuServer:12.04.4-LTS:12.04.201404280
-data:    Canonical  UbuntuServer  12.04.4-LTS        undefined  12.04.201405140  westeurope  Canonical:UbuntuServer:12.04.4-LTS:12.04.201405140
-data:    Canonical  UbuntuServer  12.04.4-LTS        undefined  12.04.201406060  westeurope  Canonical:UbuntuServer:12.04.4-LTS:12.04.201406060
-data:    Canonical  UbuntuServer  12.04.4-LTS        undefined  12.04.201406190  westeurope  Canonical:UbuntuServer:12.04.4-LTS:12.04.201406190
-data:    Canonical  UbuntuServer  12.04.4-LTS        undefined  12.04.201407020  westeurope  Canonical:UbuntuServer:12.04.4-LTS:12.04.201407020
-data:    Canonical  UbuntuServer  12.04.4-LTS        undefined  12.04.201407170  westeurope  Canonical:UbuntuServer:12.04.4-LTS:12.04.201407170
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201508180  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201508180
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201508190  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201508190
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201508313  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201508313
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201509020  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201509020
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201509040  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201509040
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201509050  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201509050
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201509060  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201509060
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201509090  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201509090
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201509100  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201509100
-data:    Canonical  UbuntuServer  12.04.5-DAILY-LTS  undefined  12.04.201509170  westeurope  Canonical:UbuntuServer:12.04.5-DAILY-LTS:12.04.201509170
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201408060  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201408060
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201408292  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201408292
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201409092  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201409092
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201409231  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201409231
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201409244  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201409244
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201409251  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201409251
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201409252  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201409252
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201409270  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201409270
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201501190  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201501190
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201501270  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201501270
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201502040  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201502040
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201503090  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201503090
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201504010  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201504010
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201504130  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201504130
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201505120  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201505120
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201505221  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201505221
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201506100  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201506100
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201506150  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201506150
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201506160  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201506160
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201507070  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201507070
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201507280  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201507280
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201507301  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201507301
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201507311  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201507311
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201508190  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201508190
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201509060  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201509060
-data:    Canonical  UbuntuServer  12.04.5-LTS        undefined  12.04.201509090  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201509090
-data:    Canonical  UbuntuServer  12.10              undefined  12.10.201212180  westeurope  Canonical:UbuntuServer:12.10:12.10.201212180
-data:    Canonical  UbuntuServer  14.04.0-LTS        undefined  14.04.201404140  westeurope  Canonical:UbuntuServer:14.04.0-LTS:14.04.201404140
-data:    Canonical  UbuntuServer  14.04.0-LTS        undefined  14.04.201404142  westeurope  Canonical:UbuntuServer:14.04.0-LTS:14.04.201404142
-data:    Canonical  UbuntuServer  14.04.0-LTS        undefined  14.04.201404161  westeurope  Canonical:UbuntuServer:14.04.0-LTS:14.04.201404161
-data:    Canonical  UbuntuServer  14.04.0-LTS        undefined  14.04.201405280  westeurope  Canonical:UbuntuServer:14.04.0-LTS:14.04.201405280
-data:    Canonical  UbuntuServer  14.04.0-LTS        undefined  14.04.201406061  westeurope  Canonical:UbuntuServer:14.04.0-LTS:14.04.201406061
-data:    Canonical  UbuntuServer  14.04.0-LTS        undefined  14.04.201406181  westeurope  Canonical:UbuntuServer:14.04.0-LTS:14.04.201406181
-data:    Canonical  UbuntuServer  14.04.0-LTS        undefined  14.04.201407240  westeurope  Canonical:UbuntuServer:14.04.0-LTS:14.04.201407240
-data:    Canonical  UbuntuServer  14.04.1-LTS        undefined  14.04.201409090  westeurope  Canonical:UbuntuServer:14.04.1-LTS:14.04.201409090
-data:    Canonical  UbuntuServer  14.04.1-LTS        undefined  14.04.201409240  westeurope  Canonical:UbuntuServer:14.04.1-LTS:14.04.201409240
-data:    Canonical  UbuntuServer  14.04.1-LTS        undefined  14.04.201409260  westeurope  Canonical:UbuntuServer:14.04.1-LTS:14.04.201409260
-data:    Canonical  UbuntuServer  14.04.1-LTS        undefined  14.04.201409270  westeurope  Canonical:UbuntuServer:14.04.1-LTS:14.04.201409270
-data:    Canonical  UbuntuServer  14.04.1-LTS        undefined  14.04.201411250  westeurope  Canonical:UbuntuServer:14.04.1-LTS:14.04.201411250
-data:    Canonical  UbuntuServer  14.04.1-LTS        undefined  14.04.201501230  westeurope  Canonical:UbuntuServer:14.04.1-LTS:14.04.201501230
-data:    Canonical  UbuntuServer  14.04.2-LTS        undefined  14.04.201503090  westeurope  Canonical:UbuntuServer:14.04.2-LTS:14.04.201503090
-data:    Canonical  UbuntuServer  14.04.2-LTS        undefined  14.04.201505060  westeurope  Canonical:UbuntuServer:14.04.2-LTS:14.04.201505060
-data:    Canonical  UbuntuServer  14.04.2-LTS        undefined  14.04.201506100  westeurope  Canonical:UbuntuServer:14.04.2-LTS:14.04.201506100
-data:    Canonical  UbuntuServer  14.04.2-LTS        undefined  14.04.201507060  westeurope  Canonical:UbuntuServer:14.04.2-LTS:14.04.201507060
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509020  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509020
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509030  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509030
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509040  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509040
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509050  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509050
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509070  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509070
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509080  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509080
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509091  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509091
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509110  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509110
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509160  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509160
-data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  undefined  14.04.201509220  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509220
-data:    Canonical  UbuntuServer  14.04.3-LTS        undefined  14.04.201508050  westeurope  Canonical:UbuntuServer:14.04.3-LTS:14.04.201508050
-data:    Canonical  UbuntuServer  14.04.3-LTS        undefined  14.04.201509080  westeurope  Canonical:UbuntuServer:14.04.3-LTS:14.04.201509080
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201504171  westeurope  Canonical:UbuntuServer:15.04:15.04.201504171
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201504201  westeurope  Canonical:UbuntuServer:15.04:15.04.201504201
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201504210  westeurope  Canonical:UbuntuServer:15.04:15.04.201504210
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201504211  westeurope  Canonical:UbuntuServer:15.04:15.04.201504211
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201504220  westeurope  Canonical:UbuntuServer:15.04:15.04.201504220
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201505130  westeurope  Canonical:UbuntuServer:15.04:15.04.201505130
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201505131  westeurope  Canonical:UbuntuServer:15.04:15.04.201505131
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201505281  westeurope  Canonical:UbuntuServer:15.04:15.04.201505281
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201506110  westeurope  Canonical:UbuntuServer:15.04:15.04.201506110
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201506161  westeurope  Canonical:UbuntuServer:15.04:15.04.201506161
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201507070  westeurope  Canonical:UbuntuServer:15.04:15.04.201507070
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201507220  westeurope  Canonical:UbuntuServer:15.04:15.04.201507220
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201507280  westeurope  Canonical:UbuntuServer:15.04:15.04.201507280
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201507290  westeurope  Canonical:UbuntuServer:15.04:15.04.201507290
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201508180  westeurope  Canonical:UbuntuServer:15.04:15.04.201508180
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201509090  westeurope  Canonical:UbuntuServer:15.04:15.04.201509090
-data:    Canonical  UbuntuServer  15.04              undefined  15.04.201509100  westeurope  Canonical:UbuntuServer:15.04:15.04.201509100
-data:    Canonical  UbuntuServer  15.04-beta         undefined  15.04.201502245  westeurope  Canonical:UbuntuServer:15.04-beta:15.04.201502245
-data:    Canonical  UbuntuServer  15.04-beta         undefined  15.04.201503250  westeurope  Canonical:UbuntuServer:15.04-beta:15.04.201503250
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201508210  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201508210
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201508283  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201508283
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201509010  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201509010
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201509020  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201509020
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201509030  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201509030
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201509090  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201509090
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201509100  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201509100
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201509110  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201509110
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201509111  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201509111
-data:    Canonical  UbuntuServer  15.04-DAILY        undefined  15.04.201509170  westeurope  Canonical:UbuntuServer:15.04-DAILY:15.04.201509170
-data:    Canonical  UbuntuServer  15.10-alpha        undefined  15.10.201506240  westeurope  Canonical:UbuntuServer:15.10-alpha:15.10.201506240
-data:    Canonical  UbuntuServer  15.10-alpha        undefined  15.10.201507281  westeurope  Canonical:UbuntuServer:15.10-alpha:15.10.201507281
-data:    Canonical  UbuntuServer  15.10-beta         undefined  15.10.201508250  westeurope  Canonical:UbuntuServer:15.10-beta:15.10.201508250
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509120  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509120
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509130  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509130
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509140  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509140
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509150  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509150
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509160  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509160
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509170  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509170
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509180  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509180
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509190  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509190
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509210  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509210
-data:    Canonical  UbuntuServer  15.10-DAILY        undefined  15.10.201509220  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509220
+data:    Publisher  Offer         Sku                Version          Location    Urn
+data:    ---------  ------------  -----------------  ---------------  ----------  --------------------------------------------------------
+data:    Canonical  UbuntuServer  12.04.5-LTS        12.04.201507301  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201507301
+data:    Canonical  UbuntuServer  12.04.5-LTS        12.04.201507311  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201507311
+data:    Canonical  UbuntuServer  12.04.5-LTS        12.04.201508190  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201508190
+data:    Canonical  UbuntuServer  12.04.5-LTS        12.04.201509060  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201509060
+data:    Canonical  UbuntuServer  12.04.5-LTS        12.04.201509090  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201509090
+data:    Canonical  UbuntuServer  12.10              12.10.201212180  westeurope  Canonical:UbuntuServer:12.10:12.10.201212180
+data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  14.04.201509110  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509110
+data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  14.04.201509160  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509160
+data:    Canonical  UbuntuServer  14.04.3-DAILY-LTS  14.04.201509220  westeurope  Canonical:UbuntuServer:14.04.3-DAILY-LTS:14.04.201509220
+data:    Canonical  UbuntuServer  14.04.3-LTS        14.04.201508050  westeurope  Canonical:UbuntuServer:14.04.3-LTS:14.04.201508050
+data:    Canonical  UbuntuServer  14.04.3-LTS        14.04.201509080  westeurope  Canonical:UbuntuServer:14.04.3-LTS:14.04.201509080
+data:    Canonical  UbuntuServer  15.04              15.04.201506161  westeurope  Canonical:UbuntuServer:15.04:15.04.201506161
+data:    Canonical  UbuntuServer  15.04              15.04.201507070  westeurope  Canonical:UbuntuServer:15.04:15.04.201507070
+data:    Canonical  UbuntuServer  15.04              15.04.201507220  westeurope  Canonical:UbuntuServer:15.04:15.04.201507220
+data:    Canonical  UbuntuServer  15.04              15.04.201507280  westeurope  Canonical:UbuntuServer:15.04:15.04.201507280
+data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509170  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509170
+data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509180  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509180
+data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509190  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509190
+data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509210  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509210
+data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509220  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509220
 info:    vm image list command OK
 ```
 
