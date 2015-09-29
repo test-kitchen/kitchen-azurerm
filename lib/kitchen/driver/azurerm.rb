@@ -31,7 +31,7 @@ module Kitchen
 
       def create(state)
         state[:uuid] = "#{SecureRandom.hex(8)}"
-        formatted_time = Time.now.utc.strftime "%Y%m%dT%H%M%S"
+        formatted_time = Time.now.utc.strftime '%Y%m%dT%H%M%S'
         state[:azure_resource_group_name] = "#{config[:azure_resource_group_name]}-#{formatted_time}"
         state[:subscription_id] = config[:subscription_id]
         state[:username] = config[:username]
@@ -59,20 +59,20 @@ module Kitchen
         resource_group = ::Azure::ARM::Resources::Models::ResourceGroup.new
         resource_group.location = config[:location]
         begin
-          puts "Creating Resource Group: #{state[:azure_resource_group_name]}"
+          info "Creating Resource Group: #{state[:azure_resource_group_name]}"
           resource_management_client.resource_groups.create_or_update(state[:azure_resource_group_name], resource_group).value!
         rescue ::MsRestAzure::AzureOperationError => operation_error
-          puts operation_error.body['error']
+          info operation_error.body['error']
           raise operation_error
         end
 
         # Execute deployment steps
         begin
           deployment_name = "deploy-#{state[:uuid]}"
-          puts "Creating Deployment: #{deployment_name}"
+          info "Creating Deployment: #{deployment_name}"
           resource_management_client.deployments.create_or_update(state[:azure_resource_group_name], deployment_name, deployment(template_for_transport_name, deployment_parameters)).value!
         rescue ::MsRestAzure::AzureOperationError => operation_error
-          puts operation_error.body['error']
+          info operation_error.body['error']
           raise operation_error
         end
 
@@ -83,7 +83,7 @@ module Kitchen
         network_management_client = ::Azure::ARM::Network::NetworkResourceProviderClient.new(credentials)
         network_management_client.subscription_id = config[:subscription_id]
         result = network_management_client.public_ip_addresses.get(state[:azure_resource_group_name], 'publicip').value!
-        puts "IP Address is: #{result.body.properties.ip_address} [#{result.body.properties.dns_settings.fqdn}]"
+        info "IP Address is: #{result.body.properties.ip_address} [#{result.body.properties.dns_settings.fqdn}]"
         state[:hostname] = result.body.properties.ip_address
       end
 
@@ -123,7 +123,7 @@ module Kitchen
           deployment_provisioning_state = deployment_state(resource_group, deployment_name)
           end_provisioning_state_reached = end_provisioning_states.split(',').include?(deployment_provisioning_state)
         end
-        puts "Resource Template deployment reached end state of '#{deployment_provisioning_state}'."
+        info "Resource Template deployment reached end state of '#{deployment_provisioning_state}'."
       end
 
       def list_outstanding_deployment_operations(resource_group, deployment_name)
@@ -135,7 +135,7 @@ module Kitchen
           resource_type = val.properties.target_resource.resource_type
           end_operation_state_reached = end_operation_states.split(',').include?(resource_provisioning_state)
           unless end_operation_state_reached
-            puts "Resource #{resource_type} '#{resource_name}' provisioning status is #{resource_provisioning_state}"
+            info "Resource #{resource_type} '#{resource_name}' provisioning status is #{resource_provisioning_state}"
           end
         end
       end
@@ -151,11 +151,11 @@ module Kitchen
         resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials)
         resource_management_client.subscription_id = state[:subscription_id]
         begin
-          puts "Destroying Resource Group: #{state[:azure_resource_group_name]}"
+          info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
           resource_management_client.resource_groups.begin_delete(state[:azure_resource_group_name]).value!
-          puts 'Destroy operation accepted and will continue in the background.'
+          info 'Destroy operation accepted and will continue in the background.'
         rescue ::MsRestAzure::AzureOperationError => operation_error
-          puts operation_error.body['error']
+          info operation_error.body['error']
           raise operation_error
         end
         state.delete(:server_id)
