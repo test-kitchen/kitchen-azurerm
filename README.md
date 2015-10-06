@@ -23,7 +23,7 @@ For the driver to interact with the Microsoft Azure Resource management REST API
 
 You will essentially need 4 parameters from the above article to configure kitchen-azurerm: **Subscription ID**, **Client ID**, **Client Secret/Password** and **Tenant ID**.  These can be easily obtained using the azure-cli tools (v0.9.8 or higher) on any platform.
 
-Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.
+Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.  **Make sure you save the file with UTF-8 encoding** 
 
 ```ruby
 [abcd1234-YOUR-GUID-HERE-abcdef123456]
