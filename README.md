@@ -4,10 +4,7 @@
 
 [![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm)
 
-This version has been tested on Windows and OS/X only, and may not work on Linux. 
-
-## Known issues
-- Azure SDK for Ruby has blocking issues on Linux environments, this is being tracked here: (https://github.com/Azure/azure-sdk-for-ruby/pull/282) 
+This version has been tested on Windows, OS/X and Ubuntu. If you encounter a problem on your platform, please raise an issue. 
 
 ## Quick-start
 ### Installation
