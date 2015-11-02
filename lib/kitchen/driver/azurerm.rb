@@ -29,14 +29,19 @@ module Kitchen
         'P2ssw0rd'
       end
 
+      default_config(:vm_name) do |_config|
+        'vm'
+      end
+
       def create(state)
-        state[:uuid] = "#{SecureRandom.hex(8)}"
+        state[:uuid] = SecureRandom.hex(8)
         formatted_time = Time.now.utc.strftime '%Y%m%dT%H%M%S'
         state[:azure_resource_group_name] = "#{config[:azure_resource_group_name]}-#{formatted_time}"
         state[:subscription_id] = config[:subscription_id]
         state[:username] = config[:username]
         state[:password] = config[:password]
         state[:server_id] = "vm#{state[:uuid]}"
+        state[:vm_name] = config[:vm_name]
         image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
         deployment_parameters = {
           location: config[:location],
@@ -48,7 +53,8 @@ module Kitchen
           imagePublisher: image_publisher,
           imageOffer: image_offer,
           imageSku: image_sku,
-          imageVersion: image_version
+          imageVersion: image_version,
+          vmName: state[:vm_name]
         }
 
         credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(config[:subscription_id])
@@ -268,6 +274,13 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
             "metadata": {
                 "description": "Either a date or latest."
             }
+        },
+        "vmName": {
+            "type": "string",
+            "defaultValue": "vm",
+            "metadata": {
+                "description": "The vm name created inside of the resource group."
+            }
         }
     },
     "variables": {
@@ -281,7 +294,7 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
         "publicIPAddressName": "publicip",
         "publicIPAddressType": "Dynamic",
         "vmStorageAccountContainerName": "vhds",
-        "vmName": "vm",
+        "vmName": "[parameters('vmName')]",
         "vmSize": "[parameters('vmSize')]",
         "virtualNetworkName": "vnet",
         "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",

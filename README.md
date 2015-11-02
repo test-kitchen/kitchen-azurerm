@@ -63,6 +63,7 @@ platforms:
   - name: ubuntu-14.04
     driver_config:
       image_urn: Canonical:UbuntuServer:14.04.3-LTS:latest
+      vm_name: trusty-vm
   - name: ubuntu-15.04
     driver_config:
       image_urn: Canonical:UbuntuServer:15.04:latest
