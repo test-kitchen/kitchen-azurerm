@@ -32,6 +32,10 @@ module Kitchen
       default_config(:vm_name) do |_config|
         'vm'
       end
+      
+      default_config(:azure_management_url) do |_config|
+        'https://management.azure.com'
+      end
 
       def create(state)
         state[:uuid] = SecureRandom.hex(8)
@@ -42,6 +46,7 @@ module Kitchen
         state[:password] = config[:password]
         state[:server_id] = "vm#{state[:uuid]}"
         state[:vm_name] = config[:vm_name]
+        state[:azure_management_url] = config[:azure_management_url]
         image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
         deployment_parameters = {
           location: config[:location],
@@ -154,7 +159,7 @@ module Kitchen
       def destroy(state)
         return if state[:server_id].nil?
         credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(state[:subscription_id])
-        resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials)
+        resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials,state[:azure_management_url])
         resource_management_client.subscription_id = state[:subscription_id]
         begin
           info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
