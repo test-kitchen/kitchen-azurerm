@@ -159,7 +159,7 @@ module Kitchen
       def destroy(state)
         return if state[:server_id].nil?
         credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(state[:subscription_id])
-        resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials,state[:azure_management_url])
+        resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials, state[:azure_management_url])
         resource_management_client.subscription_id = state[:subscription_id]
         begin
           info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
