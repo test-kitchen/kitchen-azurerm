@@ -32,7 +32,7 @@ module Kitchen
       default_config(:vm_name) do |_config|
         'vm'
       end
-      
+
       default_config(:azure_management_url) do |_config|
         'https://management.azure.com'
       end
