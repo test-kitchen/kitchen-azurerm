@@ -1,5 +1,9 @@
 # knife-azurerm Changelog
 
+## [0.2.2] - 2015-12-10
+- Add an option for users to specify a custom script for WinRM (support Windows 2008 R2) (@andrewelizondo)
+- Add azure_management_url parameter for Azure Stack support (@andrewelizondo)
+
 ## [0.2.1] - 2015-10-06
 - Pointing to updated Azure SDK for Ruby, supports Linux
 
