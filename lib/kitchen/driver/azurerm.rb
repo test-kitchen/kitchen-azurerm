@@ -32,7 +32,7 @@ module Kitchen
       default_config(:vm_name) do |_config|
         'vm'
       end
-      
+
       default_config(:winrm_powershell_script) do |_config|
         false
       end
