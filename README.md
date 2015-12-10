@@ -105,7 +105,18 @@ platforms:
       image_urn: MicrosoftWindowsServer:WindowsServer:2012-R2-Datacenter:latest
     transport:
       name: winrm
-
+  - name: windows2008-r2
+    driver_config:
+      image_urn: MicrosoftWindowsServer:WindowsServer:2008-R2-SP1:latest
+      winrm_powershell_script: |-
+        winrm quickconfig -q
+        winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="512"}'
+        winrm set winrm/config '@{MaxTimeoutms="1800000"}'
+        winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+        winrm set winrm/config/service/auth '@{Basic="true"}'
+        netsh advfirewall firewall set rule name="Windows Remote Management (HTTP-In)" profile=public protocol=tcp localport=5985 remoteip=localsubnet new remoteip=any
+    transport:
+      name: winrm
 suites:
   - name: default
     run_list:
