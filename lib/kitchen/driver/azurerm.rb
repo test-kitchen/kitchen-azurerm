@@ -32,6 +32,10 @@ module Kitchen
       default_config(:vm_name) do |_config|
         'vm'
       end
+      
+      default_config(:winrm_powershell_script) do |_config|
+        false
+      end
 
       default_config(:azure_management_url) do |_config|
         'https://management.azure.com'
@@ -176,7 +180,7 @@ module Kitchen
       end
 
       def enable_winrm_powershell_script
-        <<-PS1
+        config[:winrm_powershell_script] || <<-PS1
 New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\\LocalMachine\\My
 $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\\LocalMachine\\My
 $config = '@{CertificateThumbprint="' + $cert.Thumbprint + '"}'
