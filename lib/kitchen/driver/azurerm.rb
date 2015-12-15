@@ -42,15 +42,8 @@ module Kitchen
       end
 
       def create(state)
-        state[:uuid] = SecureRandom.hex(8)
-        formatted_time = Time.now.utc.strftime '%Y%m%dT%H%M%S'
-        state[:azure_resource_group_name] = "#{config[:azure_resource_group_name]}-#{formatted_time}"
-        state[:subscription_id] = config[:subscription_id]
-        state[:username] = config[:username]
-        state[:password] = config[:password]
-        state[:server_id] = "vm#{state[:uuid]}"
-        state[:vm_name] = config[:vm_name]
-        state[:azure_management_url] = config[:azure_management_url]
+        state = validate_state(state)
+
         image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
         deployment_parameters = {
           location: config[:location],
@@ -100,6 +93,26 @@ module Kitchen
         result = network_management_client.public_ip_addresses.get(state[:azure_resource_group_name], 'publicip').value!
         info "IP Address is: #{result.body.properties.ip_address} [#{result.body.properties.dns_settings.fqdn}]"
         state[:hostname] = result.body.properties.ip_address
+      end
+
+      def existing_state_value?(state, property)
+        state.key?(property) && !state[property].nil?
+      end
+
+      def validate_state(state = {})
+        state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
+        state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value(state, :server_id)
+        state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value(state, :azure_resource_group_name)
+        [:subscription_id, :username, :password, :vm_name, :azure_management_url].each do |config_element|
+          state[config_element] = config[config_element] unless existing_state_value(state, config_element)
+        end
+
+        state
+      end
+
+      def azure_resource_group_name
+        formatted_time = Time.now.utc.strftime '%Y%m%dT%H%M%S'
+        "#{config[:azure_resource_group_name]}-#{formatted_time}"
       end
 
       def template_for_transport_name
