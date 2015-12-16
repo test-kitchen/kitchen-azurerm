@@ -81,7 +81,7 @@ module Kitchen
           resource_management_client.deployments.create_or_update(state[:azure_resource_group_name], deployment_name, deployment(template_for_transport_name, deployment_parameters)).value!
         rescue ::MsRestAzure::AzureOperationError => operation_error
           info operation_error.body['error']
-          raise operation_error
+          raise operation_error unless operation_error.body['error']['code'] == 'DeploymentActive'
         end
 
         # Monitor all operations until completion
