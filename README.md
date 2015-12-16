@@ -23,7 +23,7 @@ You will essentially need 4 parameters from the above article to configure kitch
 Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.  **Make sure you save the file with UTF-8 encoding** 
 
 ```ruby
-[abcd1234-YOUR-GUID-HERE-abcdef123456]
+[abcd1234-YOUR-SUBSCRIPTION-ID-HERE-abcdef123456]
 client_id = "48b9bba3-YOUR-GUID-HERE-90f0b68ce8ba"
 client_secret = "your-client-secret-here"
 tenant_id = "9c117323-YOUR-GUID-HERE-9ee430723ba3"
