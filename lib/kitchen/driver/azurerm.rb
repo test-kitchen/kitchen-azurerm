@@ -101,10 +101,10 @@ module Kitchen
 
       def validate_state(state = {})
         state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
-        state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value(state, :server_id)
-        state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value(state, :azure_resource_group_name)
+        state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value?(state, :server_id)
+        state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value?(state, :azure_resource_group_name)
         [:subscription_id, :username, :password, :vm_name, :azure_management_url].each do |config_element|
-          state[config_element] = config[config_element] unless existing_state_value(state, config_element)
+          state[config_element] = config[config_element] unless existing_state_value?(state, config_element)
         end
 
         state
