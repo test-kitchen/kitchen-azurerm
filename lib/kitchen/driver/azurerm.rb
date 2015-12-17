@@ -80,8 +80,15 @@ module Kitchen
           info "Creating Deployment: #{deployment_name}"
           resource_management_client.deployments.create_or_update(state[:azure_resource_group_name], deployment_name, deployment(template_for_transport_name, deployment_parameters)).value!
         rescue ::MsRestAzure::AzureOperationError => operation_error
-          info operation_error.body['error']
-          raise operation_error unless operation_error.body['error']['code'] == 'DeploymentActive'
+          rest_error = operation_error.body['error']
+          deployment_active = rest_error['code'] == 'DeploymentActive'
+          if deployment_active
+            info "Deployment for resource group #{state[:azure_resource_group_name]} is ongoing."
+            info "If you need to change the deployment template you'll need to rerun `kitchen create` for this instance."
+          else
+            info rest_error
+            raise operation_error
+          end
         end
 
         # Monitor all operations until completion
