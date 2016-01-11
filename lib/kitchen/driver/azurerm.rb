@@ -33,6 +33,14 @@ module Kitchen
         'vm'
       end
 
+      default_config(:storage_account_type) do |_config|
+        'Standard_LRS'
+      end
+
+      default_config(:boot_diagnostics_enabled) do |_config|
+        'true'
+      end
+
       default_config(:winrm_powershell_script) do |_config|
         false
       end
@@ -48,6 +56,8 @@ module Kitchen
         deployment_parameters = {
           location: config[:location],
           vmSize: config[:machine_size],
+          storageAccountType: config[:storage_account_type],
+          bootDiagnosticsEnabled: config[:boot_diagnostics_enabled],
           newStorageAccountName: "storage#{state[:uuid]}",
           adminUsername: state[:username],
           adminPassword: state[:password],
@@ -78,7 +88,7 @@ module Kitchen
         begin
           deployment_name = "deploy-#{state[:uuid]}"
           info "Creating Deployment: #{deployment_name}"
-          resource_management_client.deployments.create_or_update(state[:azure_resource_group_name], deployment_name, deployment(template_for_transport_name, deployment_parameters)).value!
+          resource_management_client.deployments.create_or_update(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
         rescue ::MsRestAzure::AzureOperationError => operation_error
           rest_error = operation_error.body['error']
           deployment_active = rest_error['code'] == 'DeploymentActive'
@@ -124,21 +134,25 @@ module Kitchen
 
       def template_for_transport_name
         template = JSON.parse(virtual_machine_deployment_template)
-        if instance.transport.name.downcase == 'winrm'
+        if instance.transport.name.casecmp('winrm')
+          encoded_command = Base64.strict_encode64(enable_winrm_powershell_script)
+          command = command_to_execute
           template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
-            resource['properties']['osProfile']['customData'] = Base64.strict_encode64(enable_winrm_powershell_script)
+            resource['properties']['osProfile']['customData'] = encoded_command
           end
-          template['resources'] << JSON.parse(custom_script_extension_template)
+          template['resources'] << JSON.parse(custom_script_extension_template(command))
         end
         template.to_json
       end
 
-      def deployment(template, parameters)
+      def deployment(parameters)
+        template = template_for_transport_name
         deployment = ::Azure::ARM::Resources::Models::Deployment.new
         deployment.properties = ::Azure::ARM::Resources::Models::DeploymentProperties.new
         deployment.properties.mode = Azure::ARM::Resources::Models::DeploymentMode::Incremental
         deployment.properties.template = JSON.parse(template)
         deployment.properties.parameters = parameters_in_values_format(parameters)
+        debug(deployment.properties.template)
         deployment
       end
 
@@ -159,6 +173,15 @@ module Kitchen
           end_provisioning_state_reached = end_provisioning_states.split(',').include?(deployment_provisioning_state)
         end
         info "Resource Template deployment reached end state of '#{deployment_provisioning_state}'."
+        show_failed_operations(resource_group, deployment_name)
+      end
+
+      def show_failed_operations(resource_group, deployment_name)
+        failed_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name).value!
+        failed_operations.body.value.each do |val|
+          resource_code = val.properties.status_code
+          fail val.properties.status_message.inspect.to_s if resource_code != 'OK'
+        end
       end
 
       def list_outstanding_deployment_operations(resource_group, deployment_name)
@@ -201,7 +224,6 @@ module Kitchen
 
       def enable_winrm_powershell_script
         config[:winrm_powershell_script] || <<-PS1
-New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\\LocalMachine\\My
 $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\\LocalMachine\\My
 $config = '@{CertificateThumbprint="' + $cert.Thumbprint + '"}'
 winrm create winrm/config/listener?Address=*+Transport=HTTPS $config
@@ -212,7 +234,11 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
         PS1
       end
 
-      def custom_script_extension_template
+      def command_to_execute
+        'copy /y c:\\\\azuredata\\\\customdata.bin c:\\\\azuredata\\\\customdata.ps1 && powershell.exe -ExecutionPolicy Unrestricted -Command \\"start-process powershell.exe -verb runas -argumentlist c:\\\\azuredata\\\\customdata.ps1\\"'
+      end
+
+      def custom_script_extension_template(command)
         <<-EOH
         {
             "type": "Microsoft.Compute/virtualMachines/extensions",
@@ -227,7 +253,7 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
                 "type": "CustomScriptExtension",
                 "typeHandlerVersion": "1.4",
                 "settings": {
-                    "commandToExecute": "powershell.exe -ExecutionPolicy Unrestricted -Command \\"gc c:\\\\azuredata\\\\customdata.bin | iex\\""
+                    "commandToExecute": "#{command}"
                 }
             }
         }
@@ -310,6 +336,20 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
             "metadata": {
                 "description": "The vm name created inside of the resource group."
             }
+        },
+        "storageAccountType": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "metadata": {
+                "description": "The type of storage to use (e.g. Standard_LRS or Premium_LRS)."
+            }
+        },
+        "bootDiagnosticsEnabled": {
+            "type": "string",
+            "defaultValue": "true",
+            "metadata": {
+                "description": "Whether to enable (true) or disable (false) boot diagnostics. Default: true (requires Standard storage)."
+            }
         }
     },
     "variables": {
@@ -319,7 +359,7 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
         "addressPrefix": "10.0.0.0/16",
         "subnetName": "Subnet",
         "subnetPrefix": "10.0.0.0/24",
-        "storageAccountType": "Standard_LRS",
+        "storageAccountType": "[parameters('storageAccountType')]",
         "publicIPAddressName": "publicip",
         "publicIPAddressType": "Dynamic",
         "vmStorageAccountContainerName": "vhds",
@@ -441,7 +481,7 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
                 },
                 "diagnosticsProfile": {
                     "bootDiagnostics": {
-                        "enabled": "false",
+                        "enabled": "[parameters('bootDiagnosticsEnabled')]",
                         "storageUri": "[concat('http://',parameters('newStorageAccountName'),'.blob.core.windows.net')]"
                     }
                 }
