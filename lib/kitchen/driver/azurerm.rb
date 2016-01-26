@@ -173,7 +173,7 @@ module Kitchen
           end_provisioning_state_reached = end_provisioning_states.split(',').include?(deployment_provisioning_state)
         end
         info "Resource Template deployment reached end state of '#{deployment_provisioning_state}'."
-        show_failed_operations(resource_group, deployment_name)
+        show_failed_operations(resource_group, deployment_name) if deployment_provisioning_state == 'Failed'
       end
 
       def show_failed_operations(resource_group, deployment_name)
