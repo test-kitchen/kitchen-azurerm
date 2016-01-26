@@ -1,4 +1,9 @@
-# knife-azurerm Changelog
+# kitchen-azurerm Changelog
+
+## [0.2.4] - 2016-01-26
+- Support Premium Storage and Boot Diagnostics (@stuartpreston)
+- If deployment fails, show the message from the failing operation (@stuartpreston)
+- Updated Windows 2008 R2 example (@stuartpreston)
 
 ## [0.2.3] - 2015-12-17
 - ```kitchen create``` can now be executed multiple times, updating an existing deployment if an error occurs (@smurawski)

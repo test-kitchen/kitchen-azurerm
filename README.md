@@ -75,14 +75,16 @@ suites:
     attributes:
 ```
 
-### Parallel execution
-Parallel execution of create/converge/destroy is supported via the --parallel parameter. Each machine is created in it's own Azure Resource Group so has no shared lifecycle with the other machines in the test run. To take advantage of parallel execution use the following command:
+### Concurrent execution
+Concurrent execution of create/converge/destroy is supported via the --concurrency parameter. Each machine is created in it's own Azure Resource Group so has no shared lifecycle with the other machines in the test run. To take advantage of parallel execution use the following command:
 
-```kitchen test --parallel```
+```kitchen test --concurrency <n>```
+
+Where <n> is the number of threads to create. Note that any failure (e.g. an AzureOperationError) will cause the whole test to fail, though resources already in creation will continue to be created.
 
 ### .kitchen.yml example 2 - Windows
 
-Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2012 R2 instance, using WinRM as the transport. The resource created in Azure will enable itself for remote access at deployment time:
+Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2012 R2 instance as well as a Windows Server 2008 R2 instance, using WinRM as the transport. The resource created in Azure will enable itself for remote access at deployment time:
 
 **Note: Test Kitchen currently uses WinRM over HTTP rather than HTTPS. This means the temporary machine credentials traverse the internet in the clear. This will be changed once Test Kitchen fully supports WinRM over a secure channel.**
 
@@ -114,7 +116,6 @@ platforms:
         winrm set winrm/config '@{MaxTimeoutms="1800000"}'
         winrm set winrm/config/service '@{AllowUnencrypted="true"}'
         winrm set winrm/config/service/auth '@{Basic="true"}'
-        netsh advfirewall firewall set rule name="Windows Remote Management (HTTP-In)" profile=public protocol=tcp localport=5985 remoteip=localsubnet new remoteip=any
     transport:
       name: winrm
 suites:
@@ -158,8 +159,10 @@ data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509220  westeurope
 info:    vm image list command OK
 ```
 
-### Additional information/notes
-- driver_config also takes a username and password parameter, the defaults if these are not specified are "azure" and "P2ssw0rd" respectively.
+### Additional parameters:
+- Note that the ```driver_config``` section also takes a ```username``` and ```password``` parameter, the defaults if these are not specified are "azure" and "P2ssw0rd" respectively.
+- The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
+- The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
 
 ## Contributing
 
