@@ -4,6 +4,7 @@ require 'securerandom'
 require 'azure_mgmt_resources'
 require 'azure_mgmt_network'
 require 'base64'
+require 'sshkey'
 
 module Kitchen
   module Driver
@@ -142,7 +143,35 @@ module Kitchen
           end
           template['resources'] << JSON.parse(custom_script_extension_template(command))
         end
+
+        if instance.transport.name.casecmp('ssh') == 0
+          public_key = public_key_for_deployment(File.expand_path(instance.transport[:ssh_key]))
+          template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
+            resource['properties']['osProfile']['linuxConfiguration'] = JSON.parse(custom_linux_configuration(public_key))
+          end
+        end
         template.to_json
+      end
+
+      def public_key_for_deployment(private_key_filename)
+        if File.file?(private_key_filename) == false
+          k = SSHKey.generate
+
+          private_key_file = File.new(private_key_filename, 'w')
+          private_key_file.syswrite(k.private_key)
+          private_key_file.chmod(0600)
+          private_key_file.close
+
+          public_key_file = File.new("#{private_key_filename}.pub", 'w')
+          public_key_file.syswrite(k.ssh_public_key)
+          public_key_file.chmod(0600)
+          public_key_file.close
+
+          output = k.ssh_public_key
+        else
+          output = File.read("#{private_key_filename}.pub")
+        end
+        output
       end
 
       def deployment(parameters)
@@ -236,6 +265,22 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
 
       def command_to_execute
         'copy /y c:\\\\azuredata\\\\customdata.bin c:\\\\azuredata\\\\customdata.ps1 && powershell.exe -ExecutionPolicy Unrestricted -Command \\"start-process powershell.exe -verb runas -argumentlist c:\\\\azuredata\\\\customdata.ps1\\"'
+      end
+
+      def custom_linux_configuration(public_key)
+        <<-EOH
+        {
+          "disablePasswordAuthentication": "true",
+          "ssh": {
+            "publicKeys": [
+              {
+                "path": "[concat('/home/',parameters('adminUsername'),'/.ssh/authorized_keys')]",
+                "keyData": "#{public_key}"
+              }
+            ]
+          }
+        }
+        EOH
       end
 
       def custom_script_extension_template(command)

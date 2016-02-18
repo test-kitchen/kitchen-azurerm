@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.3.0] - 2016-02-17
+- Breaking: Linux machines are now created using a temporary sshkey (~/.ssh/id_kitchen) instead of password
+
 ## [0.2.4] - 2016-01-26
 - Support Premium Storage and Boot Diagnostics (@stuartpreston)
 - If deployment fails, show the message from the failing operation (@stuartpreston)

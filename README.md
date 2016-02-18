@@ -53,6 +53,9 @@ driver_config:
   location: 'West Europe'
   machine_size: 'Standard_D1'
 
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
 provisioner:
   name: chef_zero
 
