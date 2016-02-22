@@ -4,7 +4,7 @@
 
 [![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm) [![Build Status](https://travis-ci.org/pendrica/kitchen-azurerm.svg)](https://travis-ci.org/pendrica/kitchen-azurerm)
 
-This version has been tested on Windows, OS/X and Ubuntu. If you encounter a problem on your platform, please raise an issue. 
+This version has been tested on Windows, OS/X and Ubuntu. If you encounter a problem on your platform, please raise an issue.
 
 ## Quick-start
 ### Installation
@@ -16,11 +16,24 @@ Note if you are running the ChefDK you may need to prefix the command with chef,
 
 ### Configuration
 
-For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Owner rights against the specific subscription being targeted.  Using an Organizational (AAD) account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, follow the instructions in the article: [Authenticating a service principal with Azure Resource Manager](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli)   
+For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Contributor rights against the specific subscription being targeted.  Using an Organizational (AAD) account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, follow the below instructions (taken from the 'Authenticate service principal with password - PowerShell' section of [this article](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli)).
+1. Log into Azure with ```Login-AzureRmAccount```
+2. Create a new AAD application ```#azureAdApplication = New-AzureRmApplication -DisplayName "Test Kitchen" -HomePage "http://www.yourcompany.com" -IdentifierUris "http://www.yourcompany.com" -Password PutSomethingHere```
+  * You must supply values for the Homepage and IdentifierUris but in this context the values don't matter.
+  * The Password will be used when authenticating to Azure, so create a good secure password
+3. Create a Service Principal for your application: ```New-AzureRmApplication -ApplicationId $azureAdApplication.ApplicationId```
+4. Grant the service principal Contributor permissions: ```New-AzureRmRoleAssignment -RoleDefinitionName Contributor -ServicePrincipalName $azureAdApplication.ApplicationId```. This permission grants the ability to create new virtual machines.
+5. Retrieve the subscription you just created: ```$subscription = Get-AzureRmSubscription```
+6. Create a credential object that will be used to log in: ```$creds = Get-Credential```. The user name will be the ApplicationId and Password from step #2 above.
+7. Ensure that you can log onto Azure with this user: ```Login-AzureRmAccount -Credential $creds -ServicePrincipal -Tenant $subscription.TenantId```.
 
-You will essentially need 4 parameters from the above article to configure kitchen-azurerm: **Subscription ID**, **Client ID**, **Client Secret/Password** and **Tenant ID**.  These can be easily obtained using the azure-cli tools (v0.9.8 or higher) on any platform.
+You are now ready to configure kitchen-azurerm to use these credentials. You will use four elements taken from the steps above:
+1. **Subscription ID**: listed after the command in Step #7 above
+2. **Client ID**: this will be the ApplicationId from the application created in Step #2 above
+3. **Client Secret/Password**: this will be the password you supplied in the command in Step #2 above
+4. **Tenant ID**: listed after the command in Step #7 above
 
-Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.  **Make sure you save the file with UTF-8 encoding** 
+Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.  **Make sure you save the file with UTF-8 encoding**
 
 ```ruby
 [abcd1234-YOUR-SUBSCRIPTION-ID-HERE-abcdef123456]
