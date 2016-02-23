@@ -18,7 +18,7 @@ Note if you are running the ChefDK you may need to prefix the command with chef,
 
 For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Contributor rights against the specific subscription being targeted.  Using an Organizational (AAD) account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, follow the below instructions (taken from the 'Authenticate service principal with password - PowerShell' section of [this article](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli)).
 1. Log into Azure with ```Login-AzureRmAccount```
-2. Create a new AAD application ```#azureAdApplication = New-AzureRmApplication -DisplayName "Test Kitchen" -HomePage "http://www.yourcompany.com" -IdentifierUris "http://www.yourcompany.com" -Password PutSomethingHere```
+2. Create a new AAD application ```#azureAdApplication = New-AzureRmAdApplication -DisplayName "Test Kitchen" -HomePage "http://www.yourcompany.com" -IdentifierUris "http://www.yourcompany.com" -Password PutSomethingHere```
   * You must supply values for the Homepage and IdentifierUris but in this context the values don't matter.
   * The Password will be used when authenticating to Azure, so create a good secure password
 3. Create a Service Principal for your application: ```New-AzureRmApplication -ApplicationId $azureAdApplication.ApplicationId```
