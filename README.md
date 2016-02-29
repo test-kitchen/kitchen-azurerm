@@ -16,25 +16,15 @@ Note if you are running the ChefDK you may need to prefix the command with chef,
 
 ### Configuration
 
-For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Contributor rights against the specific subscription being targeted.  Using an Organizational (AAD) account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, follow the below instructions (taken from the 'Authenticate service principal with password - PowerShell' section of [this article](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli)).
+For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Contributor rights against the specific subscription being targeted.  Using an Organizational (AAD) account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, you will need to [create and authenticate a service principal](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli) using the [Azure CLI](https://azure.microsoft.com/en-us/documentation/articles/xplat-cli-install/).
 
-1. Ensure that [the Azure CLI is installed](https://azure.microsoft.com/en-us/documentation/articles/xplat-cli-install/)
-2. Ensure that you have an active Azure subscription (you can get started [for free](https://azure.microsoft.com/en-us/free/) or use your [MSDN Subscription](https://azure.microsoft.com/en-us/pricing/member-offers/msdn-benefits/))
-3. In PowerShell, log into Azure with ```Login-AzureRmAccount```
-4. Create a new AAD application ```#azureAdApplication = New-AzureRmAdApplication -DisplayName "Test Kitchen" -HomePage "http://www.yourcompany.com" -IdentifierUris "http://www.yourcompany.com" -Password PutSomethingHere```
-  * You must supply values for the Homepage and IdentifierUris but in this context the values don't matter.
-  * The Password will be used when authenticating to Azure, so create a good secure password
-5. Create a Service Principal for your application: ```New-AzureRmApplication -ApplicationId $azureAdApplication.ApplicationId```
-6. Grant the service principal Contributor permissions: ```New-AzureRmRoleAssignment -RoleDefinitionName Contributor -ServicePrincipalName $azureAdApplication.ApplicationId```. This permission grants the ability to create new virtual machines.
-7. Retrieve the subscription you just created: ```$subscription = Get-AzureRmSubscription```
-8. Create a credential object that will be used to log in: ```$creds = Get-Credential```. The user name will be the ApplicationId and Password from step #2 above.
-9. Ensure that you can log onto Azure with this user: ```Login-AzureRmAccount -Credential $creds -ServicePrincipal -Tenant $subscription.TenantId```.
+You will also need to ensure you have an active Azure subscription (you can get started [for free](https://azure.microsoft.com/en-us/free/) or use your [MSDN Subscription](https://azure.microsoft.com/en-us/pricing/member-offers/msdn-benefits/)).
 
-You are now ready to configure kitchen-azurerm to use these credentials. You will use four elements taken from the steps above:
-1. **Subscription ID**: listed after the command in Step #7 above
-2. **Client ID**: this will be the ApplicationId from the application created in Step #2 above
-3. **Client Secret/Password**: this will be the password you supplied in the command in Step #2 above
-4. **Tenant ID**: listed after the command in Step #7 above
+You are now ready to configure kitchen-azurerm to use the credentials from the service principal you created above. You will use four elements from the steps in that article:
+1. **Subscription ID**: available from the azure portal
+2. **Client ID**: this will be the Application Id from the application in step 2.
+3. **Client Secret/Password**: this will be the password you supplied in the command in step 2.
+4. **Tenant ID**: listed after the command in step 5.
 
 Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.  **Make sure you save the file with UTF-8 encoding**
 
