@@ -4,7 +4,7 @@
 
 [![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm) [![Build Status](https://travis-ci.org/pendrica/kitchen-azurerm.svg)](https://travis-ci.org/pendrica/kitchen-azurerm)
 
-This version has been tested on Windows, OS/X and Ubuntu. If you encounter a problem on your platform, please raise an issue. 
+This version has been tested on Windows, OS/X and Ubuntu. If you encounter a problem on your platform, please raise an issue.
 
 ## Quick-start
 ### Installation
@@ -16,11 +16,18 @@ Note if you are running the ChefDK you may need to prefix the command with chef,
 
 ### Configuration
 
-For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Owner rights against the specific subscription being targeted.  Using an Organizational (AAD) account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, follow the instructions in the article: [Authenticating a service principal with Azure Resource Manager](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli)   
+For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Contributor rights against the specific subscription being targeted.  Using an Organizational (AAD) account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, you will need to [create and authenticate a service principal](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli) using the [Azure CLI](https://azure.microsoft.com/en-us/documentation/articles/xplat-cli-install/). Make sure you stay within the section titled 'Authenticate service principal with password - Azure CLI'.
 
-You will essentially need 4 parameters from the above article to configure kitchen-azurerm: **Subscription ID**, **Client ID**, **Client Secret/Password** and **Tenant ID**.  These can be easily obtained using the azure-cli tools (v0.9.8 or higher) on any platform.
+You will also need to ensure you have an active Azure subscription (you can get started [for free](https://azure.microsoft.com/en-us/free/) or use your [MSDN Subscription](https://azure.microsoft.com/en-us/pricing/member-offers/msdn-benefits/)).
 
-Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.  **Make sure you save the file with UTF-8 encoding** 
+You are now ready to configure kitchen-azurerm to use the credentials from the service principal you created above. You will use four elements from the steps in that article:
+
+1. **Subscription ID**: available from the azure portal
+2. **Client ID**: this will be the Application Id from the application in step 2.
+3. **Client Secret/Password**: this will be the password you supplied in the command in step 2.
+4. **Tenant ID**: listed after the command in step 5.
+
+Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.  **Make sure you save the file with UTF-8 encoding**
 
 ```ruby
 [abcd1234-YOUR-SUBSCRIPTION-ID-HERE-abcdef123456]
