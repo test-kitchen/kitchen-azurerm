@@ -48,7 +48,7 @@ Note that the environment variables, if set, take preference over the values in 
 
 ### .kitchen.yml example 1 - Linux/Ubuntu
 
-Here's an example ```.kitchen.yml``` file that provisions 3 different types of Ubuntu Server, using Chef Zero as the provisioner and SSH as the transport.
+Here's an example ```.kitchen.yml``` file that provisions 3 different types of Ubuntu Server, using Chef Zero as the provisioner and SSH as the transport. Note that if the key does not exist at the specified location, it will be created.
 
 ```yml
 ---

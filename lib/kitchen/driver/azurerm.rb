@@ -5,6 +5,7 @@ require 'azure_mgmt_resources'
 require 'azure_mgmt_network'
 require 'base64'
 require 'sshkey'
+require 'fileutils'
 
 module Kitchen
   module Driver
@@ -81,7 +82,7 @@ module Kitchen
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
           resource_management_client.resource_groups.create_or_update(state[:azure_resource_group_name], resource_group).value!
         rescue ::MsRestAzure::AzureOperationError => operation_error
-          info operation_error.body['error']
+          info operation_error
           raise operation_error
         end
 
@@ -144,7 +145,7 @@ module Kitchen
           template['resources'] << JSON.parse(custom_script_extension_template(command))
         end
 
-        if instance.transport.name.casecmp('ssh') == 0
+        if instance.transport.name.casecmp('ssh') == 0 && !config[:ssh_key].nil?
           public_key = public_key_for_deployment(File.expand_path(instance.transport[:ssh_key]))
           template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
             resource['properties']['osProfile']['linuxConfiguration'] = JSON.parse(custom_linux_configuration(public_key))
@@ -156,6 +157,8 @@ module Kitchen
       def public_key_for_deployment(private_key_filename)
         if File.file?(private_key_filename) == false
           k = SSHKey.generate
+
+          ::FileUtils.mkdir_p(File.dirname(private_key_filename))
 
           private_key_file = File.new(private_key_filename, 'w')
           private_key_file.syswrite(k.private_key)
