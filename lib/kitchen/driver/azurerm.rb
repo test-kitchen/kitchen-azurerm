@@ -145,7 +145,8 @@ module Kitchen
           template['resources'] << JSON.parse(custom_script_extension_template(command))
         end
 
-        if instance.transport.name.casecmp('ssh') == 0 && !config[:ssh_key].nil?
+        if instance.transport.name.casecmp('ssh') == 0 && !instance.transport[:ssh_key].nil?
+          info "Adding public key from #{File.expand_path(instance.transport[:ssh_key])}.pub to the deployment."
           public_key = public_key_for_deployment(File.expand_path(instance.transport[:ssh_key]))
           template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
             resource['properties']['osProfile']['linuxConfiguration'] = JSON.parse(custom_linux_configuration(public_key))
