@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = 'kitchen-azurerm'
-  spec.version       = '0.3.2'
+  spec.version       = '0.3.3'
   spec.authors       = ['Stuart Preston']
   spec.email         = ['stuart@pendrica.com']
   spec.summary       = 'Test Kitchen driver for Azure Resource Manager.'
@@ -18,6 +18,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'inifile', '~> 2.0'
   spec.add_dependency 'azure_mgmt_resources', '0.1.1'
   spec.add_dependency 'azure_mgmt_network', '0.1.1'
+  spec.add_dependency 'ms_rest', '0.1.2'
+  spec.add_dependency 'ms_rest_azure', '0.1.2'
   spec.add_dependency 'sshkey', '~> 1'
 
   spec.add_development_dependency 'bundler', '~> 1.7'

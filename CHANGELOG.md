@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.3.3] - 2016-03-07
+- Pinning ms_rest_azure dependencies to avoid errors when using latest ms_rest_azure library.
+
 ## [0.3.2] - 2016-03-07
 - Breaking: Linux machines are now created using a temporary sshkey (~/.ssh/id_kitchen-azurerm) instead of password (@stuartpreston)
 - Real error message shown if credentials are incorrect (@stuartpreston)
