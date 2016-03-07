@@ -1,7 +1,7 @@
 # kitchen-azurerm Changelog
 
-## [0.3.1] - 2016-02-29
-- Breaking: Linux machines are now created using a temporary sshkey (~/.ssh/id_kitchen) instead of password (@stuartpreston)
+## [0.3.2] - 2016-03-07
+- Breaking: Linux machines are now created using a temporary sshkey (~/.ssh/id_kitchen-azurerm) instead of password (@stuartpreston)
 - Real error message shown if credentials are incorrect (@stuartpreston)
 
 ## [0.2.4] - 2016-01-26

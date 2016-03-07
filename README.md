@@ -22,7 +22,7 @@ You will also need to ensure you have an active Azure subscription (you can get 
 
 You are now ready to configure kitchen-azurerm to use the credentials from the service principal you created above. You will use four elements from the steps in that article:
 
-1. **Subscription ID**: available from the azure portal
+1. **Subscription ID**: available from the Azure portal
 2. **Client ID**: this will be the Application Id from the application in step 2.
 3. **Client Secret/Password**: this will be the password you supplied in the command in step 2.
 4. **Tenant ID**: listed after the command in step 5.
