@@ -82,8 +82,13 @@ module Kitchen
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
           resource_management_client.resource_groups.create_or_update(state[:azure_resource_group_name], resource_group).value!
         rescue ::MsRestAzure::AzureOperationError => operation_error
-          info operation_error
-          raise operation_error
+          error_message = if operation_error.body.nil? == true
+                            operation_error.inspect
+                          else
+                            operation_error.body['error']
+                          end
+          info error_message
+          raise error_message
         end
 
         # Execute deployment steps
