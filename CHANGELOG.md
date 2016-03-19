@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.3.4] - 2016-03-19
+- Additional diagnostics when Azure Resource Group fails to create successfully (@stuartpreston)
+
 ## [0.3.3] - 2016-03-07
 - Pinning ms_rest_azure dependencies to avoid errors when using latest ms_rest_azure library.
 
