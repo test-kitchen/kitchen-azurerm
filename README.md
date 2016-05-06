@@ -25,7 +25,7 @@ You are now ready to configure kitchen-azurerm to use the credentials from the s
 1. **Subscription ID**: available from the Azure portal
 2. **Client ID**: this will be the Application Id from the application in step 2.
 3. **Client Secret/Password**: this will be the password you supplied in the command in step 2.
-4. **Tenant ID**: listed after the command in step 5.
+4. **Tenant ID**: use the command detailed in "Manually provide credentials through Azure CLI" step 1 to get the TenantId.
 
 Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.  **Make sure you save the file with UTF-8 encoding**
 
