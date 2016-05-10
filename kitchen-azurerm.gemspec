@@ -15,7 +15,7 @@ Gem::Specification.new do |spec|
   spec.files         = Dir['LICENSE', 'README.md', 'CHANGELOG.md', 'lib/**/*']
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'inifile', '~> 0'
+  spec.add_dependency 'inifile', '>= 3.0.0'
   spec.add_dependency 'azure_mgmt_resources', '0.1.1'
   spec.add_dependency 'azure_mgmt_network', '0.1.1'
   spec.add_dependency 'ms_rest', '0.1.2'
