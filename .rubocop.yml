@@ -12,3 +12,6 @@ Metrics/ClassLength:
 
 Metrics/PerceivedComplexity:
   Enabled: false
+
+Style/NumericLiteralPrefix:
+  Enabled: false
