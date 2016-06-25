@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.4.0] - 2016-06-26
+- Adding capability to execute ARM template prior to VM deployment, ```pre_deployment_template``` and ```pre_deployment_parameters``` added (@stuartpreston)
+
 ## [0.3.6] - 2016-05-10
 - Remove version pin on inifile gem dependency, compatible with newer ChefDK (@stuartpreston)
 

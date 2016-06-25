@@ -51,9 +51,16 @@ module Kitchen
         'https://management.azure.com'
       end
 
+      default_config(:pre_deployment_template) do |_config|
+        ''
+      end
+
+      default_config(:pre_deployment_parameters) do |_config|
+        {}
+      end
+
       def create(state)
         state = validate_state(state)
-
         image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
         deployment_parameters = {
           location: config[:location],
@@ -93,8 +100,14 @@ module Kitchen
 
         # Execute deployment steps
         begin
+          if File.file?(config[:pre_deployment_template])
+            pre_deployment_name = "pre-deploy-#{state[:uuid]}"
+            info "Creating deployment: #{pre_deployment_name}"
+            resource_management_client.deployments.create_or_update(state[:azure_resource_group_name], pre_deployment_name, pre_deployment(config[:pre_deployment_template], config[:pre_deployment_parameters])).value!
+            follow_deployment_until_end_state(state[:azure_resource_group_name], pre_deployment_name)
+          end
           deployment_name = "deploy-#{state[:uuid]}"
-          info "Creating Deployment: #{deployment_name}"
+          info "Creating deployment: #{deployment_name}"
           resource_management_client.deployments.create_or_update(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
         rescue ::MsRestAzure::AzureOperationError => operation_error
           rest_error = operation_error.body['error']
@@ -181,6 +194,17 @@ module Kitchen
           output = File.read("#{private_key_filename}.pub")
         end
         output.strip
+      end
+
+      def pre_deployment(pre_deployment_template_filename, pre_deployment_parameters)
+        pre_deployment_template = ::File.read(pre_deployment_template_filename)
+        pre_deployment = ::Azure::ARM::Resources::Models::Deployment.new
+        pre_deployment.properties = ::Azure::ARM::Resources::Models::DeploymentProperties.new
+        pre_deployment.properties.mode = Azure::ARM::Resources::Models::DeploymentMode::Incremental
+        pre_deployment.properties.template = JSON.parse(pre_deployment_template)
+        pre_deployment.properties.parameters = parameters_in_values_format(pre_deployment_parameters)
+        debug(pre_deployment.properties.template)
+        pre_deployment
       end
 
       def deployment(parameters)

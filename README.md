@@ -48,9 +48,9 @@ Note that the environment variables, if set, take preference over the values in 
 
 ### .kitchen.yml example 1 - Linux/Ubuntu
 
-Here's an example ```.kitchen.yml``` file that provisions 3 different types of Ubuntu Server, using Chef Zero as the provisioner and SSH as the transport. Note that if the key does not exist at the specified location, it will be created.
+Here's an example ```.kitchen.yml``` file that provisions an Ubuntu Server, using Chef Zero as the provisioner and SSH as the transport. Note that if the key does not exist at the specified location, it will be created.
 
-```yml
+```yaml
 ---
 driver:
   name: azurerm
@@ -67,16 +67,10 @@ provisioner:
   name: chef_zero
 
 platforms:
-  - name: ubuntu-12.04
-    driver_config:
-      image_urn: Canonical:UbuntuServer:12.04.5-LTS:latest
   - name: ubuntu-14.04
     driver_config:
-      image_urn: Canonical:UbuntuServer:14.04.3-LTS:latest
+      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
       vm_name: trusty-vm
-  - name: ubuntu-15.04
-    driver_config:
-      image_urn: Canonical:UbuntuServer:15.04:latest
 
 suites:
   - name: default
@@ -98,7 +92,7 @@ Here's a further example ```.kitchen.yml``` file that will provision a Windows S
 
 **Note: Test Kitchen currently uses WinRM over HTTP rather than HTTPS. This means the temporary machine credentials traverse the internet in the clear. This will be changed once Test Kitchen fully supports WinRM over a secure channel.**
 
-```yml
+```yaml
 ---
 driver:
   name: azurerm
@@ -133,6 +127,82 @@ suites:
     run_list:
       - recipe[kitchentesting::default]
     attributes:
+```
+
+### .kitchen.yml example 3 - "pre-deployment" ARM template
+
+The following example introduces the ```pre_deployment_template``` and ```pre_deployment_parameters``` properties in the configuration file.
+You can use this capability to execute an ARM template containing Azure resources to provision before the system under test is created.  
+
+In the example the ARM template in the file ```predeploy.json``` would be executed with the parameters that are specified under ```pre_deployment_parameters```.  
+These resources will be created in the same Azure Resource Group as the VM under test, and therefore will be destroyed when you type ```kitchen destroy```.
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+  pre_deployment_template: predeploy.json
+  pre_deployment_parameters: 
+    test_parameter: 'This is a test.'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver_config:
+      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+
+Example predeploy.json:
+
+```json
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+      "test_parameter": {
+        "type": "string",
+        "defaultValue": ""
+      }
+  },
+  "variables": {
+      
+  },
+  "resources": [
+      {
+        "name": "uniqueinstancenamehere01",
+        "type": "Microsoft.Sql/servers",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2014-04-01-preview",
+        "properties": {
+          "version": "12.0",
+          "administratorLogin": "azure",
+          "administratorLoginPassword": "P2ssw0rd"
+        }
+      }
+  ],
+  "outputs": {
+      "parameter testing": {
+        "type": "string",
+        "value": "[parameters('test_parameter')]"
+      }
+  }
+}
 ```
 
 ### How to retrieve the image_urn
