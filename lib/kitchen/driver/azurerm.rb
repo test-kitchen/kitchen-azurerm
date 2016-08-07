@@ -35,6 +35,14 @@ module Kitchen
         'vm'
       end
 
+      default_config(:vnet_id) do |_config|
+        ''
+      end
+
+      default_config(:subnet_id) do |_config|
+        ''
+      end
+
       default_config(:storage_account_type) do |_config|
         'Standard_LRS'
       end
@@ -124,12 +132,22 @@ module Kitchen
         # Monitor all operations until completion
         follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
 
-        # Now retrieve the public IP from the resource group:
-        network_management_client = ::Azure::ARM::Network::NetworkResourceProviderClient.new(credentials)
-        network_management_client.subscription_id = config[:subscription_id]
-        result = network_management_client.public_ip_addresses.get(state[:azure_resource_group_name], 'publicip').value!
-        info "IP Address is: #{result.body.properties.ip_address} [#{result.body.properties.dns_settings.fqdn}]"
-        state[:hostname] = result.body.properties.ip_address
+        if config[:vnet_id] == ''
+          # Retrieve the public IP from the resource group:
+          network_management_client = ::Azure::ARM::Network::NetworkResourceProviderClient.new(credentials)
+          network_management_client.subscription_id = config[:subscription_id]
+          result = network_management_client.public_ip_addresses.get(state[:azure_resource_group_name], 'publicip').value!
+          info "IP Address is: #{result.body.properties.ip_address} [#{result.body.properties.dns_settings.fqdn}]"
+          state[:hostname] = result.body.properties.ip_address
+        else
+          # Retrieve the internal IP from the resource group:
+          network_management_client = ::Azure::ARM::Network::NetworkResourceProviderClient.new(credentials)
+          network_management_client.subscription_id = config[:subscription_id]
+          network_interfaces = ::Azure::ARM::Network::NetworkInterfaces.new(network_management_client)
+          result = network_interfaces.get(state[:azure_resource_group_name], 'nic').value!
+          info "IP Address is: #{result.body.properties.ip_configurations[0].properties.private_ipaddress}"
+          state[:hostname] = result.body.properties.ip_configurations[0].properties.private_ipaddress
+        end
       end
 
       def existing_state_value?(state, property)
@@ -339,6 +357,207 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
       end
 
       def virtual_machine_deployment_template
+        if config[:vnet_id] == ''
+          return virtual_machine_deployment_template_public
+        else
+          info "Using custom vnet: #{config[:vnet_id]}"
+          return virtual_machine_deployment_template_internal(config[:vnet_id], config[:subnet_id])
+        end
+      end
+
+      def virtual_machine_deployment_template_internal(vnet_id, subnet_id)
+        <<-EOH
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "type": "string",
+            "metadata": {
+                "description": "The location where the resources will be created."
+            }
+        },
+        "vmSize": {
+            "type": "string",
+            "metadata": {
+                "description": "The size of the VM to be created"
+            }
+        },
+        "newStorageAccountName": {
+            "type": "string",
+            "metadata": {
+                "description": "Unique DNS Name for the Storage Account where the Virtual Machine's disks will be placed."
+            }
+        },
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "User name for the Virtual Machine."
+            }
+        },
+        "adminPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Password for the Virtual Machine."
+            }
+        },
+        "dnsNameForPublicIP": {
+            "type": "string",
+            "metadata": {
+                "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
+            }
+        },
+        "imagePublisher": {
+            "type": "string",
+            "defaultValue": "Canonical",
+            "metadata": {
+                "description": "Publisher for the VM, e.g. Canonical, MicrosoftWindowsServer"
+            }
+        },
+        "imageOffer": {
+            "type": "string",
+            "defaultValue": "UbuntuServer",
+            "metadata": {
+                "description": "Offer for the VM, e.g. UbuntuServer, WindowsServer."
+            }
+        },
+        "imageSku": {
+            "type": "string",
+            "defaultValue": "14.04.3-LTS",
+            "metadata": {
+                "description": "Sku for the VM, e.g. 14.04.3-LTS"
+            }
+        },
+        "imageVersion": {
+            "type": "string",
+            "defaultValue": "latest",
+            "metadata": {
+                "description": "Either a date or latest."
+            }
+        },
+        "vmName": {
+            "type": "string",
+            "defaultValue": "vm",
+            "metadata": {
+                "description": "The vm name created inside of the resource group."
+            }
+        },
+        "storageAccountType": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "metadata": {
+                "description": "The type of storage to use (e.g. Standard_LRS or Premium_LRS)."
+            }
+        },
+        "bootDiagnosticsEnabled": {
+            "type": "string",
+            "defaultValue": "true",
+            "metadata": {
+                "description": "Whether to enable (true) or disable (false) boot diagnostics. Default: true (requires Standard storage)."
+            }
+        }
+    },
+    "variables": {
+        "location": "[parameters('location')]",
+        "OSDiskName": "osdisk",
+        "nicName": "nic",
+        "addressPrefix": "10.0.0.0/16",
+        "subnetName": "#{subnet_id}",
+        "subnetPrefix": "10.0.0.0/24",
+        "storageAccountType": "[parameters('storageAccountType')]",
+        "publicIPAddressName": "publicip",
+        "publicIPAddressType": "Dynamic",
+        "vmStorageAccountContainerName": "vhds",
+        "vmName": "[parameters('vmName')]",
+        "vmSize": "[parameters('vmSize')]",
+        "virtualNetworkName": "vnet",
+        "vnetID": "#{vnet_id}",
+        "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[parameters('newStorageAccountName')]",
+            "apiVersion": "2015-05-01-preview",
+            "location": "[variables('location')]",
+            "properties": {
+                "accountType": "[variables('storageAccountType')]"
+            }
+        },
+        {
+            "apiVersion": "2015-05-01-preview",
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[variables('nicName')]",
+            "location": "[variables('location')]",
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[variables('subnetRef')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "apiVersion": "2015-06-15",
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[variables('vmName')]",
+            "location": "[variables('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName'))]",
+                "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[variables('vmSize')]"
+                },
+                "osProfile": {
+                    "computername": "[variables('vmName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "[parameters('imagePublisher')]",
+                        "offer": "[parameters('imageOffer')]",
+                        "sku": "[parameters('imageSku')]",
+                        "version": "[parameters('imageVersion')]"
+                    },
+                    "osDisk": {
+                        "name": "osdisk",
+                        "vhd": {
+                            "uri": "[concat('http://',parameters('newStorageAccountName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName'),'.vhd')]"
+                        },
+                        "caching": "ReadWrite",
+                        "createOption": "FromImage"
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": "[parameters('bootDiagnosticsEnabled')]",
+                        "storageUri": "[concat('http://',parameters('newStorageAccountName'),'.blob.core.windows.net')]"
+                    }
+                }
+            }
+        }
+    ]
+}
+        EOH
+      end
+
+      def virtual_machine_deployment_template_public
         <<-EOH
 {
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",

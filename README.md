@@ -205,6 +205,44 @@ Example predeploy.json:
 }
 ```
 
+### .kitchen.yml example 4 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios)
+
+The following example introduces the ```vnet_id``` and ```subnet_id``` properties under driver_config in the configuration file.  This can be applied at the top level, or per platform.
+You can use this capability to create the VM on an existing virtual network and subnet created in a different resource group.
+
+In this case, the public IP address is not used.
+
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver_config:
+      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+      vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
+      subnet_id: subnet-10.1.0
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+
 ### How to retrieve the image_urn
 You can use the azure (azure-cli) command line tools to interrogate for the Urn. All 4 parts of the Urn must be specified, though the last part can be changed to "latest" to indicate you always wish to provision the latest operating system and patches.
 

@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.5.0] - 2016-08-07
+- Adding support for internal (e.g. ExpressRoute/VPN) access to created VM (@stuartpreston)
+
 ## [0.4.1] - 2016-07-01
 - Adding explicit depdendency on concurrent-ruby gem (@stuartpreston)
 
