@@ -77,7 +77,7 @@ module Kitchen
           bootDiagnosticsEnabled: config[:boot_diagnostics_enabled],
           newStorageAccountName: "storage#{state[:uuid]}",
           adminUsername: state[:username],
-          adminPassword: state[:password],
+          adminPassword: state[:password] || 'P2ssw0rd',
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           imagePublisher: image_publisher,
           imageOffer: image_offer,
@@ -95,15 +95,10 @@ module Kitchen
         resource_group.location = config[:location]
         begin
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
-          resource_management_client.resource_groups.create_or_update(state[:azure_resource_group_name], resource_group).value!
+          resource_management_client.resource_groups.create_or_update(state[:azure_resource_group_name], resource_group)
         rescue ::MsRestAzure::AzureOperationError => operation_error
-          error_message = if operation_error.body.nil? == true
-                            operation_error.inspect
-                          else
-                            operation_error.body['error']
-                          end
-          info error_message
-          raise error_message
+          error operation_error.body
+          raise operation_error
         end
 
         # Execute deployment steps
@@ -111,12 +106,12 @@ module Kitchen
           if File.file?(config[:pre_deployment_template])
             pre_deployment_name = "pre-deploy-#{state[:uuid]}"
             info "Creating deployment: #{pre_deployment_name}"
-            resource_management_client.deployments.create_or_update(state[:azure_resource_group_name], pre_deployment_name, pre_deployment(config[:pre_deployment_template], config[:pre_deployment_parameters])).value!
+            resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], pre_deployment_name, pre_deployment(config[:pre_deployment_template], config[:pre_deployment_parameters])).value!
             follow_deployment_until_end_state(state[:azure_resource_group_name], pre_deployment_name)
           end
           deployment_name = "deploy-#{state[:uuid]}"
           info "Creating deployment: #{deployment_name}"
-          resource_management_client.deployments.create_or_update(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
+          resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
         rescue ::MsRestAzure::AzureOperationError => operation_error
           rest_error = operation_error.body['error']
           deployment_active = rest_error['code'] == 'DeploymentActive'
@@ -134,19 +129,19 @@ module Kitchen
 
         if config[:vnet_id] == ''
           # Retrieve the public IP from the resource group:
-          network_management_client = ::Azure::ARM::Network::NetworkResourceProviderClient.new(credentials)
+          network_management_client = ::Azure::ARM::Network::NetworkManagementClient.new(credentials)
           network_management_client.subscription_id = config[:subscription_id]
-          result = network_management_client.public_ip_addresses.get(state[:azure_resource_group_name], 'publicip').value!
-          info "IP Address is: #{result.body.properties.ip_address} [#{result.body.properties.dns_settings.fqdn}]"
-          state[:hostname] = result.body.properties.ip_address
+          result = network_management_client.public_ipaddresses.get(state[:azure_resource_group_name], 'publicip')
+          info "IP Address is: #{result.ip_address} [#{result.dns_settings.fqdn}]"
+          state[:hostname] = result.ip_address
         else
           # Retrieve the internal IP from the resource group:
-          network_management_client = ::Azure::ARM::Network::NetworkResourceProviderClient.new(credentials)
+          network_management_client = ::Azure::ARM::Network::NetworkManagementClient.new(credentials)
           network_management_client.subscription_id = config[:subscription_id]
           network_interfaces = ::Azure::ARM::Network::NetworkInterfaces.new(network_management_client)
-          result = network_interfaces.get(state[:azure_resource_group_name], 'nic').value!
-          info "IP Address is: #{result.body.properties.ip_configurations[0].properties.private_ipaddress}"
-          state[:hostname] = result.body.properties.ip_configurations[0].properties.private_ipaddress
+          result = network_interfaces.get(state[:azure_resource_group_name], 'nic')
+          info "IP Address is: #{result.ip_configurations[0].private_ipaddress}"
+          state[:hostname] = result.ip_configurations[0].private_ipaddress
         end
       end
 
@@ -161,7 +156,7 @@ module Kitchen
         [:subscription_id, :username, :password, :vm_name, :azure_management_url].each do |config_element|
           state[config_element] = config[config_element] unless existing_state_value?(state, config_element)
         end
-
+        state.delete(:password) unless instance.transport[:ssh_key].nil?
         state
       end
 
@@ -257,8 +252,8 @@ module Kitchen
       end
 
       def show_failed_operations(resource_group, deployment_name)
-        failed_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name).value!
-        failed_operations.body.value.each do |val|
+        failed_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name)
+        failed_operations.each do |val|
           resource_code = val.properties.status_code
           raise val.properties.status_message.inspect.to_s if resource_code != 'OK'
         end
@@ -266,9 +261,10 @@ module Kitchen
 
       def list_outstanding_deployment_operations(resource_group, deployment_name)
         end_operation_states = 'Failed,Succeeded'
-        deployment_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name).value!
-        deployment_operations.body.value.each do |val|
+        deployment_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name)
+        deployment_operations.each do |val|
           resource_provisioning_state = val.properties.provisioning_state
+
           resource_name = val.properties.target_resource.resource_name
           resource_type = val.properties.target_resource.resource_type
           end_operation_state_reached = end_operation_states.split(',').include?(resource_provisioning_state)
@@ -279,8 +275,8 @@ module Kitchen
       end
 
       def deployment_state(resource_group, deployment_name)
-        deployments = resource_management_client.deployments.get(resource_group, deployment_name).value!
-        deployments.body.properties.provisioning_state
+        deployments = resource_management_client.deployments.get(resource_group, deployment_name)
+        deployments.properties.provisioning_state
       end
 
       def destroy(state)
@@ -290,10 +286,10 @@ module Kitchen
         resource_management_client.subscription_id = state[:subscription_id]
         begin
           info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
-          resource_management_client.resource_groups.begin_delete(state[:azure_resource_group_name]).value!
+          resource_management_client.resource_groups.begin_delete(state[:azure_resource_group_name])
           info 'Destroy operation accepted and will continue in the background.'
         rescue ::MsRestAzure::AzureOperationError => operation_error
-          info operation_error.body['error']
+          error operation_error.body
           raise operation_error
         end
         state.delete(:server_id)

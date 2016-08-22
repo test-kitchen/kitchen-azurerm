@@ -48,7 +48,7 @@ Note that the environment variables, if set, take preference over the values in 
 
 ### .kitchen.yml example 1 - Linux/Ubuntu
 
-Here's an example ```.kitchen.yml``` file that provisions an Ubuntu Server, using Chef Zero as the provisioner and SSH as the transport. Note that if the key does not exist at the specified location, it will be created.
+Here's an example ```.kitchen.yml``` file that provisions an Ubuntu Server, using Chef Zero as the provisioner and SSH as the transport. Note that if the key does not exist at the specified location, it will be created. Also note that if ```ssh_key``` is supplied, Test Kitchen will use this in preference to any default/configured passwords that are supplied.
 
 ```yaml
 ---
