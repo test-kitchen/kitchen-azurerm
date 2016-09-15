@@ -168,12 +168,14 @@ module Kitchen
       def template_for_transport_name
         template = JSON.parse(virtual_machine_deployment_template)
         if instance.transport.name.casecmp('winrm').zero?
-          encoded_command = Base64.strict_encode64(enable_winrm_powershell_script)
-          command = command_to_execute
-          template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
-            resource['properties']['osProfile']['customData'] = encoded_command
+          unless instance.platform.name.casecmp('nano')
+            encoded_command = Base64.strict_encode64(enable_winrm_powershell_script)
+            command = command_to_execute
+            template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
+              resource['properties']['osProfile']['customData'] = encoded_command
+            end
+            template['resources'] << JSON.parse(custom_script_extension_template(command))
           end
-          template['resources'] << JSON.parse(custom_script_extension_template(command))
         end
 
         unless instance.transport[:ssh_key].nil?
