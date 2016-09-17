@@ -168,7 +168,8 @@ module Kitchen
       def template_for_transport_name
         template = JSON.parse(virtual_machine_deployment_template)
         if instance.transport.name.casecmp('winrm').zero?
-          unless instance.platform.name.casecmp('nano')
+          if instance.platform.name.index('nano').nil?
+            info 'Adding WinRM configuration to provisioning profile.'
             encoded_command = Base64.strict_encode64(enable_winrm_powershell_script)
             command = command_to_execute
             template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|

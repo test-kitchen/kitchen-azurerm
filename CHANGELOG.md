@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.7.1] - 2016-09-17
+- Bug: WinRM is not enabled where the platform name does not contain 'nano' (@stuartpreston)
+
 ## [0.7.0] - 2016-09-15
 - Support creation of Windows Nano Server (ignoring automatic WinRM setting application) (@stuartpreston)
 
