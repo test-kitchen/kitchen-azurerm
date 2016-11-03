@@ -358,10 +358,10 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ''
-          return virtual_machine_deployment_template_public
+          virtual_machine_deployment_template_public
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          return virtual_machine_deployment_template_internal(config[:vnet_id], config[:subnet_id])
+          virtual_machine_deployment_template_internal(config[:vnet_id], config[:subnet_id])
         end
       end
 
