@@ -267,9 +267,10 @@ module Kitchen
         deployment_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name)
         deployment_operations.each do |val|
           resource_provisioning_state = val.properties.provisioning_state
-
-          resource_name = val.properties.target_resource.resource_name
-          resource_type = val.properties.target_resource.resource_type
+          unless val.properties.target_resource.nil?
+            resource_name = val.properties.target_resource.resource_name
+            resource_type = val.properties.target_resource.resource_type
+          end
           end_operation_state_reached = end_operation_states.split(',').include?(resource_provisioning_state)
           unless end_operation_state_reached
             info "Resource #{resource_type} '#{resource_name}' provisioning status is #{resource_provisioning_state}"

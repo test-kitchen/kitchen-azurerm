@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.7.2] - 2016-11-03
+- Bug: When repeating a completed deployment, deployment would fail with a nil error on resource_name (@stuartpreston)
+
 ## [0.7.1] - 2016-09-17
 - Bug: WinRM is not enabled where the platform name does not contain 'nano' (@stuartpreston)
 
