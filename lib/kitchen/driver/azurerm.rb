@@ -240,7 +240,7 @@ module Kitchen
 
       def vm_tag_string(vm_tags_in)
         tag_string = ''
-        if !vm_tags_in.empty?
+        unless vm_tags_in.empty?
           tag_array = vm_tags_in.map do |key, value|
             "\"#{key}\": \"#{value}\",\n"
           end
