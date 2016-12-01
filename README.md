@@ -71,6 +71,9 @@ platforms:
     driver_config:
       image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
       vm_name: trusty-vm
+      vm_tags:
+        ostype: linux
+        distro: ubuntu
 
 suites:
   - name: default
