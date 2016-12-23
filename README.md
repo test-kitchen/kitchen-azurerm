@@ -71,6 +71,9 @@ platforms:
     driver_config:
       image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
       vm_name: trusty-vm
+      vm_tags:
+        ostype: linux
+        distro: ubuntu
 
 suites:
   - name: default
@@ -281,6 +284,7 @@ info:    vm image list command OK
 - Note that the ```driver_config``` section also takes a ```username``` and ```password``` parameter, the defaults if these are not specified are "azure" and "P2ssw0rd" respectively.
 - The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
 - The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
+- The optional ```vm_tags``` parameter allows you to define key:value pairs to tag VMs with on creation.
 
 ## Contributing
 

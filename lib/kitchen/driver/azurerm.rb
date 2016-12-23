@@ -67,6 +67,10 @@ module Kitchen
         {}
       end
 
+      default_config(:vm_tags) do |_config|
+        {}
+      end
+
       def create(state)
         state = validate_state(state)
         image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
@@ -234,6 +238,19 @@ module Kitchen
         deployment
       end
 
+      def vm_tag_string(vm_tags_in)
+        tag_string = ''
+        unless vm_tags_in.empty?
+          tag_array = vm_tags_in.map do |key, value|
+            "\"#{key}\": \"#{value}\",\n"
+          end
+          # Strip punctuation from last item
+          tag_array[-1] = tag_array[-1][0..-3]
+          tag_string = tag_array.join
+        end
+        tag_string
+      end
+
       def parameters_in_values_format(parameters_in)
         parameters = parameters_in.map do |key, value|
           { key.to_sym => { 'value' => value } }
@@ -358,14 +375,14 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ''
-          virtual_machine_deployment_template_public
+          virtual_machine_deployment_template_public(vm_tag_string(config[:vm_tags]))
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_internal(config[:vnet_id], config[:subnet_id])
+          virtual_machine_deployment_template_internal(config[:vnet_id], config[:subnet_id], vm_tag_string(config[:vm_tags]))
         end
       end
 
-      def virtual_machine_deployment_template_internal(vnet_id, subnet_id)
+      def virtual_machine_deployment_template_internal(vnet_id, subnet_id, vm_tag_string)
         <<-EOH
 {
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
@@ -550,6 +567,9 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
                         "storageUri": "[concat('http://',parameters('newStorageAccountName'),'.blob.core.windows.net')]"
                     }
                 }
+            },
+            "tags": {
+                #{vm_tag_string}
             }
         }
     ]
@@ -557,7 +577,7 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
         EOH
       end
 
-      def virtual_machine_deployment_template_public
+      def virtual_machine_deployment_template_public(vm_tag_string)
         <<-EOH
 {
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
@@ -782,6 +802,9 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
                         "storageUri": "[concat('http://',parameters('newStorageAccountName'),'.blob.core.windows.net')]"
                     }
                 }
+            },
+            "tags": {
+                #{vm_tag_string}
             }
         }
     ]
