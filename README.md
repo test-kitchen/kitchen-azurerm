@@ -213,7 +213,7 @@ Example predeploy.json:
 The following example introduces the ```vnet_id``` and ```subnet_id``` properties under driver_config in the configuration file.  This can be applied at the top level, or per platform.
 You can use this capability to create the VM on an existing virtual network and subnet created in a different resource group.
 
-In this case, the public IP address is not used.
+In this case, the public IP address is not used unless ```public_ip``` is set to ```true```
 
 
 ```yaml
