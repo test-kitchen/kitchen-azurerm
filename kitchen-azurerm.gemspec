@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'https://github.com/pendrica/kitchen-azurerm'
   spec.license       = 'Apache-2.0'
 
-  spec.files         = Dir['LICENSE', 'README.md', 'CHANGELOG.md', 'lib/**/*']
+  spec.files         = Dir['LICENSE', 'README.md', 'CHANGELOG.md', 'lib/**/*', 'templates/**/*']
   spec.require_paths = ['lib']
 
   spec.add_dependency 'inifile', '~> 3.0', '>= 3.0.0'
