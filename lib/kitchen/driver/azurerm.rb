@@ -380,15 +380,10 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ''
-          virtual_machine_deployment_template_file('public.erb', vm_tag_string: config[:vm_tags])
+          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]))
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_file('internal.erb',
-                                                    vnet_id: config[:vnet_id],
-                                                    subnet_id: config[:subnet_id],
-                                                    public_ip: config[:public_ip],
-                                                    vm_tag_string: config[:vm_tags]
-                                                  )
+          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]))
         end
       end
 
