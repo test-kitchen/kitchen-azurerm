@@ -180,7 +180,6 @@ module Kitchen
           if instance.platform.name.index('nano').nil?
             info 'Adding WinRM configuration to provisioning profile.'
             encoded_command = Base64.strict_encode64(enable_winrm_powershell_script)
-            command = command_to_execute
             template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
               resource['properties']['osProfile']['customData'] = encoded_command
               resource['properties']['osProfile']['windowsConfiguration'] = windows_unattend_content
@@ -333,6 +332,7 @@ winrm set winrm/config/service/auth '@{Basic="true";Kerberos="false";Negotiate="
 New-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" -Name "Windows Remote Management (HTTPS-In)" -Profile Any -LocalPort 5986 -Protocol TCP
 winrm set winrm/config/service '@{AllowUnencrypted="true"}'
 New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Windows Remote Management (HTTP-In)" -Profile Any -LocalPort 5985 -Protocol TCP
+Restart-Computer -Force
         PS1
       end
 
@@ -353,8 +353,22 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
       end
 
       def windows_unattend_content
-        template = File.read(File.expand_path(File.join(__dir__, '../../../templates', 'windows.json')))
-        JSON.parse(template)
+        {
+          additionalUnattendContent: [
+            {
+              passName: 'oobeSystem',
+              componentName: 'Microsoft-Windows-Shell-Setup',
+              settingName: 'FirstLogonCommands',
+              content: '<FirstLogonCommands><SynchronousCommand><CommandLine>cmd /c "copy C:\\AzureData\\CustomData.bin C:\\Config.ps1"</CommandLine><Description>copy</Description><Order>1</Order></SynchronousCommand><SynchronousCommand><CommandLine>%windir%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -file C:\\Config.ps1</CommandLine><Description>script</Description><Order>2</Order></SynchronousCommand></FirstLogonCommands>'
+            },
+            {
+              passName: 'oobeSystem',
+              componentName: 'Microsoft-Windows-Shell-Setup',
+              settingName: 'AutoLogon',
+              content: "[concat('<AutoLogon><Password><Value>', parameters('adminPassword'), '</Value></Password><Enabled>true</Enabled><LogonCount>1</LogonCount><Username>', parameters('adminUserName'), '</Username></AutoLogon>')]"
+            }
+          ]
+        }
       end
 
       def virtual_machine_deployment_template
