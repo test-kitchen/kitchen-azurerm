@@ -183,8 +183,8 @@ module Kitchen
             command = command_to_execute
             template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
               resource['properties']['osProfile']['customData'] = encoded_command
+              resource['properties']['osProfile']['windowsConfiguration'] = windows_unattend_content
             end
-            template['resources'] << JSON.parse(custom_script_extension_template(command))
           end
         end
 
@@ -336,10 +336,6 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
         PS1
       end
 
-      def command_to_execute
-        'copy /y c:\\\\azuredata\\\\customdata.bin c:\\\\azuredata\\\\customdata.ps1 && powershell.exe -ExecutionPolicy Unrestricted -Command \\"start-process powershell.exe -verb runas -argumentlist c:\\\\azuredata\\\\customdata.ps1\\"'
-      end
-
       def custom_linux_configuration(public_key)
         <<-EOH
         {
@@ -356,26 +352,9 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
         EOH
       end
 
-      def custom_script_extension_template(command)
-        <<-EOH
-        {
-            "type": "Microsoft.Compute/virtualMachines/extensions",
-            "name": "[concat(variables('vmName'),'/','enableWinRM')]",
-            "apiVersion": "2015-05-01-preview",
-            "location": "[variables('location')]",
-            "dependsOn": [
-                "[concat('Microsoft.Compute/virtualMachines/',variables('vmName'))]"
-            ],
-            "properties": {
-                "publisher": "Microsoft.Compute",
-                "type": "CustomScriptExtension",
-                "typeHandlerVersion": "1.4",
-                "settings": {
-                    "commandToExecute": "#{command}"
-                }
-            }
-        }
-        EOH
+      def windows_unattend_content
+        template = File.read(File.expand_path(File.join(__dir__, '../../../templates', 'windows.json')))
+        JSON.parse(template)
       end
 
       def virtual_machine_deployment_template
