@@ -332,7 +332,7 @@ winrm set winrm/config/service/auth '@{Basic="true";Kerberos="false";Negotiate="
 New-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" -Name "Windows Remote Management (HTTPS-In)" -Profile Any -LocalPort 5986 -Protocol TCP
 winrm set winrm/config/service '@{AllowUnencrypted="true"}'
 New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Windows Remote Management (HTTP-In)" -Profile Any -LocalPort 5985 -Protocol TCP
-Restart-Computer -Force
+logoff
         PS1
       end
 
