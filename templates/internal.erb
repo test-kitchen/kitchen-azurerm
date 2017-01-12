@@ -134,9 +134,11 @@
             "type": "Microsoft.Network/networkInterfaces",
             "name": "[variables('nicName')]",
             "location": "[variables('location')]",
+            <%- if public_ip -%>
             "dependsOn": [
                 "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]"
             ],
+            <%- end -%>
             "properties": {
                 "ipConfigurations": [
                     {

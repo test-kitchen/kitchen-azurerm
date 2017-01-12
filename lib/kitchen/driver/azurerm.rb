@@ -180,11 +180,10 @@ module Kitchen
           if instance.platform.name.index('nano').nil?
             info 'Adding WinRM configuration to provisioning profile.'
             encoded_command = Base64.strict_encode64(enable_winrm_powershell_script)
-            command = command_to_execute
             template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
               resource['properties']['osProfile']['customData'] = encoded_command
+              resource['properties']['osProfile']['windowsConfiguration'] = windows_unattend_content
             end
-            template['resources'] << JSON.parse(custom_script_extension_template(command))
           end
         end
 
@@ -333,11 +332,8 @@ winrm set winrm/config/service/auth '@{Basic="true";Kerberos="false";Negotiate="
 New-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" -Name "Windows Remote Management (HTTPS-In)" -Profile Any -LocalPort 5986 -Protocol TCP
 winrm set winrm/config/service '@{AllowUnencrypted="true"}'
 New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Windows Remote Management (HTTP-In)" -Profile Any -LocalPort 5985 -Protocol TCP
+logoff
         PS1
-      end
-
-      def command_to_execute
-        'copy /y c:\\\\azuredata\\\\customdata.bin c:\\\\azuredata\\\\customdata.ps1 && powershell.exe -ExecutionPolicy Unrestricted -Command \\"start-process powershell.exe -verb runas -argumentlist c:\\\\azuredata\\\\customdata.ps1\\"'
       end
 
       def custom_linux_configuration(public_key)
@@ -356,26 +352,23 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
         EOH
       end
 
-      def custom_script_extension_template(command)
-        <<-EOH
+      def windows_unattend_content
         {
-            "type": "Microsoft.Compute/virtualMachines/extensions",
-            "name": "[concat(variables('vmName'),'/','enableWinRM')]",
-            "apiVersion": "2015-05-01-preview",
-            "location": "[variables('location')]",
-            "dependsOn": [
-                "[concat('Microsoft.Compute/virtualMachines/',variables('vmName'))]"
-            ],
-            "properties": {
-                "publisher": "Microsoft.Compute",
-                "type": "CustomScriptExtension",
-                "typeHandlerVersion": "1.4",
-                "settings": {
-                    "commandToExecute": "#{command}"
-                }
+          additionalUnattendContent: [
+            {
+              passName: 'oobeSystem',
+              componentName: 'Microsoft-Windows-Shell-Setup',
+              settingName: 'FirstLogonCommands',
+              content: '<FirstLogonCommands><SynchronousCommand><CommandLine>cmd /c "copy C:\\AzureData\\CustomData.bin C:\\Config.ps1"</CommandLine><Description>copy</Description><Order>1</Order></SynchronousCommand><SynchronousCommand><CommandLine>%windir%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -file C:\\Config.ps1</CommandLine><Description>script</Description><Order>2</Order></SynchronousCommand></FirstLogonCommands>'
+            },
+            {
+              passName: 'oobeSystem',
+              componentName: 'Microsoft-Windows-Shell-Setup',
+              settingName: 'AutoLogon',
+              content: "[concat('<AutoLogon><Password><Value>', parameters('adminPassword'), '</Value></Password><Enabled>true</Enabled><LogonCount>1</LogonCount><Username>', parameters('adminUserName'), '</Username></AutoLogon>')]"
             }
+          ]
         }
-        EOH
       end
 
       def virtual_machine_deployment_template
