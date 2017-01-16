@@ -1,5 +1,10 @@
 # kitchen-azurerm Changelog
 
+## [0.8.0] - 2017-01-16
+- [Unattend.xml used instead of Custom Script Extension to inject WinRM configuration/AKA support proxy server configurations](https://github.com/pendrica/kitchen-azurerm/pull/44) (@hbuckle)
+- [Public IP addresses can now be used to connect even if the VM is connected to an existing subnet](https://github.com/pendrica/kitchen-azurerm/pull/42) (@vlesierse)
+- [Resource Tags can now be applied to the created VMsPR](https://github.com/pendrica/kitchen-azurerm/pull/38)  (@liamkirwan)
+
 ## [0.7.2] - 2016-11-03
 - Bug: When repeating a completed deployment, deployment would fail with a nil error on resource_name (@stuartpreston)
 
