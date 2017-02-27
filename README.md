@@ -2,7 +2,7 @@
 
 **kitchen-azurerm** is a driver for the popular test harness [Test Kitchen](http://kitchen.ci) that allows Microsoft Azure resources to be provisioned prior to testing. This driver uses the new Microsoft Azure Resource Management REST API via the [azure-sdk-for-ruby](https://github.com/azure/azure-sdk-for-ruby).
 
-[![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm) [![Build Status](https://travis-ci.org/pendrica/kitchen-azurerm.svg)](https://travis-ci.org/pendrica/kitchen-azurerm)
+[![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm) [![Build Status](https://travis-ci.org/test-kitchen/kitchen-azurerm.svg)](https://travis-ci.org/test-kitchen/kitchen-azurerm)
 
 This version has been tested on Windows, OS/X and Ubuntu. If you encounter a problem on your platform, please raise an issue.
 
@@ -290,7 +290,7 @@ info:    vm image list command OK
 
 Contributions to the project are welcome via submitting Pull Requests.
 
-1. Fork it ( https://github.com/pendrica/kitchen-azurerm/fork )
+1. Fork it ( https://github.com/test-kitchen/kitchen-azurerm/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
