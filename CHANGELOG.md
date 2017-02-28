@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.8.1] - 2017-02-28
+- Adding provider identifier tag to all created resources (@stuartpreston)
+
 ## [0.8.0] - 2017-01-16
 - [Unattend.xml used instead of Custom Script Extension to inject WinRM configuration/AKA support proxy server configurations](https://github.com/pendrica/kitchen-azurerm/pull/44) (@hbuckle)
 - [Public IP addresses can now be used to connect even if the VM is connected to an existing subnet](https://github.com/pendrica/kitchen-azurerm/pull/42) (@vlesierse)
