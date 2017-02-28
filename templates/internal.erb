@@ -103,7 +103,8 @@
         "vmSize": "[parameters('vmSize')]",
         "virtualNetworkName": "vnet",
         "vnetID": "<%= vnet_id %>",
-        "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]"
+        "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]",
+        "provider": "[toUpper('33194f91-eb5f-4110-827a-e95f640a9e46')]"
     },
     "resources": [
         {
@@ -113,6 +114,9 @@
             "location": "[variables('location')]",
             "properties": {
                 "accountType": "[variables('storageAccountType')]"
+            },
+            "tags": {
+                "provider": "[variables('provider')]"
             }
         },
         <%- if public_ip -%>
@@ -126,6 +130,9 @@
                 "dnsSettings": {
                     "domainNameLabel": "[parameters('dnsNameForPublicIP')]"
                 }
+            },
+            "tags": {
+                "provider": "[variables('provider')]"
             }
         },
         <%- end -%>
@@ -156,6 +163,9 @@
                         }
                     }
                 ]
+            },
+            "tags": {
+                "provider": "[variables('provider')]"
             }
         },
         {
@@ -207,7 +217,8 @@
                 }
             },
             "tags": {
-                <%= vm_tags %>
+                "provider": "[variables('provider')]"
+                <%= ',' + vm_tags unless vm_tags.empty? %>
             }
         }
     ]

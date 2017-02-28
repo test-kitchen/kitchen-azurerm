@@ -136,17 +136,16 @@ module Kitchen
         # Monitor all operations until completion
         follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
 
+        network_management_client = ::Azure::ARM::Network::NetworkManagementClient.new(credentials)
+        network_management_client.subscription_id = config[:subscription_id]
+
         if config[:vnet_id] == '' || config[:public_ip]
           # Retrieve the public IP from the resource group:
-          network_management_client = ::Azure::ARM::Network::NetworkManagementClient.new(credentials)
-          network_management_client.subscription_id = config[:subscription_id]
           result = network_management_client.public_ipaddresses.get(state[:azure_resource_group_name], 'publicip')
           info "IP Address is: #{result.ip_address} [#{result.dns_settings.fqdn}]"
           state[:hostname] = result.ip_address
         else
           # Retrieve the internal IP from the resource group:
-          network_management_client = ::Azure::ARM::Network::NetworkManagementClient.new(credentials)
-          network_management_client.subscription_id = config[:subscription_id]
           network_interfaces = ::Azure::ARM::Network::NetworkInterfaces.new(network_management_client)
           result = network_interfaces.get(state[:azure_resource_group_name], 'nic')
           info "IP Address is: #{result.ip_configurations[0].private_ipaddress}"
