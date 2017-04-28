@@ -56,8 +56,8 @@ module Kitchen
         false
       end
 
-      default_config(:azure_management_url) do |_config|
-        'https://management.azure.com'
+      default_config(:azure_environment) do |_config|
+        'Azure'
       end
 
       default_config(:pre_deployment_template) do |_config|
@@ -95,8 +95,10 @@ module Kitchen
           vmName: state[:vm_name]
         }
 
-        credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(config[:subscription_id])
-        @resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials)
+        credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(config[:subscription_id], config[:azure_environment])
+        management_endpoint = resource_manager_endpoint_url(config[:azure_environment])
+        info "Azure environment: #{config[:azure_environment]}"
+        @resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials, management_endpoint)
         @resource_management_client.subscription_id = config[:subscription_id]
 
         # Create Resource Group
@@ -136,7 +138,7 @@ module Kitchen
         # Monitor all operations until completion
         follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
 
-        network_management_client = ::Azure::ARM::Network::NetworkManagementClient.new(credentials)
+        network_management_client = ::Azure::ARM::Network::NetworkManagementClient.new(credentials, management_endpoint)
         network_management_client.subscription_id = config[:subscription_id]
 
         if config[:vnet_id] == '' || config[:public_ip]
@@ -161,7 +163,7 @@ module Kitchen
         state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
         state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value?(state, :server_id)
         state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value?(state, :azure_resource_group_name)
-        [:subscription_id, :username, :password, :vm_name, :azure_management_url].each do |config_element|
+        [:subscription_id, :username, :password, :vm_name, :azure_environment].each do |config_element|
           state[config_element] = config[config_element] unless existing_state_value?(state, config_element)
         end
         state.delete(:password) unless instance.transport[:ssh_key].nil?
@@ -305,8 +307,10 @@ module Kitchen
 
       def destroy(state)
         return if state[:server_id].nil?
-        credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(state[:subscription_id])
-        resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials, state[:azure_management_url])
+        credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(state[:subscription_id], state[:azure_environment])
+        management_endpoint = resource_manager_endpoint_url(state[:azure_environment])
+        info "Azure environment: #{state[:azure_environment]}"
+        resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials, management_endpoint)
         resource_management_client.subscription_id = state[:subscription_id]
         begin
           info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
@@ -384,6 +388,19 @@ logoff
         render_binding = binding
         data.each { |key, value| render_binding.local_variable_set(key.to_sym, value) }
         ERB.new(template, nil, '-').result(render_binding)
+      end
+
+      def resource_manager_endpoint_url(azure_environment)
+        case azure_environment.downcase
+        when 'azureusgovernment'
+          MsRestAzure::AzureEnvironments::AzureUSGovernment.resource_manager_endpoint_url
+        when 'azurechina'
+          MsRestAzure::AzureEnvironments::AzureChina.resource_manager_endpoint_url
+        when 'azuregermancloud'
+          MsRestAzure::AzureEnvironments::AzureGermanCloud.resource_manager_endpoint_url
+        when 'azure'
+          MsRestAzure::AzureEnvironments::Azure.resource_manager_endpoint_url
+        end
       end
     end
   end

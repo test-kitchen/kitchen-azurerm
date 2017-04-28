@@ -26,12 +26,31 @@ module Kitchen
       #
       # @return [MsRest::TokenCredentials] TokenCredentials object to be passed in with each subsequent request.
       #
-      def azure_credentials_for_subscription(subscription_id)
+      def azure_credentials_for_subscription(subscription_id, azure_environment)
         tenant_id = ENV['AZURE_TENANT_ID'] || @credentials[subscription_id]['tenant_id']
         client_id = ENV['AZURE_CLIENT_ID'] || @credentials[subscription_id]['client_id']
         client_secret = ENV['AZURE_CLIENT_SECRET'] || @credentials[subscription_id]['client_secret']
-        token_provider = ::MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret)
+        token_provider = ::MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, settings_for_azure_environment(azure_environment))
         ::MsRest::TokenCredentials.new(token_provider)
+      end
+
+      #
+      # Retrieves a [MsRestAzure::ActiveDirectoryServiceSettings] object representing the settings for the given cloud.
+      # @param azure_environment [String] The Azure environment to retrieve settings for.
+      #
+      # @return [MsRestAzure::ActiveDirectoryServiceSettings] Settings to be used for subsequent requests
+      #
+      def settings_for_azure_environment(azure_environment)
+        case azure_environment.downcase
+        when 'azureusgovernment'
+          ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_us_government_settings
+        when 'azurechina'
+          ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_china_settings
+        when 'azuregermancloud'
+          ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_germany_settings
+        when 'azure'
+          ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_settings
+        end
       end
 
       def self.singleton

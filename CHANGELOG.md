@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [0.9.0] - 2017-04-28
+- Support for AzureUSGovernment, AzureChina and AzureGermanCloud environments
+- Add ```azure_environment``` driver_config parameter (@stuartpreston)
+
 ## [0.8.1] - 2017-02-28
 - Adding provider identifier tag to all created resources (@stuartpreston)
 

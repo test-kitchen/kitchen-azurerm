@@ -246,6 +246,42 @@ suites:
     attributes:
 ```
 
+## Support for Government and Sovereign Clouds (China and Germany)
+
+Starting with v0.9.0 this driver has support for Azure Government and Sovereign Clouds via the use of the ```azure_environment``` setting.  Valid Azure environments are ```Azure```, ```AzureUSGovernment```, ```AzureChina``` and ```AzureGermanCloud```
+
+### Example .kitchen.yml for Azure US Government cloud
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: 'abcdabcd-YOUR-GUID-HERE-abcdabcdabcd'
+  azure_environment: 'AzureUSGovernment'
+  location: 'US Gov Iowa'
+  machine_size: 'Standard_D2_v2_Promo'
+
+provisioner:
+  name: chef_zero
+
+verifier:
+  name: inspec
+
+platforms:
+- name: ubuntu1604
+  driver_config:
+    image_urn: Canonical:UbuntuServer:16.04-LTS:latest
+  transport:
+    ssh_key: ~/.ssh/id_kitchen-azurerm
+
+suites:
+  - name: default
+    run_list:
+      - recipe[vmtesting::default]
+```
+
 ### How to retrieve the image_urn
 You can use the azure (azure-cli) command line tools to interrogate for the Urn. All 4 parts of the Urn must be specified, though the last part can be changed to "latest" to indicate you always wish to provision the latest operating system and patches.
 

@@ -215,7 +215,7 @@
                     "osDisk": {
                         "name": "osdisk",
                         "vhd": {
-                            "uri": "[concat('http://',parameters('newStorageAccountName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName'),'.vhd')]"
+                            "uri": "[concat(reference(concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName')), '2015-06-15').primaryEndpoints.blob, variables('vmStorageAccountContainerName'), '/',variables('OSDiskName'),'.vhd')]"
                         },
                         "caching": "ReadWrite",
                         "createOption": "FromImage"
@@ -231,7 +231,7 @@
                 "diagnosticsProfile": {
                     "bootDiagnostics": {
                         "enabled": "[parameters('bootDiagnosticsEnabled')]",
-                        "storageUri": "[concat('http://',parameters('newStorageAccountName'),'.blob.core.windows.net')]"
+                        "storageUri": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName')), '2015-06-15').primaryEndpoints.blob]"
                     }
                 }
             },
