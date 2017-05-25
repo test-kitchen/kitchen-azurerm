@@ -82,9 +82,9 @@
         },
         "bootDiagnosticsEnabled": {
             "type": "string",
-            "defaultValue": "true",
+            "defaultValue": "false",
             "metadata": {
-                "description": "Whether to enable (true) or disable (false) boot diagnostics. Default: true (requires Standard storage)."
+                "description": "Whether to enable (true) or disable (false) boot diagnostics. Default: false."
             }
         }
     },
@@ -107,6 +107,7 @@
         "provider": "[toUpper('33194f91-eb5f-4110-827a-e95f640a9e46')]"
     },
     "resources": [
+        <%- unless use_managed_disks -%>
         {
             "type": "Microsoft.Storage/storageAccounts",
             "name": "[parameters('newStorageAccountName')]",
@@ -119,6 +120,7 @@
                 "provider": "[variables('provider')]"
             }
         },
+        <%- end -%>
         {
             "apiVersion": "2015-05-01-preview",
             "type": "Microsoft.Network/publicIPAddresses",
@@ -188,12 +190,14 @@
             }
         },
         {
-            "apiVersion": "2015-06-15",
+            "apiVersion": "2016-04-30-preview",
             "type": "Microsoft.Compute/virtualMachines",
             "name": "[variables('vmName')]",
             "location": "[variables('location')]",
             "dependsOn": [
+                <%- unless use_managed_disks -%>
                 "[concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName'))]",
+                <%- end -%>
                 "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
             ],
             "properties": {
@@ -212,6 +216,7 @@
                         "sku": "[parameters('imageSku')]",
                         "version": "[parameters('imageVersion')]"
                     },
+                    <%- unless use_managed_disks -%>
                     "osDisk": {
                         "name": "osdisk",
                         "vhd": {
@@ -220,6 +225,13 @@
                         "caching": "ReadWrite",
                         "createOption": "FromImage"
                     }
+                    <%- end -%>
+                    <%- if use_managed_disks -%>
+                    "osDisk": {
+                        "name": "osdisk",
+                        "createOption": "FromImage"
+                    }
+                    <%- end -%>
                 },
                 "networkProfile": {
                     "networkInterfaces": [
@@ -229,10 +241,12 @@
                     ]
                 },
                 "diagnosticsProfile": {
+                    <%- unless use_managed_disks -%>
                     "bootDiagnostics": {
                         "enabled": "[parameters('bootDiagnosticsEnabled')]",
                         "storageUri": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName')), '2015-06-15').primaryEndpoints.blob]"
                     }
+                    <%- end -%>
                 }
             },
             "tags": {

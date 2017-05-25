@@ -76,6 +76,10 @@ module Kitchen
         false
       end
 
+      default_config(:use_managed_disks) do |_config|
+        true
+      end
+
       def create(state)
         state = validate_state(state)
         image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
@@ -163,7 +167,7 @@ module Kitchen
         state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
         state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value?(state, :server_id)
         state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value?(state, :azure_resource_group_name)
-        [:subscription_id, :username, :password, :vm_name, :azure_environment].each do |config_element|
+        [:subscription_id, :username, :password, :vm_name, :azure_environment, :use_managed_disks].each do |config_element|
           state[config_element] = config[config_element] unless existing_state_value?(state, config_element)
         end
         state.delete(:password) unless instance.transport[:ssh_key].nil?
@@ -376,10 +380,10 @@ logoff
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ''
-          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]))
+          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks])
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]))
+          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks])
         end
       end
 
