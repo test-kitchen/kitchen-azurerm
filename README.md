@@ -7,7 +7,9 @@
 This version has been tested on Windows, OS/X and Ubuntu. If you encounter a problem on your platform, please raise an issue.
 
 ## Quick-start
+
 ### Installation
+
 This plugin is distributed as a [Ruby Gem](https://rubygems.org/gems/kitchen-azurerm). To install it, run:
 
 ```$ gem install kitchen-azurerm```
@@ -91,9 +93,7 @@ Where <n> is the number of threads to create. Note that any failure (e.g. an Azu
 
 ### .kitchen.yml example 2 - Windows
 
-Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2012 R2 instance as well as a Windows Server 2008 R2 instance, using WinRM as the transport. The resource created in Azure will enable itself for remote access at deployment time:
-
-**Note: Test Kitchen currently uses WinRM over HTTP rather than HTTPS. This means the temporary machine credentials traverse the internet in the clear. This will be changed once Test Kitchen fully supports WinRM over a secure channel.**
+Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2012 R2 instance, using WinRM as the transport. The resource created in Azure will enable itself for remote access at deployment time (it does this by customizing the machine at provisioning time):
 
 ```yaml
 ---
@@ -112,17 +112,6 @@ platforms:
   - name: windows2012-r2
     driver_config:
       image_urn: MicrosoftWindowsServer:WindowsServer:2012-R2-Datacenter:latest
-    transport:
-      name: winrm
-  - name: windows2008-r2
-    driver_config:
-      image_urn: MicrosoftWindowsServer:WindowsServer:2008-R2-SP1:latest
-      winrm_powershell_script: |-
-        winrm quickconfig -q
-        winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="512"}'
-        winrm set winrm/config '@{MaxTimeoutms="1800000"}'
-        winrm set winrm/config/service '@{AllowUnencrypted="true"}'
-        winrm set winrm/config/service/auth '@{Basic="true"}'
     transport:
       name: winrm
 suites:
@@ -250,6 +239,8 @@ suites:
 
 Starting with v0.9.0 this driver has support for Azure Government and Sovereign Clouds via the use of the ```azure_environment``` setting.  Valid Azure environments are ```Azure```, ```AzureUSGovernment```, ```AzureChina``` and ```AzureGermanCloud```
 
+Note that the ```use_managed_disks``` option should be set to false until supported by AzureUSGovernment.
+
 ### Example .kitchen.yml for Azure US Government cloud
 
 ```yaml
@@ -262,6 +253,7 @@ driver_config:
   azure_environment: 'AzureUSGovernment'
   location: 'US Gov Iowa'
   machine_size: 'Standard_D2_v2_Promo'
+  use_managed_disks: false
 
 provisioner:
   name: chef_zero
@@ -321,6 +313,7 @@ info:    vm image list command OK
 - The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
 - The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
 - The optional ```vm_tags``` parameter allows you to define key:value pairs to tag VMs with on creation.
+- Managed disks are now enabled by default, to use the Storage account set ```use_managed_disks``` (default: true).
 
 ## Contributing
 

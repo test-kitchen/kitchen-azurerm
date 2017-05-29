@@ -1,7 +1,8 @@
 # kitchen-azurerm Changelog
 
 ## [0.9.1] - 2017-05-25
-- Support for Managed Disks enabled by default
+- Support for Managed Disks enabled by default (@stuartpreston)
+- Add ```use_managed_disks``` driver_config parameter (@stuartpreston)
 
 ## [0.9.0] - 2017-04-28
 - Support for AzureUSGovernment, AzureChina and AzureGermanCloud environments
