@@ -235,6 +235,89 @@ suites:
     attributes:
 ```
 
+### .kitchen.yml example 5 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Managed Image
+
+This example is the same as above, but uses a private managed image to provision the vm. 
+
+Note: The image must be available first. On deletion the disk and everything is removed.
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver_config:
+      image_id: /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/RESGROUP/providers/Microsoft.Compute/images/IMAGENAME
+      vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
+      subnet_id: subnet-10.1.0
+      use_managed_disk: true
+      
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+### .kitchen.yml example 6 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image
+
+This example a classic Custom VM Image (aka a VHD file) is used. As the Image VHD must be in the same storage account then the disk of the instance, the os disk is created in an existing image account. 
+
+Note: When the resource group ís deleted, the os disk is left in the extsing storage account blob. You must cleanup manually.
+
+This example will: 
+
+* use the customized image https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd (can be built with packer)
+* set the disk url of the vm to https://yourstorageaccount.blob.core.windows.net/vhds/osdisk-kitchen-XXXXX.vhd
+* set the os type to linux
+
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver_config:
+      image_url: https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd
+      existing_storage_account_blob_url: https://yourstorageaccount.blob.core.windows.net
+      os_type: linux
+      use_managed_disk: false
+      vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
+      subnet_id: subnet-10.1.0
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+
 ## Support for Government and Sovereign Clouds (China and Germany)
 
 Starting with v0.9.0 this driver has support for Azure Government and Sovereign Clouds via the use of the ```azure_environment``` setting.  Valid Azure environments are ```Azure```, ```AzureUSGovernment```, ```AzureChina``` and ```AzureGermanCloud```
