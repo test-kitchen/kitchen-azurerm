@@ -125,9 +125,9 @@ module Kitchen
           deployment_parameters['existingStorageAccountBlobContainer'] = config[:existing_storage_account_container]
         else
           image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
-          deployment_parameters['imagePublisher'] = image_publisher 
+          deployment_parameters['imagePublisher'] = image_publisher
           deployment_parameters['imageOffer'] = image_offer
-          deployment_parameters['imageSku'] = image_ski
+          deployment_parameters['imageSku'] = image_sku
           deployment_parameters['imageVersion'] = image_version
         end
 
