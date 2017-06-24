@@ -38,6 +38,14 @@
                 "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
             }
         },
+        <%- unless custom_data.empty? -%>
+        "customData": {
+            "type": "string",
+            "metadata": {
+                "description": "Custom Data for the instance (e.g. cloud-init or script) - not compatible with winrm."
+            }
+        },
+        <%- end -%>
         <%- if !image_url.empty? -%>
         "imageUrl": {
             "type": "string",
@@ -232,6 +240,9 @@
                 },
                 "osProfile": {
                     "computername": "[variables('vmName')]",
+                    <%- unless custom_data.empty? -%>
+                    "customData": "[parameters('customData')]",
+                    <%- end -%>
                     "adminUsername": "[parameters('adminUsername')]",
                     "adminPassword": "[parameters('adminPassword')]"
                 },

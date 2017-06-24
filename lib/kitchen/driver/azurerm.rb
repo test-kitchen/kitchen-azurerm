@@ -38,6 +38,10 @@ module Kitchen
         'linux'
       end
 
+      default_config(:custom_data) do |_config|
+        ''
+      end
+
       default_config(:username) do |_config|
         'azure'
       end
@@ -113,7 +117,8 @@ module Kitchen
           adminUsername: state[:username],
           adminPassword: state[:password] || 'P2ssw0rd',
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
-          vmName: state[:vm_name]
+          vmName: state[:vm_name],
+          customData: prepared_custom_data
         }
         if config[:image_id].to_s != ''
           deployment_parameters['imageId'] = config[:image_id]
@@ -412,10 +417,10 @@ logoff
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ''
-          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container])
+          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data])
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container])
+          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data])
         end
       end
 
@@ -437,6 +442,20 @@ logoff
           MsRestAzure::AzureEnvironments::Azure.resource_manager_endpoint_url
         end
       end
+
+      def prepared_custom_data
+        # If user_data is a file reference, lets read it as such
+        return nil if config[:custom_data].nil?
+        @custom_data ||= begin
+          if File.file?(config[:custom_data])
+            @custom_data = File.read(config[:custom_data])
+          else
+            @custom_data = config[:custom_data]
+          end
+          @custom_data = Base64.strict_encode64(@custom_data)
+        end
+      end
+
     end
   end
 end

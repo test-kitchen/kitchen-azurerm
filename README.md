@@ -272,6 +272,7 @@ suites:
       - recipe[kitchen-azurerm-demo::default]
     attributes:
 ```
+
 ### .kitchen.yml example 6 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image
 
 This example a classic Custom VM Image (aka a VHD file) is used. As the Image VHD must be in the same storage account then the disk of the instance, the os disk is created in an existing image account. 
@@ -310,6 +311,53 @@ platforms:
       use_managed_disk: false
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+
+### .kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image and providing custom data
+
+This is the same as above, but uses custom data to customize the instance.
+
+Note: Custom data can be custom data or a file to custom data. Please also note that if you use winrm communication to non-nano windows servers custom data is not supported, as winrm is enabled via custom data.
+
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver_config:
+      image_url: https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd
+      existing_storage_account_blob_url: https://yourstorageaccount.blob.core.windows.net
+      os_type: linux
+      use_managed_disk: false
+      vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
+      subnet_id: subnet-10.1.0
+      #custom_data: /tmp/customdata.txt
+      custom_data: |
+        #cloud-config
+        fqdn: myhostname
+        preserve_hostname: false
+        runcmd:
+          - yum install -y telnet
 
 suites:
   - name: default
