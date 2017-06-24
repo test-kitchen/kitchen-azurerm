@@ -448,14 +448,12 @@ logoff
         return nil if config[:custom_data].nil?
         @custom_data ||= begin
           if File.file?(config[:custom_data])
-            @custom_data = File.read(config[:custom_data])
+            Base64.strict_encode64(File.read(config[:custom_data]))
           else
-            @custom_data = config[:custom_data]
+            Base64.strict_encode64(config[:custom_data])
           end
-          @custom_data = Base64.strict_encode64(@custom_data)
         end
       end
-
     end
   end
 end
