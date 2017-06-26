@@ -109,7 +109,7 @@ provisioner:
   name: chef_zero
 
 platforms:
-  - name: windows2012-r2
+  - name: win2012-r2
     driver_config:
       image_urn: MicrosoftWindowsServer:WindowsServer:2012-R2-Datacenter:latest
     transport:
