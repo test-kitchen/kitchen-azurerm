@@ -46,6 +46,22 @@
             }
         },
         <%- end -%>
+        <%- if !existing_storage_account_blob_url.empty? -%>
+        "existingStorageAccountBlobURL": {
+            "type": "string",
+            "metadata": {
+                "description": "The URL of the existing storage account (blob) (without container)"
+            }
+        },
+        <%- end -%>
+        <%- if !existing_storage_account_container.empty? -%>
+        "existingStorageAccountBlobContainer": {
+            "type": "string",
+            "metadata": {
+                "description": "The Container Name for OS Images (blob)"
+            }
+        },
+        <%- end -%>
         <%- if !image_url.empty? -%>
         "imageUrl": {
             "type": "string",
@@ -57,18 +73,6 @@
             "type": "string",
             "metadata": {
                 "description": "An OS Type (linux, windows)"
-            }
-        },
-        "existingStorageAccountBlobURL": {
-            "type": "string",
-            "metadata": {
-                "description": "The URL of the existing storage account (blob) (without container)"
-            }
-        },
-        "existingStorageAccountBlobContainer": {
-            "type": "string",
-            "metadata": {
-                "description": "The Container Name for OS Images (blob)"
             }
         },
         <%- elsif !image_id.empty? -%>
@@ -267,7 +271,7 @@
                     <%- else -%>
                     "osDisk": {
                         "name": "osdisk",
-                        <%- if image_url -%>
+                        <%- if !image_url.empty? -%>
                         "image": {
                             "uri": "[parameters('imageUrl')]"
                         },

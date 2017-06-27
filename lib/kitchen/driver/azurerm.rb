@@ -118,16 +118,30 @@ module Kitchen
           adminPassword: state[:password] || 'P2ssw0rd',
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           vmName: state[:vm_name],
-          customData: prepared_custom_data
+          customData: prepared_custom_data,
         }
+
+        # When deploying in a shared storage account, we needs to add
+        # a unique suffix to support multiple kitchen instances
+        if config[:existing_storage_account_blob_url].to_s != ''
+          deployment_parameters['osDiskNameSuffix'] = "-#{state[:azure_resource_group_name]}"
+        end
+        if config[:existing_storage_account_blob_url].to_s != ''
+          deployment_parameters['existingStorageAccountBlobURL'] = config[:existing_storage_account_blob_url]
+        end
+        if config[:existing_storage_account_container].to_s != ''
+          deployment_parameters['existingStorageAccountBlobContainer'] = config[:existing_storage_account_container]
+        end
+
+        # The three deployment modes
+        #  a) Private Image: Managed VM Image (by id)
+        #  b) Private Image: Using a VHD URL (note: we must use existing_storage_account_blob_url due to azure limitations)
+        #  c) Public Image: Using a marketplace image (urn)
         if config[:image_id].to_s != ''
           deployment_parameters['imageId'] = config[:image_id]
         elsif config[:image_url].to_s != ''
           deployment_parameters['imageUrl'] = config[:image_url]
           deployment_parameters['osType'] = config[:os_type]
-          deployment_parameters['existingStorageAccountBlobURL'] = config[:existing_storage_account_blob_url]
-          deployment_parameters['osDiskNameSuffix'] = "-#{state[:azure_resource_group_name]}"
-          deployment_parameters['existingStorageAccountBlobContainer'] = config[:existing_storage_account_container]
         else
           image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
           deployment_parameters['imagePublisher'] = image_publisher
