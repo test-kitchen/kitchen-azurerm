@@ -118,7 +118,7 @@ module Kitchen
           adminPassword: state[:password] || 'P2ssw0rd',
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           vmName: state[:vm_name],
-          customData: prepared_custom_data,
+          customData: prepared_custom_data
         }
 
         # When deploying in a shared storage account, we needs to add
