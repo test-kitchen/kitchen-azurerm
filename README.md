@@ -319,7 +319,7 @@ suites:
     attributes:
 ```
 
-### .kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image and providing custom data
+### .kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image and providing custom data and extra large os disk
 
 This is the same as above, but uses custom data to customize the instance.
 
@@ -351,6 +351,7 @@ platforms:
       use_managed_disk: false
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
+      os_disk_size_gb: 100
       #custom_data: /tmp/customdata.txt
       custom_data: |
         #cloud-config
@@ -445,6 +446,11 @@ info:    vm image list command OK
 - The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
 - The optional ```vm_tags``` parameter allows you to define key:value pairs to tag VMs with on creation.
 - Managed disks are now enabled by default, to use the Storage account set ```use_managed_disks``` (default: true).
+- The ```image_url``` (unmanaged disks only) parameter can be used to specify a custom vhd (This VHD must be in the same storage account as the disks of the VM, therefore ```existing_storage_account_blob_url``` must also be set and ```use_managed_disks``` must be set to false)
+- The ```image_id``` (managed disks only) parameter can be used to specify an image by id (managed disk). This works only with managed disks.
+- The ```existing_storage_account_blob_url``` can be specified to specify an url to an existing storage account (needed for ```image_url```)
+- The ```custom_data``` parameter can be used to specify custom data to provide to the instance. This can be a file or the data itself. This module handles base64 encoding for you.
+- The ```os_disk_size_gb``` parameter can be used to specify a custom os disk size.
 
 ## Contributing
 

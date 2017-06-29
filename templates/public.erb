@@ -38,6 +38,16 @@
                 "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
             }
         },
+        <%- unless os_disk_size_gb.to_s.empty?  -%>
+        "osDiskSizeGb": {
+            "type": "int",
+            "minValue": 1,
+            "maxValue": 1023,
+            "metadata": {
+                "description": "Size of the OS disks in GB."
+            }
+        },
+        <%- end -%>
         <%- unless custom_data.empty? -%>
         "customData": {
             "type": "string",
@@ -285,12 +295,18 @@
                     <%- if use_managed_disks -%>
                     "osDisk": {
                         "name": "osdisk",
+                        <%- unless os_disk_size_gb.to_s.empty? -%>
+                        "diskSizeGB": "[parameters('osDiskSizeGB')]",
+                        <%- end -%>
                         "createOption": "FromImage"
                     }
                     <%- else -%>
                     "osDisk": {
                         "name": "osdisk",
                         <%- if !image_url.empty? -%>
+                        <%- unless os_disk_size_gb.to_s.empty? -%>
+                        "diskSizeGB": "[parameters('osDiskSizeGB')]",
+                        <%- end -%>
                         "image": {
                             "uri": "[parameters('imageUrl')]"
                         },
