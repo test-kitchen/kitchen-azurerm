@@ -121,10 +121,12 @@ module Kitchen
           adminUsername: state[:username],
           adminPassword: state[:password] || 'P2ssw0rd',
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
-          vmName: state[:vm_name],
-          customData: prepared_custom_data
+          vmName: state[:vm_name]
         }
 
+        if config[:custom_data].to_s != ''
+          deployment_parameters['customData'] = prepared_custom_data
+        end
         # When deploying in a shared storage account, we needs to add
         # a unique suffix to support multiple kitchen instances
         if config[:existing_storage_account_blob_url].to_s != ''
