@@ -235,6 +235,138 @@ suites:
     attributes:
 ```
 
+### .kitchen.yml example 5 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Managed Image
+
+This example is the same as above, but uses a private managed image to provision the vm. 
+
+Note: The image must be available first. On deletion the disk and everything is removed.
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver_config:
+      image_id: /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/RESGROUP/providers/Microsoft.Compute/images/IMAGENAME
+      vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
+      subnet_id: subnet-10.1.0
+      use_managed_disk: true
+      
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+
+### .kitchen.yml example 6 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image
+
+This example a classic Custom VM Image (aka a VHD file) is used. As the Image VHD must be in the same storage account then the disk of the instance, the os disk is created in an existing image account. 
+
+Note: When the resource group ís deleted, the os disk is left in the extsing storage account blob. You must cleanup manually.
+
+This example will: 
+
+* use the customized image https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd (can be built with packer)
+* set the disk url of the vm to https://yourstorageaccount.blob.core.windows.net/vhds/osdisk-kitchen-XXXXX.vhd
+* set the os type to linux
+
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver_config:
+      image_url: https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd
+      existing_storage_account_blob_url: https://yourstorageaccount.blob.core.windows.net
+      os_type: linux
+      use_managed_disk: false
+      vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
+      subnet_id: subnet-10.1.0
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+
+### .kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image and providing custom data and extra large os disk
+
+This is the same as above, but uses custom data to customize the instance.
+
+Note: Custom data can be custom data or a file to custom data. Please also note that if you use winrm communication to non-nano windows servers custom data is not supported, as winrm is enabled via custom data.
+
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver_config:
+      image_url: https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd
+      existing_storage_account_blob_url: https://yourstorageaccount.blob.core.windows.net
+      os_type: linux
+      use_managed_disk: false
+      vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
+      subnet_id: subnet-10.1.0
+      os_disk_size_gb: 100
+      #custom_data: /tmp/customdata.txt
+      custom_data: |
+        #cloud-config
+        fqdn: myhostname
+        preserve_hostname: false
+        runcmd:
+          - yum install -y telnet
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+
 ## Support for Government and Sovereign Clouds (China and Germany)
 
 Starting with v0.9.0 this driver has support for Azure Government and Sovereign Clouds via the use of the ```azure_environment``` setting.  Valid Azure environments are ```Azure```, ```AzureUSGovernment```, ```AzureChina``` and ```AzureGermanCloud```
@@ -314,6 +446,11 @@ info:    vm image list command OK
 - The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
 - The optional ```vm_tags``` parameter allows you to define key:value pairs to tag VMs with on creation.
 - Managed disks are now enabled by default, to use the Storage account set ```use_managed_disks``` (default: true).
+- The ```image_url``` (unmanaged disks only) parameter can be used to specify a custom vhd (This VHD must be in the same storage account as the disks of the VM, therefore ```existing_storage_account_blob_url``` must also be set and ```use_managed_disks``` must be set to false)
+- The ```image_id``` (managed disks only) parameter can be used to specify an image by id (managed disk). This works only with managed disks.
+- The ```existing_storage_account_blob_url``` can be specified to specify an url to an existing storage account (needed for ```image_url```)
+- The ```custom_data``` parameter can be used to specify custom data to provide to the instance. This can be a file or the data itself. This module handles base64 encoding for you.
+- The ```os_disk_size_gb``` parameter can be used to specify a custom os disk size.
 
 ## Contributing
 

@@ -38,6 +38,61 @@
                 "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
             }
         },
+        <%- unless os_disk_size_gb.to_s.empty?  -%>
+        "osDiskSizeGb": {
+            "type": "int",
+            "minValue": 1,
+            "maxValue": 1023,
+            "metadata": {
+                "description": "Size of the OS disks in GB."
+            }
+        },
+        <%- end -%>
+        <%- unless custom_data.empty? -%>
+        "customData": {
+            "type": "string",
+            "metadata": {
+                "description": "Custom Data for the instance (e.g. cloud-init or script) - not compatible with winrm."
+            }
+        },
+        <%- end -%>
+        <%- if !existing_storage_account_blob_url.empty? -%>
+        "existingStorageAccountBlobURL": {
+            "type": "string",
+            "metadata": {
+                "description": "The URL of the existing storage account (blob) (without container)"
+            }
+        },
+        <%- end -%>
+        <%- if !existing_storage_account_container.empty? -%>
+        "existingStorageAccountBlobContainer": {
+            "type": "string",
+            "metadata": {
+                "description": "The Container Name for OS Images (blob)"
+            }
+        },
+        <%- end -%>
+        <%- if !image_url.empty? -%>
+        "imageUrl": {
+            "type": "string",
+            "metadata": {
+                "description": "An URL for a private Image (vhd)"
+            }
+        },
+        "osType": {
+            "type": "string",
+            "metadata": {
+                "description": "An OS Type (linux, windows)"
+            }
+        },
+        <%- elsif !image_id.empty? -%>
+        "imageId": {
+            "type": "string",
+            "metadata": {
+                "description": "The id of a managed image"
+            }
+        },
+        <%- else -%>
         "imagePublisher": {
             "type": "string",
             "defaultValue": "Canonical",
@@ -66,6 +121,14 @@
                 "description": "Either a date or latest."
             }
         },
+        <%- end -%>
+        "osDiskNameSuffix": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "A disk Name Suffix to make the disk name unique in existing storage accounts."
+            }
+        },
         "vmName": {
             "type": "string",
             "defaultValue": "vm",
@@ -82,7 +145,7 @@
         },
         "bootDiagnosticsEnabled": {
             "type": "string",
-            "defaultValue": "false",
+            "defaultValue": "true",
             "metadata": {
                 "description": "Whether to enable (true) or disable (false) boot diagnostics. Default: false."
             }
@@ -108,6 +171,7 @@
     },
     "resources": [
         <%- unless use_managed_disks -%>
+        <%- if existing_storage_account_blob_url.empty? -%>
         {
             "type": "Microsoft.Storage/storageAccounts",
             "name": "[parameters('newStorageAccountName')]",
@@ -120,6 +184,7 @@
                 "provider": "[variables('provider')]"
             }
         },
+        <%- end -%>
         <%- end -%>
         {
             "apiVersion": "2015-05-01-preview",
@@ -196,7 +261,9 @@
             "location": "[variables('location')]",
             "dependsOn": [
                 <%- unless use_managed_disks -%>
+                <%- if existing_storage_account_blob_url.empty? -%>
                 "[concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName'))]",
+                <%- end -%>
                 <%- end -%>
                 "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
             ],
@@ -206,29 +273,57 @@
                 },
                 "osProfile": {
                     "computername": "[variables('vmName')]",
+                    <%- unless custom_data.empty? -%>
+                    "customData": "[parameters('customData')]",
+                    <%- end -%>
                     "adminUsername": "[parameters('adminUsername')]",
                     "adminPassword": "[parameters('adminPassword')]"
                 },
                 "storageProfile": {
+                    <%- if image_url.empty? and image_id.empty? -%>
                     "imageReference": {
                         "publisher": "[parameters('imagePublisher')]",
                         "offer": "[parameters('imageOffer')]",
                         "sku": "[parameters('imageSku')]",
                         "version": "[parameters('imageVersion')]"
                     },
-                    <%- unless use_managed_disks -%>
-                    "osDisk": {
-                        "name": "osdisk",
-                        "vhd": {
-                            "uri": "[concat(reference(concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName')), '2015-06-15').primaryEndpoints.blob, variables('vmStorageAccountContainerName'), '/',variables('OSDiskName'),'.vhd')]"
-                        },
-                        "caching": "ReadWrite",
-                        "createOption": "FromImage"
-                    }
+                    <%- elsif !image_id.empty? -%>
+                    "imageReference": {
+                        "id": "[parameters('imageId')]"
+                    },
                     <%- end -%>
                     <%- if use_managed_disks -%>
                     "osDisk": {
                         "name": "osdisk",
+                        <%- unless os_disk_size_gb.to_s.empty? -%>
+                        "diskSizeGB": "[parameters('osDiskSizeGB')]",
+                        <%- end -%>
+                        "createOption": "FromImage"
+                    }
+                    <%- else -%>
+                    "osDisk": {
+                        "name": "osdisk",
+                        <%- if !image_url.empty? -%>
+                        <%- unless os_disk_size_gb.to_s.empty? -%>
+                        "diskSizeGB": "[parameters('osDiskSizeGB')]",
+                        <%- end -%>
+                        "image": {
+                            "uri": "[parameters('imageUrl')]"
+                        },
+                        "osType": "[parameters('osType')]",
+                        <%- end -%>
+                        "vhd": {
+                            <%- if existing_storage_account_blob_url.empty? -%>
+                            "uri": "[concat(reference(concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName')), '2015-06-15').primaryEndpoints.blob, variables('vmStorageAccountContainerName'), '/',variables('OSDiskName'),parameters('osDiskNameSuffix'),'.vhd')]"
+                            <%- else -%>
+                            <%- if existing_storage_account_container.empty? -%>
+                            "uri": "[concat(parameters('existingStorageAccountBlobURL'), '/', variables('vmStorageAccountContainerName'), '/', variables('OSDiskName'),parameters('osDiskNameSuffix'),'.vhd')]"
+                            <%- else -%>
+                            "uri": "[concat(parameters('existingStorageAccountBlobURL'), '/', parameters('existingStorageAccountBlobContainer'), '/', variables('OSDiskName'),parameters('osDiskNameSuffix'),'.vhd')]"
+                            <%- end -%>
+                            <%- end -%>
+                        },
+                        "caching": "ReadWrite",
                         "createOption": "FromImage"
                     }
                     <%- end -%>
@@ -244,7 +339,11 @@
                     <%- unless use_managed_disks -%>
                     "bootDiagnostics": {
                         "enabled": "[parameters('bootDiagnosticsEnabled')]",
+                        <%- if existing_storage_account_blob_url.empty? -%>
                         "storageUri": "[reference(concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName')), '2015-06-15').primaryEndpoints.blob]"
+                        <%- else -%>
+                        "storageUri": "[parameters('existingStorageAccountBlobURL')]"
+                        <%- end -%>
                     }
                     <%- end -%>
                 }

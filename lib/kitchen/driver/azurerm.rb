@@ -7,6 +7,8 @@ require 'base64'
 require 'sshkey'
 require 'fileutils'
 require 'erb'
+require 'ostruct'
+require 'json'
 
 module Kitchen
   module Driver
@@ -22,6 +24,26 @@ module Kitchen
 
       default_config(:image_urn) do |_config|
         'Canonical:UbuntuServer:14.04.3-LTS:latest'
+      end
+
+      default_config(:image_url) do |_config|
+        ''
+      end
+
+      default_config(:image_id) do |_config|
+        ''
+      end
+
+      default_config(:os_disk_size_gb) do |_config|
+        ''
+      end
+
+      default_config(:os_type) do |_config|
+        'linux'
+      end
+
+      default_config(:custom_data) do |_config|
+        ''
       end
 
       default_config(:username) do |_config|
@@ -46,6 +68,14 @@ module Kitchen
 
       default_config(:storage_account_type) do |_config|
         'Standard_LRS'
+      end
+
+      default_config(:existing_storage_account_blob_url) do |_config|
+        ''
+      end
+
+      default_config(:existing_storage_account_container) do |_config|
+        'vhds'
       end
 
       default_config(:boot_diagnostics_enabled) do |_config|
@@ -82,7 +112,6 @@ module Kitchen
 
       def create(state)
         state = validate_state(state)
-        image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
         deployment_parameters = {
           location: config[:location],
           vmSize: config[:machine_size],
@@ -92,12 +121,41 @@ module Kitchen
           adminUsername: state[:username],
           adminPassword: state[:password] || 'P2ssw0rd',
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
-          imagePublisher: image_publisher,
-          imageOffer: image_offer,
-          imageSku: image_sku,
-          imageVersion: image_version,
-          vmName: state[:vm_name]
+          vmName: state[:vm_name],
+          customData: prepared_custom_data
         }
+
+        # When deploying in a shared storage account, we needs to add
+        # a unique suffix to support multiple kitchen instances
+        if config[:existing_storage_account_blob_url].to_s != ''
+          deployment_parameters['osDiskNameSuffix'] = "-#{state[:azure_resource_group_name]}"
+        end
+        if config[:existing_storage_account_blob_url].to_s != ''
+          deployment_parameters['existingStorageAccountBlobURL'] = config[:existing_storage_account_blob_url]
+        end
+        if config[:existing_storage_account_container].to_s != ''
+          deployment_parameters['existingStorageAccountBlobContainer'] = config[:existing_storage_account_container]
+        end
+        if config[:os_disk_size_gb].to_s != ''
+          deployment_parameters['osDiskSizeGb'] = config[:os_disk_size_gb]
+        end
+
+        # The three deployment modes
+        #  a) Private Image: Managed VM Image (by id)
+        #  b) Private Image: Using a VHD URL (note: we must use existing_storage_account_blob_url due to azure limitations)
+        #  c) Public Image: Using a marketplace image (urn)
+        if config[:image_id].to_s != ''
+          deployment_parameters['imageId'] = config[:image_id]
+        elsif config[:image_url].to_s != ''
+          deployment_parameters['imageUrl'] = config[:image_url]
+          deployment_parameters['osType'] = config[:os_type]
+        else
+          image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
+          deployment_parameters['imagePublisher'] = image_publisher
+          deployment_parameters['imageOffer'] = image_offer
+          deployment_parameters['imageSku'] = image_sku
+          deployment_parameters['imageVersion'] = image_version
+        end
 
         credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(config[:subscription_id], config[:azure_environment])
         management_endpoint = resource_manager_endpoint_url(config[:azure_environment])
@@ -243,7 +301,7 @@ module Kitchen
         deployment.properties.mode = Azure::ARM::Resources::Models::DeploymentMode::Incremental
         deployment.properties.template = JSON.parse(template)
         deployment.properties.parameters = parameters_in_values_format(parameters)
-        debug(deployment.properties.template)
+        debug(JSON.pretty_generate(deployment.properties.template))
         deployment
       end
 
@@ -380,18 +438,17 @@ logoff
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ''
-          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks])
+          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb])
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks])
+          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb])
         end
       end
 
       def virtual_machine_deployment_template_file(template_file, data = {})
         template = File.read(File.expand_path(File.join(__dir__, '../../../templates', template_file)))
-        render_binding = binding
-        data.each { |key, value| render_binding.local_variable_set(key.to_sym, value) }
-        ERB.new(template, nil, '-').result(render_binding)
+        render_binding = OpenStruct.new(data)
+        ERB.new(template, nil, '-').result(render_binding.instance_eval { binding })
       end
 
       def resource_manager_endpoint_url(azure_environment)
@@ -404,6 +461,18 @@ logoff
           MsRestAzure::AzureEnvironments::AzureGermanCloud.resource_manager_endpoint_url
         when 'azure'
           MsRestAzure::AzureEnvironments::Azure.resource_manager_endpoint_url
+        end
+      end
+
+      def prepared_custom_data
+        # If user_data is a file reference, lets read it as such
+        return nil if config[:custom_data].nil?
+        @custom_data ||= begin
+          if File.file?(config[:custom_data])
+            Base64.strict_encode64(File.read(config[:custom_data]))
+          else
+            Base64.strict_encode64(config[:custom_data])
+          end
         end
       end
     end
