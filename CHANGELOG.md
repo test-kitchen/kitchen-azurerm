@@ -1,5 +1,10 @@
 # kitchen-azurerm Changelog
 
+## [0.10.0] - 2017-07-03
+- Support for custom images (@elconas)
+- Support for custom-data (Linux only) (@elconas)
+- Support for custom OS sizes (@elconas)
+
 ## [0.9.1] - 2017-05-25
 - Support for Managed Disks enabled by default (@stuartpreston)
 - Add ```use_managed_disks``` driver_config parameter (@stuartpreston)
