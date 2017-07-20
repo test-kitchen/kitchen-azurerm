@@ -16,8 +16,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'inifile', '~> 3.0', '>= 3.0.0'
-  spec.add_dependency 'azure_mgmt_resources', '~> 0.5', '>= 0.5.0'
-  spec.add_dependency 'azure_mgmt_network', '~> 0.5', '>= 0.5.0'
+  spec.add_dependency 'azure_mgmt_resources', '~> 0.5', '>= 0.11.0'
+  spec.add_dependency 'azure_mgmt_network', '~> 0.5', '>= 0.11.0'
   spec.add_dependency 'sshkey', '~> 1', '>= 1.0.0'
 
   spec.add_development_dependency 'bundler', '~> 1.7'
