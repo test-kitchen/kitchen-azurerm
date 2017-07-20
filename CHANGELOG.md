@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.11.0] - 2017-07-20
+- Pin to latest ARM SDK and constants [#59](https://github.com/test-kitchen/kitchen-azurerm/pull/59) (@smurawski)
+
 ## [0.10.0] - 2017-07-03
 - Support for custom images (@elconas)
 - Support for custom-data (Linux only) (@elconas)
