@@ -18,8 +18,16 @@ module Kitchen
     class Azurerm < Kitchen::Driver::Base
       attr_accessor :resource_management_client
 
+      default_config(:azure_resource_group_prefix) do |_config|
+        'kitchen-'
+      end
+
+      default_config(:azure_resource_group_suffix) do |_config|
+        ''
+      end
+
       default_config(:azure_resource_group_name) do |config|
-        "kitchen-#{config.instance.name}"
+        config.instance.name.to_s
       end
 
       default_config(:image_urn) do |_config|
@@ -110,6 +118,18 @@ module Kitchen
         true
       end
 
+      default_config(:data_disks) do |_config|
+        nil
+      end
+
+      default_config(:format_data_disks) do |_config|
+        false
+      end
+
+      default_config(:format_data_disks_powershell_script) do |_config|
+        false
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
@@ -161,7 +181,7 @@ module Kitchen
 
         credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(config[:subscription_id], config[:azure_environment])
         management_endpoint = resource_manager_endpoint_url(config[:azure_environment])
-        info "Azure environment: #{config[:azure_environment]}"
+        debug "Azure environment: #{config[:azure_environment]}"
         @resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials, management_endpoint)
         @resource_management_client.subscription_id = config[:subscription_id]
 
@@ -187,6 +207,13 @@ module Kitchen
           deployment_name = "deploy-#{state[:uuid]}"
           info "Creating deployment: #{deployment_name}"
           resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
+          follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
+          if File.file?(config[:pre_deployment_template])
+            pre_deployment_name = "pre-deploy-#{state[:uuid]}"
+            info "Creating deployment: #{pre_deployment_name}"
+            resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], pre_deployment_name, pre_deployment(config[:pre_deployment_template], config[:pre_deployment_parameters])).value!
+            follow_deployment_until_end_state(state[:azure_resource_group_name], post_deployment_name)
+          end
         rescue ::MsRestAzure::AzureOperationError => operation_error
           rest_error = operation_error.body['error']
           deployment_active = rest_error['code'] == 'DeploymentActive'
@@ -198,9 +225,6 @@ module Kitchen
             raise operation_error
           end
         end
-
-        # Monitor all operations until completion
-        follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
 
         network_management_client = ::Azure::ARM::Network::NetworkManagementClient.new(credentials, management_endpoint)
         network_management_client.subscription_id = config[:subscription_id]
@@ -236,7 +260,22 @@ module Kitchen
 
       def azure_resource_group_name
         formatted_time = Time.now.utc.strftime '%Y%m%dT%H%M%S'
-        "#{config[:azure_resource_group_name]}-#{formatted_time}"
+        "#{config[:azure_resource_group_prefix]}#{config[:azure_resource_group_name]}-#{formatted_time}#{config[:azure_resource_group_suffix]}"
+      end
+
+      def data_disks_for_vm_json
+        return nil if config[:data_disks].nil?
+        disks = []
+
+        if config[:use_managed_disks]
+          config[:data_disks].each do |data_disk|
+            disks << { name: "datadisk#{data_disk[:lun]}", lun: data_disk[:lun], diskSizeGB: data_disk[:disk_size_gb], createOption: 'Empty' }
+          end
+          debug "Additional disks being added to configuration: #{disks.inspect}"
+        else
+          warn 'Data disks are only supported when used with the "use_managed_disks" option. No additional disks were added to the configuration.'
+        end
+        disks.to_json
       end
 
       def template_for_transport_name
@@ -244,7 +283,7 @@ module Kitchen
         if instance.transport.name.casecmp('winrm').zero?
           if instance.platform.name.index('nano').nil?
             info 'Adding WinRM configuration to provisioning profile.'
-            encoded_command = Base64.strict_encode64(enable_winrm_powershell_script)
+            encoded_command = Base64.strict_encode64(custom_data_script_windows)
             template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
               resource['properties']['osProfile']['customData'] = encoded_command
               resource['properties']['osProfile']['windowsConfiguration'] = windows_unattend_content
@@ -399,8 +438,44 @@ winrm set winrm/config/service/auth '@{Basic="true";Kerberos="false";Negotiate="
 New-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" -Name "Windows Remote Management (HTTPS-In)" -Profile Any -LocalPort 5986 -Protocol TCP
 winrm set winrm/config/service '@{AllowUnencrypted="true"}'
 New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Windows Remote Management (HTTP-In)" -Profile Any -LocalPort 5985 -Protocol TCP
-logoff
         PS1
+      end
+
+      def format_data_disks_powershell_script
+        return unless config[:format_data_disks]
+        info 'Data disks will be initialized and formatted NTFS automatically.' unless config[:data_disks].nil?
+        config[:format_data_disks_powershell_script] || <<-PS1
+Write-Host "Initializing and formatting raw disks"
+$disks = Get-Disk | where partitionstyle -eq 'raw'
+$letters = New-Object System.Collections.ArrayList
+$letters.AddRange( ('F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z') )
+Function AvailableVolumes() {
+$currentDrives = get-volume
+ForEach ($v in $currentDrives) {
+  if ($letters -contains $v.DriveLetter.ToString()) {
+      Write-Host "Drive letter $($v.DriveLetter) is taken, moving to next letter"
+      $letters.Remove($v.DriveLetter.ToString())
+    }
+  }
+}
+ForEach ($d in $disks) {
+  AvailableVolumes
+  $driveLetter = $letters[0]
+  Write-Host "Creating volume $($driveLetter)"
+  $d | Initialize-Disk -PartitionStyle GPT -PassThru | New-Partition -DriveLetter $driveLetter  -UseMaximumSize
+  # Prevent error ' Cannot perform the requested operation while the drive is read only'
+  Start-Sleep 1
+  Format-Volume -FileSystem NTFS -NewFileSystemLabel "datadisk" -DriveLetter $driveLetter -Confirm:$false
+}
+        PS1
+      end
+
+      def custom_data_script_windows
+        <<-EOH
+#{enable_winrm_powershell_script}
+#{format_data_disks_powershell_script}
+logoff
+        EOH
       end
 
       def custom_linux_configuration(public_key)
@@ -440,10 +515,10 @@ logoff
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ''
-          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb])
+          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json)
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb])
+          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json)
         end
       end
 

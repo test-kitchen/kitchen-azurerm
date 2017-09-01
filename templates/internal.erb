@@ -236,7 +236,7 @@
             }
         },
         {
-            "apiVersion": "2016-04-30-preview",
+            "apiVersion": "2017-03-30",
             "type": "Microsoft.Compute/virtualMachines",
             "name": "[variables('vmName')]",
             "location": "[variables('location')]",
@@ -326,6 +326,10 @@
                         "storageUri": "[parameters('existingStorageAccountBlobURL')]"
                         <%- end -%>
                     }
+                    <%- end -%>
+                    <%- unless data_disks_for_vm_json.nil? -%>
+                      ,"dataDisks": 
+                          <%= data_disks_for_vm_json %>
                     <%- end -%>
                 }
             },
