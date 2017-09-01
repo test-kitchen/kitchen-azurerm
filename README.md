@@ -367,6 +367,45 @@ suites:
     attributes:
 ```
 
+### .kitchen.yml example 8 - Windows 2016 VM with additional data disks:
+
+This example demonstrates how to add 3 additional Managed data disks to a Windows Server 2016 VM. Not supported with legacy (pre-managed disk) storage accounts.
+
+Note the availability of a `format_data_disks` option (default: `false`).  When set to true, a PowerShell script will execute at first boot to initialize and format the disks with an NTFS filesystem.  This option has no effect on Linux machines.
+
+```yaml
+---
+driver:
+  name: azurerm
+
+driver_config:
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_F2s'
+
+provisioner:
+  name: chef_zero
+
+platforms:
+- name: windows2016-noformat
+  driver_config:
+    image_urn: MicrosoftWindowsServer:WindowsServer:2016-Datacenter:latest
+    data_disks:
+      - lun: 0
+        disk_size_gb: 128
+      - lun: 1
+        disk_size_gb: 128
+      - lun: 2
+        disk_size_gb: 128
+    # format_data_disks: false
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchentesting::default]
+    attributes:
+```
+
 ## Support for Government and Sovereign Clouds (China and Germany)
 
 Starting with v0.9.0 this driver has support for Azure Government and Sovereign Clouds via the use of the ```azure_environment``` setting.  Valid Azure environments are ```Azure```, ```AzureUSGovernment```, ```AzureChina``` and ```AzureGermanCloud```
@@ -451,6 +490,7 @@ info:    vm image list command OK
 - The ```existing_storage_account_blob_url``` can be specified to specify an url to an existing storage account (needed for ```image_url```)
 - The ```custom_data``` parameter can be used to specify custom data to provide to the instance. This can be a file or the data itself. This module handles base64 encoding for you.
 - The ```os_disk_size_gb``` parameter can be used to specify a custom os disk size.
+- The ```azure_resource_group_prefix``` and ```azure_resource_group_suffix``` can be used to further disambiguate Azure resource group names created by the driver.
 
 ## Contributing
 
