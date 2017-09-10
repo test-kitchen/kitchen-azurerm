@@ -208,12 +208,6 @@ module Kitchen
           info "Creating deployment: #{deployment_name}"
           resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
           follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
-          if File.file?(config[:pre_deployment_template])
-            pre_deployment_name = "pre-deploy-#{state[:uuid]}"
-            info "Creating deployment: #{pre_deployment_name}"
-            resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], pre_deployment_name, pre_deployment(config[:pre_deployment_template], config[:pre_deployment_parameters])).value!
-            follow_deployment_until_end_state(state[:azure_resource_group_name], post_deployment_name)
-          end
         rescue ::MsRestAzure::AzureOperationError => operation_error
           rest_error = operation_error.body['error']
           deployment_active = rest_error['code'] == 'DeploymentActive'
