@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.12.1] - 2017-09-10
+- Fix for undefined local variable when using pre_deployment_template [#65](https://github.com/test-kitchen/kitchen-azurerm/issue/65)
+
 ## [0.12.0] - 2017-09-01
 - Additional managed disks can be specified in configuration and left unformatted or formatted on Windows(@stuartpreston)
 - Added `azure_resource_group_prefix` and `azure_resource_group_suffix` parameter (@stuartpreston)
