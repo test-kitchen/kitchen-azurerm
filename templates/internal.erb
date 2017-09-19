@@ -308,6 +308,10 @@
                         "createOption": "FromImage"
                     }
                     <%- end -%>
+                    <%- unless data_disks_for_vm_json.nil? -%>
+                      ,"dataDisks": 
+                          <%= data_disks_for_vm_json %>
+                    <%- end -%>
                 },
                 "networkProfile": {
                     "networkInterfaces": [
@@ -326,10 +330,6 @@
                         "storageUri": "[parameters('existingStorageAccountBlobURL')]"
                         <%- end -%>
                     }
-                    <%- end -%>
-                    <%- unless data_disks_for_vm_json.nil? -%>
-                      ,"dataDisks": 
-                          <%= data_disks_for_vm_json %>
                     <%- end -%>
                 }
             },
