@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.12.2] - 2017-09-20
+- Fix issue with location of data_disks in internal.erb [#67](https://github.com/test-kitchen/kitchen-azurerm/pull/67https://github.com/test-kitchen/kitchen-azurerm/pull/67) (@ehanlon)
+
 ## [0.12.1] - 2017-09-10
 - Fix for undefined local variable when using pre_deployment_template [#65](https://github.com/test-kitchen/kitchen-azurerm/issue/65)
 
