@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.12.3] - 2017-10-18
+- Pinning to version 0.14.0 of Microsoft Azure SDK for Ruby, avoid namespace changes
+
 ## [0.12.2] - 2017-09-20
 - Fix issue with location of data_disks in internal.erb [#67](https://github.com/test-kitchen/kitchen-azurerm/pull/67https://github.com/test-kitchen/kitchen-azurerm/pull/67) (@ehanlon)
 
