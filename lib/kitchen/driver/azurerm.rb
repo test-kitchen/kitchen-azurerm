@@ -30,6 +30,10 @@ module Kitchen
         config.instance.name.to_s
       end
 
+      default_config(:explicit_resource_group_name) do |config|
+        nil
+      end
+
       default_config(:image_urn) do |_config|
         'Canonical:UbuntuServer:14.04.3-LTS:latest'
       end
@@ -254,7 +258,8 @@ module Kitchen
 
       def azure_resource_group_name
         formatted_time = Time.now.utc.strftime '%Y%m%dT%H%M%S'
-        "#{config[:azure_resource_group_prefix]}#{config[:azure_resource_group_name]}-#{formatted_time}#{config[:azure_resource_group_suffix]}"
+        return "#{config[:azure_resource_group_prefix]}#{config[:azure_resource_group_name]}-#{formatted_time}#{config[:azure_resource_group_suffix]}" unless config[:explicit_resource_group_name]
+        config[:explicit_resource_group_name]
       end
 
       def data_disks_for_vm_json
