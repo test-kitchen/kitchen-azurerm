@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.12.4] - 2017-11-17
+- Adding `explicit_resource_group_name` property to driver configuration
+
 ## [0.12.3] - 2017-10-18
 - Pinning to version 0.14.0 of Microsoft Azure SDK for Ruby, avoid namespace changes
 
