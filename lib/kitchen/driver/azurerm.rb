@@ -30,7 +30,7 @@ module Kitchen
         config.instance.name.to_s
       end
 
-      default_config(:explicit_resource_group_name) do |config|
+      default_config(:explicit_resource_group_name) do |_config|
         nil
       end
 
