@@ -166,10 +166,22 @@
         "vmSize": "[parameters('vmSize')]",
         "virtualNetworkName": "vnet",
         "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
-        "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]",
-        "provider": "[toUpper('33194f91-eb5f-4110-827a-e95f640a9e46')]"
+        "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]"
     },
     "resources": [
+        {
+            "apiVersion": "2017-05-10",
+            "name": "pid-18d63047-6cdf-4f34-beed-62f01fc73fc2", 
+            "type": "Microsoft.Resources/deployments",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": []
+                }
+            }
+        },
         <%- unless use_managed_disks -%>
         <%- if existing_storage_account_blob_url.empty? -%>
         {
@@ -181,7 +193,6 @@
                 "accountType": "[variables('storageAccountType')]"
             },
             "tags": {
-                "provider": "[variables('provider')]"
             }
         },
         <%- end -%>
@@ -198,7 +209,6 @@
                 }
             },
             "tags": {
-                "provider": "[variables('provider')]"
             }
         },
         {
@@ -222,7 +232,6 @@
                 ]
             },
             "tags": {
-                "provider": "[variables('provider')]"
             }
         },
         {
@@ -251,7 +260,6 @@
                 ]
             },
             "tags": {
-                "provider": "[variables('provider')]"
             }
         },
         {
@@ -353,8 +361,7 @@
                 }
             },
             "tags": {
-                "provider": "[variables('provider')]"
-                <%= ',' + vm_tags unless vm_tags.empty? %>
+                <%= vm_tags unless vm_tags.empty? %>
             }
         }
     ]
