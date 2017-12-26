@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.13.0] - 2017-12-26
+- Switch to new Microsoft telemetry system [#73](https://github.com/test-kitchen/kitchen-azurerm/issues/73)
+
 ## [0.12.4] - 2017-11-17
 - Adding `explicit_resource_group_name` property to driver configuration
 
