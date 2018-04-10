@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.14.0] - 2018-04-10
+- Update Azure SDK to latest version, upgrade to latest build tools
+
 ## [0.13.0] - 2017-12-26
 - Switch to new Microsoft telemetry system [#73](https://github.com/test-kitchen/kitchen-azurerm/issues/73)
 
