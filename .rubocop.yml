@@ -19,5 +19,11 @@ Metrics/PerceivedComplexity:
 Style/NumericLiteralPrefix:
   Enabled: false
 
-Style/EndOfLine:
+Layout/EndOfLine:
+  Enabled: false
+
+Naming/HeredocDelimiterNaming:
+  Enabled: false
+
+Naming/MemoizedInstanceVariableName:
   Enabled: false
