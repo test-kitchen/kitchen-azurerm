@@ -183,14 +183,13 @@ module Kitchen
           deployment_parameters['imageVersion'] = image_version
         end
 
-        credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(config[:subscription_id], config[:azure_environment])
-        management_endpoint = resource_manager_endpoint_url(config[:azure_environment])
+        options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(config[:subscription_id], config[:azure_environment])
+
         debug "Azure environment: #{config[:azure_environment]}"
-        @resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials, management_endpoint)
-        @resource_management_client.subscription_id = config[:subscription_id]
+        @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
 
         # Create Resource Group
-        resource_group = ::Azure::ARM::Resources::Models::ResourceGroup.new
+        resource_group = ::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
         resource_group.location = config[:location]
         begin
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
@@ -224,8 +223,7 @@ module Kitchen
           end
         end
 
-        network_management_client = ::Azure::ARM::Network::NetworkManagementClient.new(credentials, management_endpoint)
-        network_management_client.subscription_id = config[:subscription_id]
+        network_management_client = ::Azure::Network::Profiles::Latest::Mgmt::Client.new(options)
 
         if config[:vnet_id] == '' || config[:public_ip]
           # Retrieve the public IP from the resource group:
@@ -234,7 +232,7 @@ module Kitchen
           state[:hostname] = result.ip_address
         else
           # Retrieve the internal IP from the resource group:
-          network_interfaces = ::Azure::ARM::Network::NetworkInterfaces.new(network_management_client)
+          network_interfaces = ::Azure::Network::Profiles::Latest::Mgmt::NetworkInterfaces.new(network_management_client)
           result = network_interfaces.get(state[:azure_resource_group_name], 'nic')
           info "IP Address is: #{result.ip_configurations[0].private_ipaddress}"
           state[:hostname] = result.ip_configurations[0].private_ipaddress
@@ -249,7 +247,7 @@ module Kitchen
         state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
         state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value?(state, :server_id)
         state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value?(state, :azure_resource_group_name)
-        [:subscription_id, :username, :password, :vm_name, :azure_environment, :use_managed_disks].each do |config_element|
+        %i[subscription_id username password vm_name azure_environment use_managed_disks].each do |config_element|
           state[config_element] = config[config_element] unless existing_state_value?(state, config_element)
         end
         state.delete(:password) unless instance.transport[:ssh_key].nil?
@@ -325,9 +323,9 @@ module Kitchen
 
       def pre_deployment(pre_deployment_template_filename, pre_deployment_parameters)
         pre_deployment_template = ::File.read(pre_deployment_template_filename)
-        pre_deployment = ::Azure::ARM::Resources::Models::Deployment.new
-        pre_deployment.properties = ::Azure::ARM::Resources::Models::DeploymentProperties.new
-        pre_deployment.properties.mode = Azure::ARM::Resources::Models::DeploymentMode::Incremental
+        pre_deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
+        pre_deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
+        pre_deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental
         pre_deployment.properties.template = JSON.parse(pre_deployment_template)
         pre_deployment.properties.parameters = parameters_in_values_format(pre_deployment_parameters)
         debug(pre_deployment.properties.template)
@@ -336,9 +334,9 @@ module Kitchen
 
       def deployment(parameters)
         template = template_for_transport_name
-        deployment = ::Azure::ARM::Resources::Models::Deployment.new
-        deployment.properties = ::Azure::ARM::Resources::Models::DeploymentProperties.new
-        deployment.properties.mode = Azure::ARM::Resources::Models::DeploymentMode::Incremental
+        deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
+        deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
+        deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental
         deployment.properties.template = JSON.parse(template)
         deployment.properties.parameters = parameters_in_values_format(parameters)
         debug(JSON.pretty_generate(deployment.properties.template))
@@ -409,11 +407,9 @@ module Kitchen
 
       def destroy(state)
         return if state[:server_id].nil?
-        credentials = Kitchen::Driver::Credentials.new.azure_credentials_for_subscription(state[:subscription_id], state[:azure_environment])
-        management_endpoint = resource_manager_endpoint_url(state[:azure_environment])
+        options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(state[:subscription_id], state[:azure_environment])
         info "Azure environment: #{state[:azure_environment]}"
-        resource_management_client = ::Azure::ARM::Resources::ResourceManagementClient.new(credentials, management_endpoint)
-        resource_management_client.subscription_id = state[:subscription_id]
+        resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
         begin
           info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
           resource_management_client.resource_groups.begin_delete(state[:azure_resource_group_name])
@@ -430,13 +426,13 @@ module Kitchen
 
       def enable_winrm_powershell_script
         config[:winrm_powershell_script] || <<-PS1
-$cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\\LocalMachine\\My
-$config = '@{CertificateThumbprint="' + $cert.Thumbprint + '"}'
-winrm create winrm/config/listener?Address=*+Transport=HTTPS $config
-winrm set winrm/config/service/auth '@{Basic="true";Kerberos="false";Negotiate="true";Certificate="false";CredSSP="true"}'
-New-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" -Name "Windows Remote Management (HTTPS-In)" -Profile Any -LocalPort 5986 -Protocol TCP
-winrm set winrm/config/service '@{AllowUnencrypted="true"}'
-New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Windows Remote Management (HTTP-In)" -Profile Any -LocalPort 5985 -Protocol TCP
+  $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\\LocalMachine\\My
+  $config = '@{CertificateThumbprint="' + $cert.Thumbprint + '"}'
+  winrm create winrm/config/listener?Address=*+Transport=HTTPS $config
+  winrm set winrm/config/service/auth '@{Basic="true";Kerberos="false";Negotiate="true";Certificate="false";CredSSP="true"}'
+  New-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" -Name "Windows Remote Management (HTTPS-In)" -Profile Any -LocalPort 5986 -Protocol TCP
+  winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+  New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Windows Remote Management (HTTP-In)" -Profile Any -LocalPort 5985 -Protocol TCP
         PS1
       end
 
@@ -444,36 +440,36 @@ New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Wi
         return unless config[:format_data_disks]
         info 'Data disks will be initialized and formatted NTFS automatically.' unless config[:data_disks].nil?
         config[:format_data_disks_powershell_script] || <<-PS1
-Write-Host "Initializing and formatting raw disks"
-$disks = Get-Disk | where partitionstyle -eq 'raw'
-$letters = New-Object System.Collections.ArrayList
-$letters.AddRange( ('F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z') )
-Function AvailableVolumes() {
-$currentDrives = get-volume
-ForEach ($v in $currentDrives) {
-  if ($letters -contains $v.DriveLetter.ToString()) {
-      Write-Host "Drive letter $($v.DriveLetter) is taken, moving to next letter"
-      $letters.Remove($v.DriveLetter.ToString())
+  Write-Host "Initializing and formatting raw disks"
+  $disks = Get-Disk | where partitionstyle -eq 'raw'
+  $letters = New-Object System.Collections.ArrayList
+  $letters.AddRange( ('F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z') )
+  Function AvailableVolumes() {
+  $currentDrives = get-volume
+  ForEach ($v in $currentDrives) {
+    if ($letters -contains $v.DriveLetter.ToString()) {
+        Write-Host "Drive letter $($v.DriveLetter) is taken, moving to next letter"
+        $letters.Remove($v.DriveLetter.ToString())
+      }
     }
   }
-}
-ForEach ($d in $disks) {
-  AvailableVolumes
-  $driveLetter = $letters[0]
-  Write-Host "Creating volume $($driveLetter)"
-  $d | Initialize-Disk -PartitionStyle GPT -PassThru | New-Partition -DriveLetter $driveLetter  -UseMaximumSize
-  # Prevent error ' Cannot perform the requested operation while the drive is read only'
-  Start-Sleep 1
-  Format-Volume -FileSystem NTFS -NewFileSystemLabel "datadisk" -DriveLetter $driveLetter -Confirm:$false
-}
+  ForEach ($d in $disks) {
+    AvailableVolumes
+    $driveLetter = $letters[0]
+    Write-Host "Creating volume $($driveLetter)"
+    $d | Initialize-Disk -PartitionStyle GPT -PassThru | New-Partition -DriveLetter $driveLetter  -UseMaximumSize
+    # Prevent error ' Cannot perform the requested operation while the drive is read only'
+    Start-Sleep 1
+    Format-Volume -FileSystem NTFS -NewFileSystemLabel "datadisk" -DriveLetter $driveLetter -Confirm:$false
+  }
         PS1
       end
 
       def custom_data_script_windows
         <<-EOH
-#{enable_winrm_powershell_script}
-#{format_data_disks_powershell_script}
-logoff
+  #{enable_winrm_powershell_script}
+  #{format_data_disks_powershell_script}
+  logoff
         EOH
       end
 

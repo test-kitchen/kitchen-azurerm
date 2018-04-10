@@ -21,17 +21,25 @@ module Kitchen
       end
 
       #
-      # Retrieves a [MsRest::TokenCredentials] object representing a token for the given Service Principal.
+      # Retrieves an object containing options and credentials for the given
+      # subscription_id and azure_environment.
+      #
       # @param subscription_id [String] The subscription_id to retrieve a token for
+      # @param azure_environment [String] The azure_environment to use
       #
-      # @return [MsRest::TokenCredentials] TokenCredentials object to be passed in with each subsequent request.
+      # @return [Object] Object that can be supplied along with all Azure client requests.
       #
-      def azure_credentials_for_subscription(subscription_id, azure_environment)
+      def azure_options_for_subscription(subscription_id, azure_environment = 'Azure')
         tenant_id = ENV['AZURE_TENANT_ID'] || @credentials[subscription_id]['tenant_id']
         client_id = ENV['AZURE_CLIENT_ID'] || @credentials[subscription_id]['client_id']
         client_secret = ENV['AZURE_CLIENT_SECRET'] || @credentials[subscription_id]['client_secret']
         token_provider = ::MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, settings_for_azure_environment(azure_environment))
-        ::MsRest::TokenCredentials.new(token_provider)
+        options = { tenant_id: tenant_id,
+                    client_id: client_id,
+                    client_secret: client_secret,
+                    subscription_id: subscription_id,
+                    credentials: ::MsRest::TokenCredentials.new(token_provider) }
+        options
       end
 
       #
