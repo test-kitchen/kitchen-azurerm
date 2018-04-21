@@ -56,8 +56,6 @@ Here's an example ```.kitchen.yml``` file that provisions an Ubuntu Server, usin
 ---
 driver:
   name: azurerm
-
-driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
   location: 'West Europe'
   machine_size: 'Standard_D1'
@@ -70,7 +68,7 @@ provisioner:
 
 platforms:
   - name: ubuntu-14.04
-    driver_config:
+    driver:
       image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
       vm_name: trusty-vm
       vm_tags:
@@ -99,8 +97,6 @@ Here's a further example ```.kitchen.yml``` file that will provision a Windows S
 ---
 driver:
   name: azurerm
-
-driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
   location: 'West Europe'
   machine_size: 'Standard_D1'
@@ -110,7 +106,7 @@ provisioner:
 
 platforms:
   - name: windows2012-r2
-    driver_config:
+    driver:
       image_urn: MicrosoftWindowsServer:WindowsServer:2012-R2-Datacenter:latest
     transport:
       name: winrm
@@ -133,8 +129,6 @@ These resources will be created in the same Azure Resource Group as the VM under
 ---
 driver:
   name: azurerm
-
-driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
   location: 'West Europe'
   machine_size: 'Standard_D1'
@@ -150,7 +144,7 @@ provisioner:
 
 platforms:
   - name: ubuntu-1404
-    driver_config:
+    driver:
       image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
 
 suites:
@@ -199,7 +193,7 @@ Example predeploy.json:
 
 ### .kitchen.yml example 4 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios)
 
-The following example introduces the ```vnet_id``` and ```subnet_id``` properties under driver_config in the configuration file.  This can be applied at the top level, or per platform.
+The following example introduces the ```vnet_id``` and ```subnet_id``` properties under "driver" in the configuration file.  This can be applied at the top level, or per platform.
 You can use this capability to create the VM on an existing virtual network and subnet created in a different resource group.
 
 In this case, the public IP address is not used unless ```public_ip``` is set to ```true```
@@ -209,8 +203,6 @@ In this case, the public IP address is not used unless ```public_ip``` is set to
 ---
 driver:
   name: azurerm
-
-driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
   location: 'West Europe'
   machine_size: 'Standard_D1'
@@ -223,7 +215,7 @@ provisioner:
 
 platforms:
   - name: ubuntu-1404
-    driver_config:
+    driver:
       image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
@@ -245,8 +237,6 @@ Note: The image must be available first. On deletion the disk and everything is 
 ---
 driver:
   name: azurerm
-
-driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
   location: 'West Europe'
   machine_size: 'Standard_D1'
@@ -259,7 +249,7 @@ provisioner:
 
 platforms:
   - name: ubuntu-1404
-    driver_config:
+    driver:
       image_id: /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/RESGROUP/providers/Microsoft.Compute/images/IMAGENAME
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
@@ -290,8 +280,6 @@ This example will:
 ---
 driver:
   name: azurerm
-
-driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
   location: 'West Europe'
   machine_size: 'Standard_D1'
@@ -304,7 +292,7 @@ provisioner:
 
 platforms:
   - name: ubuntu-1404
-    driver_config:
+    driver:
       image_url: https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd
       existing_storage_account_blob_url: https://yourstorageaccount.blob.core.windows.net
       os_type: linux
@@ -330,8 +318,6 @@ Note: Custom data can be custom data or a file to custom data. Please also note 
 ---
 driver:
   name: azurerm
-
-driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
   location: 'West Europe'
   machine_size: 'Standard_D1'
@@ -344,7 +330,7 @@ provisioner:
 
 platforms:
   - name: ubuntu-1404
-    driver_config:
+    driver:
       image_url: https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd
       existing_storage_account_blob_url: https://yourstorageaccount.blob.core.windows.net
       os_type: linux
@@ -377,8 +363,6 @@ Note the availability of a `format_data_disks` option (default: `false`).  When 
 ---
 driver:
   name: azurerm
-
-driver_config:
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
   location: 'West Europe'
   machine_size: 'Standard_F2s'
@@ -388,7 +372,7 @@ provisioner:
 
 platforms:
 - name: windows2016-noformat
-  driver_config:
+  driver:
     image_urn: MicrosoftWindowsServer:WindowsServer:2016-Datacenter:latest
     data_disks:
       - lun: 0
@@ -418,8 +402,6 @@ Note that the ```use_managed_disks``` option should be set to false until suppor
 ---
 driver:
   name: azurerm
-
-driver_config:
   subscription_id: 'abcdabcd-YOUR-GUID-HERE-abcdabcdabcd'
   azure_environment: 'AzureUSGovernment'
   location: 'US Gov Iowa'
@@ -434,7 +416,7 @@ verifier:
 
 platforms:
 - name: ubuntu1604
-  driver_config:
+  driver:
     image_urn: Canonical:UbuntuServer:16.04-LTS:latest
   transport:
     ssh_key: ~/.ssh/id_kitchen-azurerm
@@ -480,7 +462,7 @@ info:    vm image list command OK
 ```
 
 ### Additional parameters:
-- Note that the ```driver_config``` section also takes a ```username``` and ```password``` parameter, the defaults if these are not specified are "azure" and "P2ssw0rd" respectively.
+- Note that the ```driver``` section also takes a ```username``` and ```password``` parameter, the defaults if these are not specified are "azure" and "P2ssw0rd" respectively.
 - The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
 - The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
 - The optional ```vm_tags``` parameter allows you to define key:value pairs to tag VMs with on creation.
