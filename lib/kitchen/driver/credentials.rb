@@ -33,22 +33,24 @@ module Kitchen
         tenant_id = ENV['AZURE_TENANT_ID'] || @credentials[subscription_id]['tenant_id']
         client_id = ENV['AZURE_CLIENT_ID'] || @credentials[subscription_id]['client_id']
         client_secret = ENV['AZURE_CLIENT_SECRET'] || @credentials[subscription_id]['client_secret']
-        token_provider = ::MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, settings_for_azure_environment(azure_environment))
+        token_provider = ::MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, ad_settings_for_azure_environment(azure_environment))
         options = { tenant_id: tenant_id,
                     client_id: client_id,
                     client_secret: client_secret,
                     subscription_id: subscription_id,
-                    credentials: ::MsRest::TokenCredentials.new(token_provider) }
+                    credentials: ::MsRest::TokenCredentials.new(token_provider),
+                    active_directory_settings: ad_settings_for_azure_environment(azure_environment),
+                    base_url: endpoint_settings_for_azure_environment(azure_environment).resource_manager_endpoint_url }
         options
       end
 
       #
-      # Retrieves a [MsRestAzure::ActiveDirectoryServiceSettings] object representing the settings for the given cloud.
+      # Retrieves a [MsRestAzure::ActiveDirectoryServiceSettings] object representing the AD settings for the given cloud.
       # @param azure_environment [String] The Azure environment to retrieve settings for.
       #
       # @return [MsRestAzure::ActiveDirectoryServiceSettings] Settings to be used for subsequent requests
       #
-      def settings_for_azure_environment(azure_environment)
+      def ad_settings_for_azure_environment(azure_environment)
         case azure_environment.downcase
         when 'azureusgovernment'
           ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_us_government_settings
@@ -58,6 +60,25 @@ module Kitchen
           ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_german_settings
         when 'azure'
           ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_settings
+        end
+      end
+
+      #
+      # Retrieves a [MsRestAzure::AzureEnvironment] object representing endpoint settings for the given cloud.
+      # @param azure_environment [String] The Azure environment to retrieve settings for.
+      #
+      # @return [MsRestAzure::AzureEnvironment] Settings to be used for subsequent requests
+      #
+      def endpoint_settings_for_azure_environment(azure_environment)
+        case azure_environment.downcase
+        when 'azureusgovernment'
+          ::MsRestAzure::AzureEnvironments::AzureUSGovernment
+        when 'azurechina'
+          ::MsRestAzure::AzureEnvironments::AzureChinaCloud
+        when 'azuregermancloud'
+          ::MsRestAzure::AzureEnvironments::AzureGermanCloud
+        when 'azure'
+          ::MsRestAzure::AzureEnvironments::AzureCloud
         end
       end
 
