@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [0.14.1] - 2018-05-10
+- Support for soverign clouds with latest Azure SDK for Ruby, fixes [#79](https://github.com/test-kitchen/kitchen-azurerm/issues/79)
+- Raise error when subscription_id is not available, fixes [#74](https://github.com/test-kitchen/kitchen-azurerm/issues/74)
+
 ## [0.14.0] - 2018-04-10
 - Update Azure SDK to latest version, upgrade to latest build tools
 
