@@ -148,6 +148,10 @@ module Kitchen
           vmName: state[:vm_name]
         }
 
+        if config[:subscription_id].to_s == ''
+          raise 'A subscription_id config value was not detected and kitchen-azurerm cannot continue. Please check your .kitchen.yml configuration. Exiting.'
+        end
+
         if config[:custom_data].to_s != ''
           deployment_parameters['customData'] = prepared_custom_data
         end
