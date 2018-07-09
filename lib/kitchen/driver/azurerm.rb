@@ -134,6 +134,10 @@ module Kitchen
         false
       end
 
+      default_config(:destroy_explicit_resource_group) do |_config|
+        true
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
@@ -411,6 +415,11 @@ module Kitchen
 
       def destroy(state)
         return if state[:server_id].nil?
+        if config[:destroy_explicit_resource_group] == false && !config[:explicit_resource_group_name].nil?
+          warn 'The :destroy_explicit_resource_group setting value is set to "false" so no resources will be destroyed.'
+          warn 'Remember to manually destroy resources to save costs!'
+          return
+        end
         options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(state[:subscription_id], state[:azure_environment])
         info "Azure environment: #{state[:azure_environment]}"
         resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)

@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.14.2] - 2018-07-09
+- Add `destroy_explicit_resource_group` (defaalt: false) property to allow reuse of specific Azure RG, fixes [#85](https://github.com/test-kitchen/kitchen-azurerm/issues/85)
+
 ## [0.14.1] - 2018-05-10
 - Support for soverign clouds with latest Azure SDK for Ruby, fixes [#79](https://github.com/test-kitchen/kitchen-azurerm/issues/79)
 - Raise error when subscription_id is not available, fixes [#74](https://github.com/test-kitchen/kitchen-azurerm/issues/74)

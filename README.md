@@ -461,7 +461,7 @@ data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509220  westeurope
 info:    vm image list command OK
 ```
 
-### Additional parameters:
+### Additional parameters that can be specified:
 - Note that the ```driver``` section also takes a ```username``` and ```password``` parameter, the defaults if these are not specified are "azure" and "P2ssw0rd" respectively.
 - The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
 - The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
@@ -473,7 +473,7 @@ info:    vm image list command OK
 - The ```custom_data``` parameter can be used to specify custom data to provide to the instance. This can be a file or the data itself. This module handles base64 encoding for you.
 - The ```os_disk_size_gb``` parameter can be used to specify a custom os disk size.
 - The ```azure_resource_group_prefix``` and ```azure_resource_group_suffix``` can be used to further disambiguate Azure resource group names created by the driver.
-- The ```explicit_resource_group_name``` parameters can be used in scenarios where you are provided a pre-created Resource Group.  Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
+- The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group.  Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
 
 ## Contributing
 
