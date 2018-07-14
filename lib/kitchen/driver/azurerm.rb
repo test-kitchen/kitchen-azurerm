@@ -138,6 +138,10 @@ module Kitchen
         true
       end
 
+      default_config(:purge_explicit_resource_group) do |_config|
+        false
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
@@ -413,11 +417,42 @@ module Kitchen
         deployments.properties.provisioning_state
       end
 
+      def purge_deployment
+        deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
+        deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
+        deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Complete
+        deployment.properties.template = JSON.parse(virtual_machine_deployment_template_file('purge.erb'))
+        debug(JSON.pretty_generate(deployment.properties.template))
+        deployment
+      end
+
+      def purge_resource_group
+        # Execute deployment of empty ARM template
+        deployment_name = "purge-#{state[:uuid]}"
+        info "Creating purge deployment: #{deployment_name}"
+        resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], deployment_name, purge_deployment).value!
+        follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
+      rescue ::MsRestAzure::AzureOperationError => operation_error
+        rest_error = operation_error.body['error']
+        deployment_active = rest_error['code'] == 'DeploymentActive'
+        if deployment_active
+          info "Purging of resource group #{state[:azure_resource_group_name]} is ongoing."
+        else
+          info rest_error
+          raise operation_error
+        end
+      end
+
       def destroy(state)
         return if state[:server_id].nil?
         if config[:destroy_explicit_resource_group] == false && !config[:explicit_resource_group_name].nil?
-          warn 'The :destroy_explicit_resource_group setting value is set to "false" so no resources will be destroyed.'
-          warn 'Remember to manually destroy resources to save costs!'
+          if config[:purge_explicit_resource_group]
+            info 'The :purge_explicit_resource_group parameter is set to "true". Will purge resource group contents.'
+            purge_resource_group
+          else
+            warn 'The :destroy_explicit_resource_group and the :purge_explicit_resource_group parameters are set to "false". No resources will be deleted.'
+            warn 'Remember to manually destroy resources to save costs!'
+          end
           return
         end
         options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(state[:subscription_id], state[:azure_environment])
