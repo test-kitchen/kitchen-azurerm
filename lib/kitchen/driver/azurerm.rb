@@ -426,7 +426,11 @@ module Kitchen
         deployment
       end
 
-      def purge_resource_group
+      def purge_resource_group(state)
+        options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(state[:subscription_id], state[:azure_environment])
+        debug "Azure environment: #{config[:azure_environment]}"
+        @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+
         # Execute deployment of empty ARM template
         deployment_name = "purge-#{state[:uuid]}"
         info "Creating purge deployment: #{deployment_name}"
@@ -448,7 +452,7 @@ module Kitchen
         if config[:destroy_explicit_resource_group] == false && !config[:explicit_resource_group_name].nil?
           if config[:purge_explicit_resource_group]
             info 'The :purge_explicit_resource_group parameter is set to "true". Will purge resource group contents.'
-            purge_resource_group
+            purge_resource_group(state)
           else
             warn 'The :destroy_explicit_resource_group and the :purge_explicit_resource_group parameters are set to "false". No resources will be deleted.'
             warn 'Remember to manually destroy resources to save costs!'
