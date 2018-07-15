@@ -473,7 +473,8 @@ info:    vm image list command OK
 - The ```custom_data``` parameter can be used to specify custom data to provide to the instance. This can be a file or the data itself. This module handles base64 encoding for you.
 - The ```os_disk_size_gb``` parameter can be used to specify a custom os disk size.
 - The ```azure_resource_group_prefix``` and ```azure_resource_group_suffix``` can be used to further disambiguate Azure resource group names created by the driver.
-- The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group.  Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
+- The ```explicit_resource_group_name```, ```destroy_explicit_resource_group``` (default: "true") and ```purge_explicit_resource_group``` (default: "false") parameters can be used in scenarios where you are provided a pre-created Resource Group.  Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
+  - ```purge_explicit_resource_group``` can only be used if ```destroy_explicit_resource_group``` is set to "false."
 
 ## Contributing
 
