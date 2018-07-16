@@ -27,6 +27,3 @@ Naming/HeredocDelimiterNaming:
 
 Naming/MemoizedInstanceVariableName:
   Enabled: false
-
-Layout/ClosingHeredocIndentation:
-  Enabled: false
