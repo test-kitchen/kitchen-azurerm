@@ -138,6 +138,10 @@ module Kitchen
         true
       end
 
+      default_config(:destroy_resource_group_contents) do |_config|
+        false
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
@@ -351,6 +355,16 @@ module Kitchen
         deployment
       end
 
+      def empty_deployment
+        template = virtual_machine_deployment_template_file('empty.erb', nil)
+        empty_deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
+        empty_deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
+        empty_deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Complete
+        empty_deployment.properties.template = JSON.parse(template)
+        debug(JSON.pretty_generate(empty_deployment.properties.template))
+        empty_deployment
+      end
+
       def vm_tag_string(vm_tags_in)
         tag_string = ''
         unless vm_tags_in.empty?
@@ -415,14 +429,26 @@ module Kitchen
 
       def destroy(state)
         return if state[:server_id].nil?
+        options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(state[:subscription_id], state[:azure_environment])
+        @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+        if config[:destroy_resource_group_contents] == true
+          info 'Destroying individual resources within the Resource Group.'
+          empty_deployment_name = "empty-deploy-#{state[:uuid]}"
+          begin
+            info "Creating deployment: #{empty_deployment_name}"
+            resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], empty_deployment_name, empty_deployment).value!
+            follow_deployment_until_end_state(state[:azure_resource_group_name], empty_deployment_name)
+          rescue ::MsRestAzure::AzureOperationError => operation_error
+            error operation_error.body
+            raise operation_error
+          end
+        end
         if config[:destroy_explicit_resource_group] == false && !config[:explicit_resource_group_name].nil?
-          warn 'The :destroy_explicit_resource_group setting value is set to "false" so no resources will be destroyed.'
-          warn 'Remember to manually destroy resources to save costs!'
+          warn 'The "destroy_explicit_resource_group" setting value is set to "false". The resource group will not be deleted.'
+          warn 'Remember to manually destroy resources, or set "destroy_resource_group_contents: true" to save costs!' unless config[:destroy_resource_group_contents] == true
           return
         end
-        options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(state[:subscription_id], state[:azure_environment])
         info "Azure environment: #{state[:azure_environment]}"
-        resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
         begin
           info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
           resource_management_client.resource_groups.begin_delete(state[:azure_resource_group_name])
