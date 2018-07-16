@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.14.3] - 2018-07-16
+- Add `destroy_resource_group_contents` (default: false) property to allow contents of Azure Resource Group to be deleted rather than entire Resource Group, fixes [#90](https://github.com/test-kitchen/kitchen-azurerm/issues/85)
+
 ## [0.14.2] - 2018-07-09
 - Add `destroy_explicit_resource_group` (default: false) property to allow reuse of specific Azure RG, fixes [#85](https://github.com/test-kitchen/kitchen-azurerm/issues/85)
 
