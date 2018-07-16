@@ -464,7 +464,8 @@ module Kitchen
       end
 
       def enable_winrm_powershell_script
-        config[:winrm_powershell_script] || <<-PS1
+        config[:winrm_powershell_script] ||
+          <<-PS1
   $cert = New-SelfSignedCertificate -DnsName $env:COMPUTERNAME -CertStoreLocation Cert:\\LocalMachine\\My
   $config = '@{CertificateThumbprint="' + $cert.Thumbprint + '"}'
   winrm create winrm/config/listener?Address=*+Transport=HTTPS $config
@@ -472,13 +473,14 @@ module Kitchen
   New-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" -Name "Windows Remote Management (HTTPS-In)" -Profile Any -LocalPort 5986 -Protocol TCP
   winrm set winrm/config/service '@{AllowUnencrypted="true"}'
   New-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" -Name "Windows Remote Management (HTTP-In)" -Profile Any -LocalPort 5985 -Protocol TCP
-        PS1
+          PS1
       end
 
       def format_data_disks_powershell_script
         return unless config[:format_data_disks]
         info 'Data disks will be initialized and formatted NTFS automatically.' unless config[:data_disks].nil?
-        config[:format_data_disks_powershell_script] || <<-PS1
+        config[:format_data_disks_powershell_script] ||
+          <<-PS1
   Write-Host "Initializing and formatting raw disks"
   $disks = Get-Disk | where partitionstyle -eq 'raw'
   $letters = New-Object System.Collections.ArrayList
@@ -501,7 +503,7 @@ module Kitchen
     Start-Sleep 1
     Format-Volume -FileSystem NTFS -NewFileSystemLabel "datadisk" -DriveLetter $driveLetter -Confirm:$false
   }
-        PS1
+          PS1
       end
 
       def custom_data_script_windows
