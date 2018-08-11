@@ -110,6 +110,14 @@ module Kitchen
         {}
       end
 
+      default_config(:post_deployment_template) do |_config|
+        ''
+      end
+
+      default_config(:post_deployment_parameters) do |_config|
+        {}
+      end
+
       default_config(:vm_tags) do |_config|
         {}
       end
@@ -223,6 +231,12 @@ module Kitchen
           info "Creating deployment: #{deployment_name}"
           resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
           follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
+          if File.file?(config[:post_deployment_template])
+            post_deployment_name = "post-deploy-#{state[:uuid]}"
+            info "Creating deployment: #{post_deployment_name}"
+            resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], post_deployment_name, post_deployment(config[:post_deployment_template], config[:post_deployment_parameters])).value!
+            follow_deployment_until_end_state(state[:azure_resource_group_name], post_deployment_name)
+          end
         rescue ::MsRestAzure::AzureOperationError => operation_error
           rest_error = operation_error.body['error']
           deployment_active = rest_error['code'] == 'DeploymentActive'
@@ -353,6 +367,17 @@ module Kitchen
         deployment.properties.parameters = parameters_in_values_format(parameters)
         debug(JSON.pretty_generate(deployment.properties.template))
         deployment
+      end
+
+      def post_deployment(post_deployment_template_filename, post_deployment_parameters)
+        post_deployment_template = ::File.read(post_deployment_template_filename)
+        post_deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
+        post_deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
+        post_deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental
+        post_deployment.properties.template = JSON.parse(post_deployment_template)
+        post_deployment.properties.parameters = parameters_in_values_format(post_deployment_parameters)
+        debug(post_deployment.properties.template)
+        post_deployment
       end
 
       def empty_deployment

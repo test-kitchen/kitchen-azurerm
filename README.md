@@ -390,6 +390,93 @@ suites:
     attributes:
 ```
 
+### .kitchen.yml example 9 - "post-deployment" ARM template with MSI authentication
+
+The following example introduces the ```post_deployment_template``` and ```post_deployment_parameters``` properties in the configuration file.
+You can use this capability to execute an ARM template containing Azure resources to provision after the system under test is created.  
+
+In the example the ARM template in the file ```postdeploy.json``` would be executed with the parameters that are specified under ```post_deployment_parameters```.  
+These resources will be created in the same Azure Resource Group as the VM under test, and therefore will be destroyed when you type ```kitchen destroy```.
+
+```yaml
+---
+driver:
+  name: azurerm
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+  post_deployment_template: postdeploy.json
+  post_deployment_parameters: 
+    test_parameter: 'This is a test.'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver:
+      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+
+Example postdeploy.json to enable MSI extention on VM:
+
+```json
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vmName": {
+            "type": "String"
+        },
+        "location": {
+            "type": "String"
+        },
+        "msiExtensionName": {
+            "type": "String"
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[parameters('vmName')]",
+            "apiVersion": "2017-12-01",
+            "location": "[parameters('location')]",
+            "identity": {
+                "type": "systemAssigned"
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat( parameters('vmName'), '/' , parameters('msiExtensionName') )]",
+            "apiVersion": "2017-12-01",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publisher": "Microsoft.ManagedIdentity",
+                "type": "[parameters('msiExtensionName')]",
+                "typeHandlerVersion": "1.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "port": 50342
+                }
+            },
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
+            ]
+        }
+    ]
+}
+```
+
+
 ## Support for Government and Sovereign Clouds (China and Germany)
 
 Starting with v0.9.0 this driver has support for Azure Government and Sovereign Clouds via the use of the ```azure_environment``` setting.  Valid Azure environments are ```Azure```, ```AzureUSGovernment```, ```AzureChina``` and ```AzureGermanCloud```

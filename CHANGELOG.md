@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.14.4] - 2018-08-10
+- Adding capability to execute ARM template after VM deployment, ```post_deployment_template``` and ```post_deployment_parameters``` added (@sebastiankasprzak)
+
 ## [0.14.3] - 2018-07-16
 - Add `destroy_resource_group_contents` (default: false) property to allow contents of Azure Resource Group to be deleted rather than entire Resource Group, fixes [#90](https://github.com/test-kitchen/kitchen-azurerm/issues/85)
 
