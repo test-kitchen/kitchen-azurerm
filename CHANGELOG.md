@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.14.5] - 2018-09-30
+- Support Shared Image Gallery (preview Azure feature) (@zanecodes)
+
 ## [0.14.4] - 2018-08-10
 - Adding capability to execute ARM template after VM deployment, ```post_deployment_template``` and ```post_deployment_parameters``` added (@sebastiankasprzak)
 
