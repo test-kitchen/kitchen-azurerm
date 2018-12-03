@@ -1,4 +1,4 @@
-require 'inifile'
+require "inifile"
 
 module Kitchen
   module Driver
@@ -12,7 +12,7 @@ module Kitchen
       # Creates and initializes a new instance of the Credentials class.
       #
       def initialize
-        config_file = ENV['AZURE_CONFIG_FILE'] || File.expand_path(CONFIG_PATH)
+        config_file = ENV["AZURE_CONFIG_FILE"] || File.expand_path(CONFIG_PATH)
         if File.file?(config_file)
           @credentials = IniFile.load(File.expand_path(config_file))
         else
@@ -29,10 +29,10 @@ module Kitchen
       #
       # @return [Object] Object that can be supplied along with all Azure client requests.
       #
-      def azure_options_for_subscription(subscription_id, azure_environment = 'Azure')
-        tenant_id = ENV['AZURE_TENANT_ID'] || @credentials[subscription_id]['tenant_id']
-        client_id = ENV['AZURE_CLIENT_ID'] || @credentials[subscription_id]['client_id']
-        client_secret = ENV['AZURE_CLIENT_SECRET'] || @credentials[subscription_id]['client_secret']
+      def azure_options_for_subscription(subscription_id, azure_environment = "Azure")
+        tenant_id = ENV["AZURE_TENANT_ID"] || @credentials[subscription_id]["tenant_id"]
+        client_id = ENV["AZURE_CLIENT_ID"] || @credentials[subscription_id]["client_id"]
+        client_secret = ENV["AZURE_CLIENT_SECRET"] || @credentials[subscription_id]["client_secret"]
         token_provider = ::MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, ad_settings_for_azure_environment(azure_environment))
         options = { tenant_id: tenant_id,
                     client_id: client_id,
@@ -52,13 +52,13 @@ module Kitchen
       #
       def ad_settings_for_azure_environment(azure_environment)
         case azure_environment.downcase
-        when 'azureusgovernment'
+        when "azureusgovernment"
           ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_us_government_settings
-        when 'azurechina'
+        when "azurechina"
           ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_china_settings
-        when 'azuregermancloud'
+        when "azuregermancloud"
           ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_german_settings
-        when 'azure'
+        when "azure"
           ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_settings
         end
       end
@@ -71,13 +71,13 @@ module Kitchen
       #
       def endpoint_settings_for_azure_environment(azure_environment)
         case azure_environment.downcase
-        when 'azureusgovernment'
+        when "azureusgovernment"
           ::MsRestAzure::AzureEnvironments::AzureUSGovernment
-        when 'azurechina'
+        when "azurechina"
           ::MsRestAzure::AzureEnvironments::AzureChinaCloud
-        when 'azuregermancloud'
+        when "azuregermancloud"
           ::MsRestAzure::AzureEnvironments::AzureGermanCloud
-        when 'azure'
+        when "azure"
           ::MsRestAzure::AzureEnvironments::AzureCloud
         end
       end

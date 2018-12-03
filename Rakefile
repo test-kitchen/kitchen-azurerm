@@ -1,4 +1,5 @@
-require 'rubocop/rake_task'
+require "rubocop/rake_task"
+require "chefstyle"
 
 RuboCop::RakeTask.new
 
