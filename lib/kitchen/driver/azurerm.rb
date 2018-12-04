@@ -1,14 +1,14 @@
-require 'kitchen'
-require 'kitchen/driver/credentials'
-require 'securerandom'
-require 'azure_mgmt_resources'
-require 'azure_mgmt_network'
-require 'base64'
-require 'sshkey'
-require 'fileutils'
-require 'erb'
-require 'ostruct'
-require 'json'
+require "kitchen"
+require "kitchen/driver/credentials"
+require "securerandom"
+require "azure_mgmt_resources"
+require "azure_mgmt_network"
+require "base64"
+require "sshkey"
+require "fileutils"
+require "erb"
+require "ostruct"
+require "json"
 
 module Kitchen
   module Driver
@@ -19,11 +19,11 @@ module Kitchen
       attr_accessor :resource_management_client
 
       default_config(:azure_resource_group_prefix) do |_config|
-        'kitchen-'
+        "kitchen-"
       end
 
       default_config(:azure_resource_group_suffix) do |_config|
-        ''
+        ""
       end
 
       default_config(:azure_resource_group_name) do |config|
@@ -35,63 +35,63 @@ module Kitchen
       end
 
       default_config(:image_urn) do |_config|
-        'Canonical:UbuntuServer:14.04.3-LTS:latest'
+        "Canonical:UbuntuServer:14.04.3-LTS:latest"
       end
 
       default_config(:image_url) do |_config|
-        ''
+        ""
       end
 
       default_config(:image_id) do |_config|
-        ''
+        ""
       end
 
       default_config(:os_disk_size_gb) do |_config|
-        ''
+        ""
       end
 
       default_config(:os_type) do |_config|
-        'linux'
+        "linux"
       end
 
       default_config(:custom_data) do |_config|
-        ''
+        ""
       end
 
       default_config(:username) do |_config|
-        'azure'
+        "azure"
       end
 
       default_config(:password) do |_config|
-        'P2ssw0rd'
+        "P2ssw0rd"
       end
 
       default_config(:vm_name) do |_config|
-        'vm'
+        "vm"
       end
 
       default_config(:vnet_id) do |_config|
-        ''
+        ""
       end
 
       default_config(:subnet_id) do |_config|
-        ''
+        ""
       end
 
       default_config(:storage_account_type) do |_config|
-        'Standard_LRS'
+        "Standard_LRS"
       end
 
       default_config(:existing_storage_account_blob_url) do |_config|
-        ''
+        ""
       end
 
       default_config(:existing_storage_account_container) do |_config|
-        'vhds'
+        "vhds"
       end
 
       default_config(:boot_diagnostics_enabled) do |_config|
-        'true'
+        "true"
       end
 
       default_config(:winrm_powershell_script) do |_config|
@@ -99,11 +99,11 @@ module Kitchen
       end
 
       default_config(:azure_environment) do |_config|
-        'Azure'
+        "Azure"
       end
 
       default_config(:pre_deployment_template) do |_config|
-        ''
+        ""
       end
 
       default_config(:pre_deployment_parameters) do |_config|
@@ -111,7 +111,7 @@ module Kitchen
       end
 
       default_config(:post_deployment_template) do |_config|
-        ''
+        ""
       end
 
       default_config(:post_deployment_parameters) do |_config|
@@ -159,48 +159,48 @@ module Kitchen
           bootDiagnosticsEnabled: config[:boot_diagnostics_enabled],
           newStorageAccountName: "storage#{state[:uuid]}",
           adminUsername: state[:username],
-          adminPassword: state[:password] || 'P2ssw0rd',
+          adminPassword: state[:password] || "P2ssw0rd",
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
-          vmName: state[:vm_name]
+          vmName: state[:vm_name],
         }
 
-        if config[:subscription_id].to_s == ''
-          raise 'A subscription_id config value was not detected and kitchen-azurerm cannot continue. Please check your .kitchen.yml configuration. Exiting.'
+        if config[:subscription_id].to_s == ""
+          raise "A subscription_id config value was not detected and kitchen-azurerm cannot continue. Please check your .kitchen.yml configuration. Exiting."
         end
 
-        if config[:custom_data].to_s != ''
-          deployment_parameters['customData'] = prepared_custom_data
+        if config[:custom_data].to_s != ""
+          deployment_parameters["customData"] = prepared_custom_data
         end
         # When deploying in a shared storage account, we needs to add
         # a unique suffix to support multiple kitchen instances
-        if config[:existing_storage_account_blob_url].to_s != ''
-          deployment_parameters['osDiskNameSuffix'] = "-#{state[:azure_resource_group_name]}"
+        if config[:existing_storage_account_blob_url].to_s != ""
+          deployment_parameters["osDiskNameSuffix"] = "-#{state[:azure_resource_group_name]}"
         end
-        if config[:existing_storage_account_blob_url].to_s != ''
-          deployment_parameters['existingStorageAccountBlobURL'] = config[:existing_storage_account_blob_url]
+        if config[:existing_storage_account_blob_url].to_s != ""
+          deployment_parameters["existingStorageAccountBlobURL"] = config[:existing_storage_account_blob_url]
         end
-        if config[:existing_storage_account_container].to_s != ''
-          deployment_parameters['existingStorageAccountBlobContainer'] = config[:existing_storage_account_container]
+        if config[:existing_storage_account_container].to_s != ""
+          deployment_parameters["existingStorageAccountBlobContainer"] = config[:existing_storage_account_container]
         end
-        if config[:os_disk_size_gb].to_s != ''
-          deployment_parameters['osDiskSizeGb'] = config[:os_disk_size_gb]
+        if config[:os_disk_size_gb].to_s != ""
+          deployment_parameters["osDiskSizeGb"] = config[:os_disk_size_gb]
         end
 
         # The three deployment modes
         #  a) Private Image: Managed VM Image (by id)
         #  b) Private Image: Using a VHD URL (note: we must use existing_storage_account_blob_url due to azure limitations)
         #  c) Public Image: Using a marketplace image (urn)
-        if config[:image_id].to_s != ''
-          deployment_parameters['imageId'] = config[:image_id]
-        elsif config[:image_url].to_s != ''
-          deployment_parameters['imageUrl'] = config[:image_url]
-          deployment_parameters['osType'] = config[:os_type]
+        if config[:image_id].to_s != ""
+          deployment_parameters["imageId"] = config[:image_id]
+        elsif config[:image_url].to_s != ""
+          deployment_parameters["imageUrl"] = config[:image_url]
+          deployment_parameters["osType"] = config[:os_type]
         else
-          image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(':', 4)
-          deployment_parameters['imagePublisher'] = image_publisher
-          deployment_parameters['imageOffer'] = image_offer
-          deployment_parameters['imageSku'] = image_sku
-          deployment_parameters['imageVersion'] = image_version
+          image_publisher, image_offer, image_sku, image_version = config[:image_urn].split(":", 4)
+          deployment_parameters["imagePublisher"] = image_publisher
+          deployment_parameters["imageOffer"] = image_offer
+          deployment_parameters["imageSku"] = image_sku
+          deployment_parameters["imageVersion"] = image_version
         end
 
         options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(config[:subscription_id], config[:azure_environment])
@@ -238,8 +238,8 @@ module Kitchen
             follow_deployment_until_end_state(state[:azure_resource_group_name], post_deployment_name)
           end
         rescue ::MsRestAzure::AzureOperationError => operation_error
-          rest_error = operation_error.body['error']
-          deployment_active = rest_error['code'] == 'DeploymentActive'
+          rest_error = operation_error.body["error"]
+          deployment_active = rest_error["code"] == "DeploymentActive"
           if deployment_active
             info "Deployment for resource group #{state[:azure_resource_group_name]} is ongoing."
             info "If you need to change the deployment template you'll need to rerun `kitchen create` for this instance."
@@ -251,15 +251,15 @@ module Kitchen
 
         network_management_client = ::Azure::Network::Profiles::Latest::Mgmt::Client.new(options)
 
-        if config[:vnet_id] == '' || config[:public_ip]
+        if config[:vnet_id] == "" || config[:public_ip]
           # Retrieve the public IP from the resource group:
-          result = network_management_client.public_ipaddresses.get(state[:azure_resource_group_name], 'publicip')
+          result = network_management_client.public_ipaddresses.get(state[:azure_resource_group_name], "publicip")
           info "IP Address is: #{result.ip_address} [#{result.dns_settings.fqdn}]"
           state[:hostname] = result.ip_address
         else
           # Retrieve the internal IP from the resource group:
           network_interfaces = ::Azure::Network::Profiles::Latest::Mgmt::NetworkInterfaces.new(network_management_client)
-          result = network_interfaces.get(state[:azure_resource_group_name], 'nic')
+          result = network_interfaces.get(state[:azure_resource_group_name], "nic")
           info "IP Address is: #{result.ip_configurations[0].private_ipaddress}"
           state[:hostname] = result.ip_configurations[0].private_ipaddress
         end
@@ -273,7 +273,7 @@ module Kitchen
         state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
         state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value?(state, :server_id)
         state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value?(state, :azure_resource_group_name)
-        %i[subscription_id username password vm_name azure_environment use_managed_disks].each do |config_element|
+        %i{subscription_id username password vm_name azure_environment use_managed_disks}.each do |config_element|
           state[config_element] = config[config_element] unless existing_state_value?(state, config_element)
         end
         state.delete(:password) unless instance.transport[:ssh_key].nil?
@@ -281,7 +281,7 @@ module Kitchen
       end
 
       def azure_resource_group_name
-        formatted_time = Time.now.utc.strftime '%Y%m%dT%H%M%S'
+        formatted_time = Time.now.utc.strftime "%Y%m%dT%H%M%S"
         return "#{config[:azure_resource_group_prefix]}#{config[:azure_resource_group_name]}-#{formatted_time}#{config[:azure_resource_group_suffix]}" unless config[:explicit_resource_group_name]
         config[:explicit_resource_group_name]
       end
@@ -292,7 +292,7 @@ module Kitchen
 
         if config[:use_managed_disks]
           config[:data_disks].each do |data_disk|
-            disks << { name: "datadisk#{data_disk[:lun]}", lun: data_disk[:lun], diskSizeGB: data_disk[:disk_size_gb], createOption: 'Empty' }
+            disks << { name: "datadisk#{data_disk[:lun]}", lun: data_disk[:lun], diskSizeGB: data_disk[:disk_size_gb], createOption: "Empty" }
           end
           debug "Additional disks being added to configuration: #{disks.inspect}"
         else
@@ -303,13 +303,13 @@ module Kitchen
 
       def template_for_transport_name
         template = JSON.parse(virtual_machine_deployment_template)
-        if instance.transport.name.casecmp('winrm').zero?
-          if instance.platform.name.index('nano').nil?
-            info 'Adding WinRM configuration to provisioning profile.'
+        if instance.transport.name.casecmp("winrm") == 0
+          if instance.platform.name.index("nano").nil?
+            info "Adding WinRM configuration to provisioning profile."
             encoded_command = Base64.strict_encode64(custom_data_script_windows)
-            template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
-              resource['properties']['osProfile']['customData'] = encoded_command
-              resource['properties']['osProfile']['windowsConfiguration'] = windows_unattend_content
+            template["resources"].select { |h| h["type"] == "Microsoft.Compute/virtualMachines" }.each do |resource|
+              resource["properties"]["osProfile"]["customData"] = encoded_command
+              resource["properties"]["osProfile"]["windowsConfiguration"] = windows_unattend_content
             end
           end
         end
@@ -317,8 +317,8 @@ module Kitchen
         unless instance.transport[:ssh_key].nil?
           info "Adding public key from #{File.expand_path(instance.transport[:ssh_key])}.pub to the deployment."
           public_key = public_key_for_deployment(File.expand_path(instance.transport[:ssh_key]))
-          template['resources'].select { |h| h['type'] == 'Microsoft.Compute/virtualMachines' }.each do |resource|
-            resource['properties']['osProfile']['linuxConfiguration'] = JSON.parse(custom_linux_configuration(public_key))
+          template["resources"].select { |h| h["type"] == "Microsoft.Compute/virtualMachines" }.each do |resource|
+            resource["properties"]["osProfile"]["linuxConfiguration"] = JSON.parse(custom_linux_configuration(public_key))
           end
         end
         template.to_json
@@ -330,12 +330,12 @@ module Kitchen
 
           ::FileUtils.mkdir_p(File.dirname(private_key_filename))
 
-          private_key_file = File.new(private_key_filename, 'w')
+          private_key_file = File.new(private_key_filename, "w")
           private_key_file.syswrite(k.private_key)
           private_key_file.chmod(0600)
           private_key_file.close
 
-          public_key_file = File.new("#{private_key_filename}.pub", 'w')
+          public_key_file = File.new("#{private_key_filename}.pub", "w")
           public_key_file.syswrite(k.ssh_public_key)
           public_key_file.chmod(0600)
           public_key_file.close
@@ -381,7 +381,7 @@ module Kitchen
       end
 
       def empty_deployment
-        template = virtual_machine_deployment_template_file('empty.erb', nil)
+        template = virtual_machine_deployment_template_file("empty.erb", nil)
         empty_deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
         empty_deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
         empty_deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Complete
@@ -391,7 +391,7 @@ module Kitchen
       end
 
       def vm_tag_string(vm_tags_in)
-        tag_string = ''
+        tag_string = ""
         unless vm_tags_in.empty?
           tag_array = vm_tags_in.map do |key, value|
             "\"#{key}\": \"#{value}\",\n"
@@ -405,34 +405,34 @@ module Kitchen
 
       def parameters_in_values_format(parameters_in)
         parameters = parameters_in.map do |key, value|
-          { key.to_sym => { 'value' => value } }
+          { key.to_sym => { "value" => value } }
         end
         parameters.reduce(:merge!)
       end
 
       def follow_deployment_until_end_state(resource_group, deployment_name)
-        end_provisioning_states = 'Canceled,Failed,Deleted,Succeeded'
+        end_provisioning_states = "Canceled,Failed,Deleted,Succeeded"
         end_provisioning_state_reached = false
         until end_provisioning_state_reached
           list_outstanding_deployment_operations(resource_group, deployment_name)
           sleep 10
           deployment_provisioning_state = deployment_state(resource_group, deployment_name)
-          end_provisioning_state_reached = end_provisioning_states.split(',').include?(deployment_provisioning_state)
+          end_provisioning_state_reached = end_provisioning_states.split(",").include?(deployment_provisioning_state)
         end
         info "Resource Template deployment reached end state of '#{deployment_provisioning_state}'."
-        show_failed_operations(resource_group, deployment_name) if deployment_provisioning_state == 'Failed'
+        show_failed_operations(resource_group, deployment_name) if deployment_provisioning_state == "Failed"
       end
 
       def show_failed_operations(resource_group, deployment_name)
         failed_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name)
         failed_operations.each do |val|
           resource_code = val.properties.status_code
-          raise val.properties.status_message.inspect.to_s if resource_code != 'OK'
+          raise val.properties.status_message.inspect.to_s if resource_code != "OK"
         end
       end
 
       def list_outstanding_deployment_operations(resource_group, deployment_name)
-        end_operation_states = 'Failed,Succeeded'
+        end_operation_states = "Failed,Succeeded"
         deployment_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name)
         deployment_operations.each do |val|
           resource_provisioning_state = val.properties.provisioning_state
@@ -440,7 +440,7 @@ module Kitchen
             resource_name = val.properties.target_resource.resource_name
             resource_type = val.properties.target_resource.resource_type
           end
-          end_operation_state_reached = end_operation_states.split(',').include?(resource_provisioning_state)
+          end_operation_state_reached = end_operation_states.split(",").include?(resource_provisioning_state)
           unless end_operation_state_reached
             info "Resource #{resource_type} '#{resource_name}' provisioning status is #{resource_provisioning_state}"
           end
@@ -457,7 +457,7 @@ module Kitchen
         options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(state[:subscription_id], state[:azure_environment])
         @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
         if config[:destroy_resource_group_contents] == true
-          info 'Destroying individual resources within the Resource Group.'
+          info "Destroying individual resources within the Resource Group."
           empty_deployment_name = "empty-deploy-#{state[:uuid]}"
           begin
             info "Creating deployment: #{empty_deployment_name}"
@@ -477,7 +477,7 @@ module Kitchen
         begin
           info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
           resource_management_client.resource_groups.begin_delete(state[:azure_resource_group_name])
-          info 'Destroy operation accepted and will continue in the background.'
+          info "Destroy operation accepted and will continue in the background."
         rescue ::MsRestAzure::AzureOperationError => operation_error
           error operation_error.body
           raise operation_error
@@ -503,7 +503,7 @@ module Kitchen
 
       def format_data_disks_powershell_script
         return unless config[:format_data_disks]
-        info 'Data disks will be initialized and formatted NTFS automatically.' unless config[:data_disks].nil?
+        info "Data disks will be initialized and formatted NTFS automatically." unless config[:data_disks].nil?
         config[:format_data_disks_powershell_script] ||
           <<-PS1
   Write-Host "Initializing and formatting raw disks"
@@ -559,45 +559,45 @@ module Kitchen
         {
           additionalUnattendContent: [
             {
-              passName: 'oobeSystem',
-              componentName: 'Microsoft-Windows-Shell-Setup',
-              settingName: 'FirstLogonCommands',
-              content: '<FirstLogonCommands><SynchronousCommand><CommandLine>cmd /c "copy C:\\AzureData\\CustomData.bin C:\\Config.ps1"</CommandLine><Description>copy</Description><Order>1</Order></SynchronousCommand><SynchronousCommand><CommandLine>%windir%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -file C:\\Config.ps1</CommandLine><Description>script</Description><Order>2</Order></SynchronousCommand></FirstLogonCommands>'
+              passName: "oobeSystem",
+              componentName: "Microsoft-Windows-Shell-Setup",
+              settingName: "FirstLogonCommands",
+              content: '<FirstLogonCommands><SynchronousCommand><CommandLine>cmd /c "copy C:\\AzureData\\CustomData.bin C:\\Config.ps1"</CommandLine><Description>copy</Description><Order>1</Order></SynchronousCommand><SynchronousCommand><CommandLine>%windir%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NoProfile -ExecutionPolicy Bypass -file C:\\Config.ps1</CommandLine><Description>script</Description><Order>2</Order></SynchronousCommand></FirstLogonCommands>',
             },
             {
-              passName: 'oobeSystem',
-              componentName: 'Microsoft-Windows-Shell-Setup',
-              settingName: 'AutoLogon',
-              content: "[concat('<AutoLogon><Password><Value>', parameters('adminPassword'), '</Value></Password><Enabled>true</Enabled><LogonCount>1</LogonCount><Username>', parameters('adminUserName'), '</Username></AutoLogon>')]"
+              passName: "oobeSystem",
+              componentName: "Microsoft-Windows-Shell-Setup",
+              settingName: "AutoLogon",
+              content: "[concat('<AutoLogon><Password><Value>', parameters('adminPassword'), '</Value></Password><Enabled>true</Enabled><LogonCount>1</LogonCount><Username>', parameters('adminUserName'), '</Username></AutoLogon>')]",
             }
-          ]
+          ],
         }
       end
 
       def virtual_machine_deployment_template
-        if config[:vnet_id] == ''
-          virtual_machine_deployment_template_file('public.erb', vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json)
+        if config[:vnet_id] == ""
+          virtual_machine_deployment_template_file("public.erb", vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json)
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_file('internal.erb', vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json)
+          virtual_machine_deployment_template_file("internal.erb", vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json)
         end
       end
 
       def virtual_machine_deployment_template_file(template_file, data = {})
-        template = File.read(File.expand_path(File.join(__dir__, '../../../templates', template_file)))
+        template = File.read(File.expand_path(File.join(__dir__, "../../../templates", template_file)))
         render_binding = OpenStruct.new(data)
-        ERB.new(template, nil, '-').result(render_binding.instance_eval { binding })
+        ERB.new(template, nil, "-").result(render_binding.instance_eval { binding })
       end
 
       def resource_manager_endpoint_url(azure_environment)
         case azure_environment.downcase
-        when 'azureusgovernment'
+        when "azureusgovernment"
           MsRestAzure::AzureEnvironments::AzureUSGovernment.resource_manager_endpoint_url
-        when 'azurechina'
+        when "azurechina"
           MsRestAzure::AzureEnvironments::AzureChinaCloud.resource_manager_endpoint_url
-        when 'azuregermancloud'
+        when "azuregermancloud"
           MsRestAzure::AzureEnvironments::AzureGermanCloud.resource_manager_endpoint_url
-        when 'azure'
+        when "azure"
           MsRestAzure::AzureEnvironments::AzureCloud.resource_manager_endpoint_url
         end
       end
