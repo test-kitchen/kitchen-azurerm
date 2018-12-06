@@ -34,7 +34,7 @@ module Kitchen
         nil
       end
 
-      default_config(:tags) do |_config|
+      default_config(:resource_group_tags) do |_config|
         {}
       end
 
@@ -215,7 +215,7 @@ module Kitchen
         # Create Resource Group
         resource_group = ::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
         resource_group.location = config[:location]
-        resource_group.tags = config[:tags]
+        resource_group.tags = config[:resource_group_tags]
         begin
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
           resource_management_client.resource_groups.create_or_update(state[:azure_resource_group_name], resource_group)
