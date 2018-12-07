@@ -91,7 +91,7 @@ Where <n> is the number of threads to create. Note that any failure (e.g. an Azu
 
 ### .kitchen.yml example 2 - Windows
 
-Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2012 R2 instance, using WinRM as the transport. The resource created in Azure will enable itself for remote access at deployment time (it does this by customizing the machine at provisioning time):
+Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2012 R2 instance, using WinRM as the transport. The resource created in Azure will enable itself for remote access at deployment time (it does this by customizing the machine at provisioning time) and tags the Azure Resource Group with metadata using the ```resource_group_tags``` property. Notice that the ```vm_tags``` and ```resource_group_tags``` properties use a simple ```key : value``` structure per line:
 
 ```yaml
 ---
@@ -108,6 +108,9 @@ platforms:
   - name: windows2012-r2
     driver:
       image_urn: MicrosoftWindowsServer:WindowsServer:2012-R2-Datacenter:latest
+      resource_group_tags:
+        project: 'My Cool Project'
+        contact: 'me@somewhere.com'
     transport:
       name: winrm
 suites:
