@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [0.14.6] - 2018-12-11
+- Support tags at Resource Group level, [PR #102](https://github.com/test-kitchen/kitchen-azurerm/pull/102) (@pgryzan-chefio)
+- Pin azure_mgmt_resources to 0.18.0 to avoid issue retrieving IP address of node during kitchen create [#99](https://github.com/test-kitchen/kitchen-azurerm/issues/99) (@stuartpreston)
+
 ## [0.14.5] - 2018-09-30
 - Support Shared Image Gallery (preview Azure feature) (@zanecodes)
 
