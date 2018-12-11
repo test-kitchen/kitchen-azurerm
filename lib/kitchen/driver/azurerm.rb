@@ -34,6 +34,10 @@ module Kitchen
         nil
       end
 
+      default_config(:resource_group_tags) do |_config|
+        {}
+      end
+
       default_config(:image_urn) do |_config|
         "Canonical:UbuntuServer:14.04.3-LTS:latest"
       end
@@ -211,6 +215,7 @@ module Kitchen
         # Create Resource Group
         resource_group = ::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
         resource_group.location = config[:location]
+        resource_group.tags = config[:resource_group_tags]
         begin
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
           resource_management_client.resource_groups.create_or_update(state[:azure_resource_group_name], resource_group)
