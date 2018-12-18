@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.14.7] - 2018-12-18
+- Updating Azure SDK dependencies, [PR #104](https://github.com/test-kitchen/kitchen-azurerm/pull/104) (@stuartpreston)
+
 ## [0.14.6] - 2018-12-11
 - Support tags at Resource Group level, [PR #102](https://github.com/test-kitchen/kitchen-azurerm/pull/102) (@pgryzan-chefio)
 - Pin azure_mgmt_resources to 0.18.0 to avoid issue retrieving IP address of node during kitchen create [#99](https://github.com/test-kitchen/kitchen-azurerm/issues/99) (@stuartpreston)
