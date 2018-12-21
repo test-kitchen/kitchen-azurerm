@@ -479,6 +479,42 @@ Example postdeploy.json to enable MSI extention on VM:
 }
 ```
 
+### .kitchen.yml example 10 - Enabling Managed Service Identities
+
+This example demonstrates how to enable a System Assigned Identity and User Assigned Identities on a Kitchen VM.
+Any combination of System and User assigned identities may be enabled, and multiple User Assigned Identities can be supplied.
+
+See the [Managed identities for Azure resources](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview) documentation for more information on using Managed Service Identities.
+
+```yaml
+---
+driver:
+  name: azurerm
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver:
+      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+      system_assigned_identity: true
+      user_assigned_identities:
+        - /subscriptions/4801fa9d-YOUR-GUID-HERE-b265ff49ce21/resourcegroups/test-kitchen-user/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-kitchen-user
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchentesting::default]
+    attributes:
+```
+
 
 ## Support for Government and Sovereign Clouds (China and Germany)
 
