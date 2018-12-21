@@ -146,6 +146,14 @@ module Kitchen
         false
       end
 
+      default_config(:system_assigned_identity) do |_config|
+        false
+      end
+
+      default_config(:user_assigned_identities) do |_config|
+        []
+      end
+
       default_config(:destroy_explicit_resource_group) do |_config|
         true
       end
@@ -166,6 +174,8 @@ module Kitchen
           adminPassword: state[:password] || "P2ssw0rd",
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           vmName: state[:vm_name],
+          systemAssignedIdentity: config[:system_assigned_identity],
+          userAssignedIdentities: config[:user_assigned_identities],
         }
 
         if config[:subscription_id].to_s == ""

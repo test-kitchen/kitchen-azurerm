@@ -143,6 +143,20 @@
                 "description": "The type of storage to use (e.g. Standard_LRS or Premium_LRS)."
             }
         },
+        "systemAssignedIdentity": {
+            "type": "bool",
+            "defaultValue": false,
+            "metadata": {
+                "description": "Whether to enable system assigned identity for the vm."
+            }
+        },
+        "userAssignedIdentities": {
+            "type": "array",
+            "defaultValue": [],
+            "metadata": {
+                "description": "A list of resource IDs for user identities to associate with the Virtual Machine, or empty to disable user assigned identities."
+            }
+        },
         "bootDiagnosticsEnabled": {
             "type": "string",
             "defaultValue": "true",
@@ -164,6 +178,7 @@
         "vmStorageAccountContainerName": "vhds",
         "vmName": "[parameters('vmName')]",
         "vmSize": "[parameters('vmSize')]",
+        "vmIdentityType": "[if(parameters('systemAssignedIdentity'), if(empty(parameters('userAssignedIdentities')), 'SystemAssigned', 'SystemAssigned, UserAssigned'), if(empty(parameters('userAssignedIdentities')), 'None', 'UserAssigned'))]",
         "virtualNetworkName": "vnet",
         "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
         "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]"
@@ -359,6 +374,10 @@
                     }
                     <%- end -%>
                 }
+            },
+            "identity": {
+                "type": "[variables('vmIdentityType')]",
+                "identityIds": "[if(empty(parameters('userAssignedIdentities')), json('null'), parameters('userAssignedIdentities'))]"
             },
             "tags": {
                 <%= vm_tags unless vm_tags.empty? %>
