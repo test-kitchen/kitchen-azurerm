@@ -193,6 +193,7 @@
                 "accountType": "[variables('storageAccountType')]"
             },
             "tags": {
+                <%= vm_tags unless vm_tags.empty? %>
             }
         },
         <%- end -%>
@@ -210,6 +211,7 @@
                 }
             },
             "tags": {
+                <%= vm_tags unless vm_tags.empty? %>
             }
         },
         <%- end -%>
@@ -242,6 +244,7 @@
                 ]
             },
             "tags": {
+                <%= vm_tags unless vm_tags.empty? %>
             }
         },
         {
