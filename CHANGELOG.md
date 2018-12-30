@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [0.14.8] - 2018-12-30
+- Support [Azure Managed Identities](https://github.com/test-kitchen/kitchen-azurerm#kitchenyml-example-10---enabling-managed-service-identities), [PR #106](https://github.com/test-kitchen/kitchen-azurerm/pull/105) (@zanecodes)
+- Apply vm_tags to all resources in resource group [PR #105](https://github.com/test-kitchen/kitchen-azurerm/pull/105) (@josh-hetland)
+
 ## [0.14.7] - 2018-12-18
 - Updating Azure SDK dependencies, [PR #104](https://github.com/test-kitchen/kitchen-azurerm/pull/104) (@stuartpreston)
 
