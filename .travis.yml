@@ -1,5 +1,15 @@
 language: ruby
-sudo: false
-rvm:
- - 2.4.5
- - 2.5.3
+cache: bundler
+dist: xenial
+
+branches:
+  only:
+  - master
+
+matrix:
+  include:
+    - rvm: 2.4.5
+    - rvm: 2.5.3
+    - rvm: 2.6.0
+  allow_failures:
+  - rvm: ruby-head
