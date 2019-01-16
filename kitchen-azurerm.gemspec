@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "inifile", "~> 3.0", ">= 3.0.0"
   spec.add_dependency "sshkey", "~> 1", ">= 1.0.0"
 
-  spec.add_development_dependency "bundler", "~> 1.7"
+  spec.add_development_dependency "bundler"
   spec.add_development_dependency "rake", ">= 11.0"
   spec.add_development_dependency "chefstyle"
 end
