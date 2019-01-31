@@ -357,7 +357,11 @@ module Kitchen
 
           output = k.ssh_public_key
         else
-          output = File.read("#{private_key_filename}.pub")
+          output = if instance.transport[:ssh_public_key].nil?
+                     File.read("#{private_key_filename}.pub")
+                   else
+                     File.read(instance.transport[:ssh_public_key])
+                   end
         end
         output.strip
       end
