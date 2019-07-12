@@ -186,12 +186,12 @@ module Kitchen
           raise "A subscription_id config value was not detected and kitchen-azurerm cannot continue. Please check your .kitchen.yml configuration. Exiting."
         end
 
-        if config[:nic_name].to_s == ''
+        if config[:nic_name].to_s == ""
           vmnic = "nic-#{config[:vm_name]}"
         else
           vmnic = config[:nic_name]
         end
-        deployment_parameters['nicName'] = vmnic.to_s
+        deployment_parameters["nicName"] = vmnic.to_s
 
         if config[:custom_data].to_s != ""
           deployment_parameters["customData"] = prepared_custom_data
@@ -309,11 +309,13 @@ module Kitchen
       def azure_resource_group_name
         formatted_time = Time.now.utc.strftime "%Y%m%dT%H%M%S"
         return "#{config[:azure_resource_group_prefix]}#{config[:azure_resource_group_name]}-#{formatted_time}#{config[:azure_resource_group_suffix]}" unless config[:explicit_resource_group_name]
+
         config[:explicit_resource_group_name]
       end
 
       def data_disks_for_vm_json
         return nil if config[:data_disks].nil?
+
         disks = []
 
         if config[:use_managed_disks]
@@ -484,6 +486,7 @@ module Kitchen
 
       def destroy(state)
         return if state[:server_id].nil?
+
         options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(state[:subscription_id], state[:azure_environment])
         @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
         if config[:destroy_resource_group_contents] == true
@@ -533,6 +536,7 @@ module Kitchen
 
       def format_data_disks_powershell_script
         return unless config[:format_data_disks]
+
         info "Data disks will be initialized and formatted NTFS automatically." unless config[:data_disks].nil?
         config[:format_data_disks_powershell_script] ||
           <<-PS1
@@ -599,7 +603,7 @@ module Kitchen
               componentName: "Microsoft-Windows-Shell-Setup",
               settingName: "AutoLogon",
               content: "[concat('<AutoLogon><Password><Value>', parameters('adminPassword'), '</Value></Password><Enabled>true</Enabled><LogonCount>1</LogonCount><Username>', parameters('adminUserName'), '</Username></AutoLogon>')]",
-            }
+            },
           ],
         }
       end
@@ -635,6 +639,7 @@ module Kitchen
       def prepared_custom_data
         # If user_data is a file reference, lets read it as such
         return nil if config[:custom_data].nil?
+
         @custom_data ||= begin
           if File.file?(config[:custom_data])
             Base64.strict_encode64(File.read(config[:custom_data]))
