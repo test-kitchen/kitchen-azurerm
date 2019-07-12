@@ -136,6 +136,13 @@
                 "description": "The vm name created inside of the resource group."
             }
         },
+        "nicName": {
+            "type": "string",
+            "defaultValue": "nic",
+            "metadata": {
+                "description": "The nic name created inside of the resource group."
+            }
+        },
         "storageAccountType": {
             "type": "string",
             "defaultValue": "Standard_LRS",
@@ -168,7 +175,7 @@
     "variables": {
         "location": "[parameters('location')]",
         "OSDiskName": "osdisk",
-        "nicName": "nic",
+        "nicName": "[parameters('nicName')]",
         "addressPrefix": "10.0.0.0/16",
         "subnetName": "<%= subnet_id %>",
         "subnetPrefix": "10.0.0.0/24",
@@ -181,12 +188,12 @@
         "vmIdentityType": "[if(parameters('systemAssignedIdentity'), if(empty(parameters('userAssignedIdentities')), 'SystemAssigned', 'SystemAssigned, UserAssigned'), if(empty(parameters('userAssignedIdentities')), 'None', 'UserAssigned'))]",
         "virtualNetworkName": "vnet",
         "vnetID": "<%= vnet_id %>",
-        "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]"     
+        "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]"
     },
     "resources": [
         {
             "apiVersion": "2017-05-10",
-            "name": "pid-18d63047-6cdf-4f34-beed-62f01fc73fc2", 
+            "name": "pid-18d63047-6cdf-4f34-beed-62f01fc73fc2",
             "type": "Microsoft.Resources/deployments",
             "properties": {
                 "mode": "Incremental",
@@ -267,7 +274,7 @@
             "type": "Microsoft.Compute/virtualMachines",
             "name": "[variables('vmName')]",
             "location": "[variables('location')]",
-            "dependsOn": [ 
+            "dependsOn": [
                 <%- unless use_managed_disks -%>
                 <%- if existing_storage_account_blob_url.empty? -%>
                 "[concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAccountName'))]",
@@ -302,7 +309,7 @@
                     <%- end -%>
                     <%- if use_managed_disks -%>
                     "osDisk": {
-                        "name": "osdisk",
+                        "name": "[concat('disk-', parameters('vmName'))]",
                         <%- unless os_disk_size_gb.to_s.empty? -%>
                         "diskSizeGB": "[parameters('osDiskSizeGB')]",
                         <%- end -%>
@@ -310,7 +317,7 @@
                     }
                     <%- else -%>
                     "osDisk": {
-                        "name": "osdisk",
+                        "name": "[concat('disk-', parameters('vmName'))]",
                         <%- unless os_disk_size_gb.to_s.empty? -%>
                         "diskSizeGB": "[parameters('osDiskSizeGB')]",
                         <%- end -%>
@@ -336,7 +343,7 @@
                     }
                     <%- end -%>
                     <%- unless data_disks_for_vm_json.nil? -%>
-                      ,"dataDisks": 
+                      ,"dataDisks":
                           <%= data_disks_for_vm_json %>
                     <%- end -%>
                 },

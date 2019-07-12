@@ -74,6 +74,10 @@ module Kitchen
         "vm"
       end
 
+      default_config(:nic_name) do |_config|
+        ""
+      end
+
       default_config(:vnet_id) do |_config|
         ""
       end
@@ -182,6 +186,13 @@ module Kitchen
           raise "A subscription_id config value was not detected and kitchen-azurerm cannot continue. Please check your .kitchen.yml configuration. Exiting."
         end
 
+        if config[:nic_name].to_s == ''
+          vmnic = "nic-#{config[:vm_name]}"
+        else
+          vmnic = config[:nic_name]
+        end
+        deployment_parameters['nicName'] = vmnic.to_s
+
         if config[:custom_data].to_s != ""
           deployment_parameters["customData"] = prepared_custom_data
         end
@@ -274,7 +285,7 @@ module Kitchen
         else
           # Retrieve the internal IP from the resource group:
           network_interfaces = ::Azure::Network::Profiles::Latest::Mgmt::NetworkInterfaces.new(network_management_client)
-          result = network_interfaces.get(state[:azure_resource_group_name], "nic")
+          result = network_interfaces.get(state[:azure_resource_group_name], vmnic.to_s)
           info "IP Address is: #{result.ip_configurations[0].private_ipaddress}"
           state[:hostname] = result.ip_configurations[0].private_ipaddress
         end
