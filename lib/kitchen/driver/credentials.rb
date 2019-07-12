@@ -6,7 +6,7 @@ module Kitchen
     # Credentials
     #
     class Credentials
-      CONFIG_PATH = "#{ENV[\"HOME\"]}/.azure/credentials".freeze
+      CONFIG_PATH = "#{ENV['HOME']}/.azure/credentials".freeze
 
       #
       # Creates and initializes a new instance of the Credentials class.
