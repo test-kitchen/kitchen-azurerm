@@ -91,7 +91,7 @@ Where <n> is the number of threads to create. Note that any failure (e.g. an Azu
 
 ### .kitchen.yml example 2 - Windows
 
-Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2012 R2 instance, using WinRM as the transport. The resource created in Azure will enable itself for remote access at deployment time (it does this by customizing the machine at provisioning time) and tags the Azure Resource Group with metadata using the ```resource_group_tags``` property. Notice that the ```vm_tags``` and ```resource_group_tags``` properties use a simple ```key : value``` structure per line:
+Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2019 [smalldisk] instance, using WinRM as the transport. An [ephemeral os disk](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/ephemeral-os-disks) is used. The resource created in Azure will enable itself for remote access at deployment time (it does this by customizing the machine at provisioning time) and tags the Azure Resource Group with metadata using the ```resource_group_tags``` property. Notice that the ```vm_tags``` and ```resource_group_tags``` properties use a simple ```key : value``` structure per line:
 
 ```yaml
 ---
@@ -99,15 +99,16 @@ driver:
   name: azurerm
   subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
   location: 'West Europe'
-  machine_size: 'Standard_D1'
+  machine_size: 'Standard_DS2_v2'
 
 provisioner:
   name: chef_zero
 
 platforms:
-  - name: windows2012-r2
+  - name: windows2019
     driver:
-      image_urn: MicrosoftWindowsServer:WindowsServer:2012-R2-Datacenter:latest
+      image_urn: MicrosoftWindowsServer:WindowsServer:2019-Datacenter-smalldisk:latest
+      use_ephemeral_osdisk: true
       resource_group_tags:
         project: 'My Cool Project'
         contact: 'me@somewhere.com'
@@ -601,6 +602,8 @@ info:    vm image list command OK
 - The ```azure_resource_group_prefix``` and ```azure_resource_group_suffix``` can be used to further disambiguate Azure resource group names created by the driver.
 - The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group.  Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
 - The ```destroy_resource_group_contents``` (default: "false") parameter can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase.
+- The ```use_ephemeral_osdisk``` (default: false) parameter can be used if you wish to use [ephemeral OS disk functionality](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/ephemeral-os-disks).
+
 ```
 ---
 driver:

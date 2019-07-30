@@ -50,6 +50,10 @@ module Kitchen
         ""
       end
 
+      default_config(:use_ephemeral_osdisk) do |_config|
+        false
+      end
+
       default_config(:os_disk_size_gb) do |_config|
         ""
       end
@@ -160,6 +164,10 @@ module Kitchen
 
       default_config(:destroy_resource_group_contents) do |_config|
         false
+      end
+
+      default_config(:deployment_sleep) do |_config|
+        10
       end
 
       def create(state)
@@ -434,7 +442,7 @@ module Kitchen
         end_provisioning_state_reached = false
         until end_provisioning_state_reached
           list_outstanding_deployment_operations(resource_group, deployment_name)
-          sleep 10
+          sleep config[:deployment_sleep]
           deployment_provisioning_state = deployment_state(resource_group, deployment_name)
           end_provisioning_state_reached = end_provisioning_states.split(",").include?(deployment_provisioning_state)
         end
@@ -595,10 +603,10 @@ module Kitchen
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ""
-          virtual_machine_deployment_template_file("public.erb", vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json)
+          virtual_machine_deployment_template_file("public.erb", vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json, use_ephemeral_osdisk: config[:use_ephemeral_osdisk])
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_file("internal.erb", vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json)
+          virtual_machine_deployment_template_file("internal.erb", vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json, use_ephemeral_osdisk: config[:use_ephemeral_osdisk])
         end
       end
 
