@@ -16,7 +16,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "azure_mgmt_network", "~> 0.18", ">= 0.18.2"
   spec.add_dependency "azure_mgmt_resources", "~> 0.17", ">= 0.17.2"
   spec.add_dependency "inifile", "~> 3.0", ">= 3.0.0"
-  spec.add_dependency "sshkey", "~> 1", ">= 1.0.0"
+  spec.add_dependency "sshkey", ">= 1.0.0", "< 3"
 
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "rake", ">= 11.0"
