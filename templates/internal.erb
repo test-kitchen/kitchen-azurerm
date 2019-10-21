@@ -48,6 +48,26 @@
             }
         },
         <%- end -%>
+        <%- unless secretUrl.empty? && vaultName.empty? && vaultResourceGroup.empty? -%>
+        "secretUrl": {
+            "type": "string",
+            "metadata": {
+                "description": "Secret vault certificate URL"
+            }
+        },
+        "vaultName" : {
+            "type": "string",
+            "metadata": {
+                "description": "Name of key vault where certificate is located."
+            }
+        },
+        "vaultResourceGroup": {
+            "type": "string",
+            "metadata": {
+                "description": "Resource group name where key vault is located."
+            }
+        },
+        <%- end -%>
         <%- unless custom_data.empty? -%>
         "customData": {
             "type": "string",
@@ -283,6 +303,19 @@
                     "computername": "[variables('vmName')]",
                     <%- unless custom_data.empty? -%>
                     "customData": "[parameters('customData')]",
+                    <%- end -%>
+                    <%- unless secretUrl.empty? && vaultName.empty? && vaultResourceGroup.empty? -%>
+                    "secret": [
+                        "sourceVault": {
+                            "id": "[resourceId(parameters('vaultResourceGroup'), 'Microsoft,KeyVault/vaults', parameters('vaultName'))]"
+                        },
+                        "vaultCertificates": [
+                            {
+                                "certificateUrl": "[parameters('secretUrl')]",
+                                "certificateStore": "My"
+                            }
+                        ]
+                    ],
                     <%- end -%>
                     "adminUsername": "[parameters('adminUsername')]",
                     "adminPassword": "[parameters('adminPassword')]"

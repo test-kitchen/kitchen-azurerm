@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.14.10] - 2019-10-21
+- Support for deploying VM with key vault certificate [PR #113](https://github.com/test-kitchen/kitchen-azurerm/pull/113) (@javgallegos)
+
 ## [0.14.9] - 2019-07-30
 - Support [Ephemeral OS Disk](https://azure.microsoft.com/en-us/updates/azure-ephemeral-os-disk-now-generally-available/),  (@stuartpreston)
 

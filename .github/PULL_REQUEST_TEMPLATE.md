@@ -1,11 +1,10 @@
 ### Description
 
-[Please describe what this change achieves]
+Adds the ability to specify a certificate stored in Azure KeyVault and add to an Azure VM.
 
 ### Issues Resolved
 
-[List any existing issues this PR resolves, or any Discourse or
-StackOverflow discussions that are relevant]
+- http://blog.baowebdev.com/2016/07/installing-a-certificate-from-azure-keyvault-into-an-azure-vm/
 
 ### Check List
 
