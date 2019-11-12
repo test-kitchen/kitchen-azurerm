@@ -516,6 +516,36 @@ suites:
     attributes:
 ```
 
+### .kitchen.yml example 11 - deploy VM with key vault certificate
+
+This following example introduces ```secret_url```, ```vault_name```, and ```vault_resource_group``` properties under "driver" in the configuration file. You can use this capability to create a VM with a specified key vault certificate.
+
+```yaml
+---
+driver:
+  name: azurerm
+  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  location: 'CentralUS'
+  machine_size: 'Standard_D2s_v3'
+  secret_url: 'https://YOUR-SECRET-PATH'
+  vault_name: 'YOUR-VAULT-NAME'
+  vault_group_name: 'YOUR-VAULT-GROUP-NAME'
+transport:
+  name: winrm
+  elevated: true
+provisioner:
+  name: chef_zero
+platforms:
+  - name: win2012R2-sql2016
+    driver:
+      image_urn: MicrosoftSQLServer:SQL2016SP2-WS2012R2:SQLDEV:latest
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchentesting::default]
+    attributes:
+```
 
 ## Support for Government and Sovereign Clouds (China and Germany)
 
@@ -603,6 +633,7 @@ info:    vm image list command OK
 - The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group.  Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
 - The ```destroy_resource_group_contents``` (default: "false") parameter can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase.
 - The ```use_ephemeral_osdisk``` (default: false) parameter can be used if you wish to use [ephemeral OS disk functionality](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/ephemeral-os-disks).
+- The ```secret_url```, ```vault_name```, and ```vault_resource_group``` parameters can be used to deploy VM with specified key vault certificate.
 
 ```
 ---

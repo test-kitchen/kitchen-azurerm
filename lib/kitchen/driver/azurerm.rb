@@ -170,6 +170,18 @@ module Kitchen
         10
       end
 
+      default_config(:secret_url) do |_config|
+        ""
+      end
+
+      default_config(:vault_name) do |_config|
+        ""
+      end
+
+      default_config(:vault_resource_group) do |_config|
+        ""
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
@@ -184,6 +196,9 @@ module Kitchen
           vmName: state[:vm_name],
           systemAssignedIdentity: config[:system_assigned_identity],
           userAssignedIdentities: config[:user_assigned_identities],
+          secretUrl: config[:secret_url],
+          vaultName: config[:vault_name],
+          vaultResourceGroup: config[:vault_resource_group],
         }
 
         if config[:subscription_id].to_s == ""
