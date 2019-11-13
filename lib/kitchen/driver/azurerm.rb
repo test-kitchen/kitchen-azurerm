@@ -186,6 +186,10 @@ module Kitchen
         ""
       end
 
+      default_config(:subscription_id) do |_config|
+        ENV['AZURE_SUBSCRIPTION_ID']
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
