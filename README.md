@@ -83,11 +83,12 @@ suites:
 ```
 
 ### Concurrent execution
+
 Concurrent execution of create/converge/destroy is supported via the --concurrency parameter. Each machine is created in it's own Azure Resource Group so has no shared lifecycle with the other machines in the test run. To take advantage of parallel execution use the following command:
 
 ```kitchen test --concurrency <n>```
 
-Where <n> is the number of threads to create. Note that any failure (e.g. an AzureOperationError) will cause the whole test to fail, though resources already in creation will continue to be created.
+Where n is the number of threads to create. Note that any failure (e.g. an AzureOperationError) will cause the whole test to fail, though resources already in creation will continue to be created.
 
 ### .kitchen.yml example 2 - Windows
 
@@ -137,7 +138,7 @@ driver:
   location: 'West Europe'
   machine_size: 'Standard_D1'
   pre_deployment_template: predeploy.json
-  pre_deployment_parameters: 
+  pre_deployment_parameters:
     test_parameter: 'This is a test.'
 
 transport:
@@ -171,7 +172,7 @@ Example predeploy.json:
       }
   },
   "variables": {
-      
+
   },
   "resources": [
       {
@@ -201,7 +202,6 @@ The following example introduces the ```vnet_id``` and ```subnet_id``` propertie
 You can use this capability to create the VM on an existing virtual network and subnet created in a different resource group.
 
 In this case, the public IP address is not used unless ```public_ip``` is set to ```true```
-
 
 ```yaml
 ---
@@ -233,7 +233,7 @@ suites:
 
 ### .kitchen.yml example 5 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Managed Image
 
-This example is the same as above, but uses a private managed image to provision the vm. 
+This example is the same as above, but uses a private managed image to provision the vm.
 
 Note: The image must be available first. On deletion the disk and everything is removed.
 
@@ -258,7 +258,6 @@ platforms:
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
       use_managed_disk: true
-      
 
 suites:
   - name: default
@@ -269,16 +268,15 @@ suites:
 
 ### .kitchen.yml example 6 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image
 
-This example a classic Custom VM Image (aka a VHD file) is used. As the Image VHD must be in the same storage account then the disk of the instance, the os disk is created in an existing image account. 
+This example a classic Custom VM Image (aka a VHD file) is used. As the Image VHD must be in the same storage account then the disk of the instance, the os disk is created in an existing image account.
 
 Note: When the resource group ís deleted, the os disk is left in the extsing storage account blob. You must cleanup manually.
 
-This example will: 
+This example will:
 
-* use the customized image https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd (can be built with packer)
-* set the disk url of the vm to https://yourstorageaccount.blob.core.windows.net/vhds/osdisk-kitchen-XXXXX.vhd
+* use the customized image <https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd> (can be built with packer)
+* set the disk url of the vm to <https://yourstorageaccount.blob.core.windows.net/vhds/osdisk-kitchen-XXXXX.vhd>
 * set the os type to linux
-
 
 ```yaml
 ---
@@ -316,7 +314,6 @@ suites:
 This is the same as above, but uses custom data to customize the instance.
 
 Note: Custom data can be custom data or a file to custom data. Please also note that if you use winrm communication to non-nano windows servers custom data is not supported, as winrm is enabled via custom data.
-
 
 ```yaml
 ---
@@ -357,7 +354,7 @@ suites:
     attributes:
 ```
 
-### .kitchen.yml example 8 - Windows 2016 VM with additional data disks:
+### .kitchen.yml example 8 - Windows 2016 VM with additional data disks
 
 This example demonstrates how to add 3 additional Managed data disks to a Windows Server 2016 VM. Not supported with legacy (pre-managed disk) storage accounts.
 
@@ -410,7 +407,7 @@ driver:
   location: 'West Europe'
   machine_size: 'Standard_D1'
   post_deployment_template: postdeploy.json
-  post_deployment_parameters: 
+  post_deployment_parameters:
     test_parameter: 'This is a test.'
 
 transport:
@@ -585,6 +582,7 @@ suites:
 ```
 
 ### How to retrieve the image_urn
+
 You can use the azure (azure-cli) command line tools to interrogate for the Urn. All 4 parts of the Urn must be specified, though the last part can be changed to "latest" to indicate you always wish to provision the latest operating system and patches.
 
 ```$ azure vm image list "West Europe" Canonical UbuntuServer```
@@ -592,7 +590,7 @@ You can use the azure (azure-cli) command line tools to interrogate for the Urn.
 This will return a list like the following, from which you can derive the Urn.
 *this list has been shortened for readability*
 
-```
+```bash
 data:    Publisher  Offer         Sku                Version          Location    Urn
 data:    ---------  ------------  -----------------  ---------------  ----------  --------------------------------------------------------
 data:    Canonical  UbuntuServer  12.04.5-LTS        12.04.201507301  westeurope  Canonical:UbuntuServer:12.04.5-LTS:12.04.201507301
@@ -618,24 +616,35 @@ data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509220  westeurope
 info:    vm image list command OK
 ```
 
-### Additional parameters that can be specified:
-- Note that the ```driver``` section also takes a ```username``` and ```password``` parameter, the defaults if these are not specified are "azure" and "P2ssw0rd" respectively.
-- The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
-- The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
-- The optional ```vm_tags``` parameter allows you to define key:value pairs to tag VMs with on creation.
-- Managed disks are now enabled by default, to use the Storage account set ```use_managed_disks``` (default: true).
-- The ```image_url``` (unmanaged disks only) parameter can be used to specify a custom vhd (This VHD must be in the same storage account as the disks of the VM, therefore ```existing_storage_account_blob_url``` must also be set and ```use_managed_disks``` must be set to false)
-- The ```image_id``` (managed disks only) parameter can be used to specify an image by id (managed disk). This works only with managed disks.
-- The ```existing_storage_account_blob_url``` can be specified to specify an url to an existing storage account (needed for ```image_url```)
-- The ```custom_data``` parameter can be used to specify custom data to provide to the instance. This can be a file or the data itself. This module handles base64 encoding for you.
-- The ```os_disk_size_gb``` parameter can be used to specify a custom os disk size.
-- The ```azure_resource_group_prefix``` and ```azure_resource_group_suffix``` can be used to further disambiguate Azure resource group names created by the driver.
-- The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group.  Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
-- The ```destroy_resource_group_contents``` (default: "false") parameter can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase.
-- The ```use_ephemeral_osdisk``` (default: false) parameter can be used if you wish to use [ephemeral OS disk functionality](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/ephemeral-os-disks).
-- The ```secret_url```, ```vault_name```, and ```vault_resource_group``` parameters can be used to deploy VM with specified key vault certificate.
+### Additional parameters that can be specified
 
-```
+* Note that the ```driver``` section also takes a ```username``` and ```password``` parameter, the defaults if these are not specified are "azure" and "P2ssw0rd" respectively.
+
+* The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
+
+* The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
+
+* The optional ```vm_tags``` parameter allows you to define key:value pairs to tag VMs with on creation.
+
+* Managed disks are now enabled by default, to use the Storage account set ```use_managed_disks``` (default: true).
+
+* The ```image_url``` (unmanaged disks only) parameter can be used to specify a custom vhd (This VHD must be in the same storage account as the disks of the VM, therefore ```existing_storage_account_blob_url``` must also be set and ```use_managed_disks``` must be set to false)
+
+* The ```image_id``` (managed disks only) parameter can be used to specify an image by id (managed disk). This works only with managed disks.
+
+* The ```existing_storage_account_blob_url``` can be specified to specify an url to an existing storage account (needed for ```image_url```)
+
+* The ```custom_data``` parameter can be used to specify custom data to provide to the instance. This can be a file or the data itself. This module handles base64 encoding for you.
+
+* The ```os_disk_size_gb``` parameter can be used to specify a custom os disk size.
+
+* The ```azure_resource_group_prefix``` and ```azure_resource_group_suffix``` can be used to further disambiguate Azure resource group names created by the driver.
+
+* The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group.  Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
+
+* The ```destroy_resource_group_contents``` (default: "false") parameter can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase.
+
+```yaml
 ---
 driver:
   explicit_resource_group_name: stuart-rg-demo-001
@@ -643,11 +652,33 @@ driver:
   destroy_resource_group_contents: true
 ```
 
+* The ```use_ephemeral_osdisk``` (default: false) parameter can be used if you wish to use [ephemeral OS disk functionality](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/ephemeral-os-disks).
+
+* The ```secret_url```, ```vault_name```, and ```vault_resource_group``` parameters can be used to deploy VM with specified key vault certificate.
+
+## Enabling alternative WinRM configurations
+
+* By default on Windows machines, a PowerShell script runs that enables WinRM over the SSL transport, for Basic, Negotiate and CredSSP connections. To supply your own PowerShell script (e.g. to enable HTTP), use the `winrm_powershell_script` parameter. Windows 2008 R2 example:
+
+```yaml
+platforms:
+  - name: windows2008-r2
+    driver_config:
+      image_urn: MicrosoftWindowsServer:WindowsServer:2008-R2-SP1:latest
+      winrm_powershell_script: |-
+        winrm quickconfig -q
+        winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="512"}'
+        winrm set winrm/config '@{MaxTimeoutms="1800000"}'
+        winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+        winrm set winrm/config/service/auth '@{Basic="true"}'
+
+```
+
 ## Contributing
 
 Contributions to the project are welcome via submitting Pull Requests.
 
-1. Fork it ( https://github.com/test-kitchen/kitchen-azurerm/fork )
+1. Fork it ( <https://github.com/test-kitchen/kitchen-azurerm/fork> )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
