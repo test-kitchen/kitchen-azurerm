@@ -48,7 +48,6 @@
             }
         },
         <%- end -%>
-        <%- unless secretUrl.empty? && vaultName.empty? && vaultResourceGroup.empty? -%>
         "secretUrl": {
             "type": "string",
             "metadata": {
@@ -67,7 +66,6 @@
                 "description": "Resource group name where key vault is located."
             }
         },
-        <%- end -%>
         <%- unless custom_data.empty? -%>
         "customData": {
             "type": "string",
@@ -311,7 +309,7 @@
                     <%- unless custom_data.empty? -%>
                     "customData": "[parameters('customData')]",
                     <%- end -%>
-                    <%- unless secretUrl.empty? && vaultName.empty? && vaultResourceGroup.empty? -%>
+                    <%- unless secretUrl.to_s.empty? && vaultName.to_s.empty? && vaultResourceGroup.to_s.empty? -%>
                     "secret": [
                         "sourceVault": {
                             "id": "[resourceId(parameters('vaultResourceGroup'), 'Microsoft,KeyVault/vaults', parameters('vaultName'))]"
