@@ -1,5 +1,11 @@
 # kitchen-azurerm Changelog
 
+## [0.15.0] - 2019-11-29
+- Enable WinRM HTTP listener by default [PR #121](https://github.com/test-kitchen/kitchen-azurerm/pull/121) (@sean-nixon)
+- Default subscription_id to AZURE_SUBSCRIPTION_ID environment variable if not supplied[df79c787fa299cb6eff4a2fd7807fe28ce2bc725](https://github.com/test-kitchen/kitchen-azurerm/commit/df79c787fa299cb6eff4a2fd7807fe28ce2bc725) (@stuartpreston)
+- Allow nic name to be passed in as a parameter [PR #112](https://github.com/test-kitchen/kitchen-azurerm/pull/112) (@libertymutual)
+- Support for creating VM with Azure KeyVault certificate [PR #120](https://github.com/test-kitchen/kitchen-azurerm/pull/120) (@javgallegos)
+
 ## [0.14.9] - 2019-07-30
 - Support [Ephemeral OS Disk](https://azure.microsoft.com/en-us/updates/azure-ephemeral-os-disk-now-generally-available/),  (@stuartpreston)
 
