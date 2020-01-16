@@ -618,7 +618,7 @@ info:    vm image list command OK
 
 ### Additional parameters that can be specified
 
-* Note that the ```driver``` section also takes a ```username``` and ```password``` parameter, the defaults if these are not specified are "azure" and "P2ssw0rd" respectively.
+* Note that the ```driver``` section can also takes a ```username``` and ```password```. The default username is "azure" and the password is a randomly generated 12 character password that can be found in your local kitchen state file (typically .kitchen/<instance-name>.yml) if you require it for any reason.
 
 * The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
 

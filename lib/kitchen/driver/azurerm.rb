@@ -71,7 +71,7 @@ module Kitchen
       end
 
       default_config(:password) do |_config|
-        "P2ssw0rd"
+        SecureRandom.base64(12)
       end
 
       default_config(:vm_name) do |_config|
@@ -199,7 +199,7 @@ module Kitchen
           bootDiagnosticsEnabled: config[:boot_diagnostics_enabled],
           newStorageAccountName: "storage#{state[:uuid]}",
           adminUsername: state[:username],
-          adminPassword: state[:password] || "P2ssw0rd",
+          adminPassword: state[:password],
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           vmName: state[:vm_name],
           systemAssignedIdentity: config[:system_assigned_identity],
