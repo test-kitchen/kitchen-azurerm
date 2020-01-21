@@ -9,6 +9,7 @@ require "fileutils"
 require "erb"
 require "ostruct"
 require "json"
+require "faraday"
 
 module Kitchen
   module Driver
@@ -17,6 +18,7 @@ module Kitchen
     #
     class Azurerm < Kitchen::Driver::Base
       attr_accessor :resource_management_client
+      attr_accessor :network_management_client
 
       default_config(:azure_resource_group_prefix) do |_config|
         "kitchen-"
@@ -190,6 +192,10 @@ module Kitchen
         ENV["AZURE_SUBSCRIPTION_ID"]
       end
 
+      default_config(:azure_api_retries) do |_config|
+        5
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
@@ -266,7 +272,7 @@ module Kitchen
         resource_group.tags = config[:resource_group_tags]
         begin
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
-          resource_management_client.resource_groups.create_or_update(state[:azure_resource_group_name], resource_group)
+          create_resource_group(state[:azure_resource_group_name], resource_group)
         rescue ::MsRestAzure::AzureOperationError => operation_error
           error operation_error.body
           raise operation_error
@@ -277,17 +283,17 @@ module Kitchen
           if File.file?(config[:pre_deployment_template])
             pre_deployment_name = "pre-deploy-#{state[:uuid]}"
             info "Creating deployment: #{pre_deployment_name}"
-            resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], pre_deployment_name, pre_deployment(config[:pre_deployment_template], config[:pre_deployment_parameters])).value!
+            create_deployment_async(state[:azure_resource_group_name], pre_deployment_name, pre_deployment(config[:pre_deployment_template], config[:pre_deployment_parameters])).value!
             follow_deployment_until_end_state(state[:azure_resource_group_name], pre_deployment_name)
           end
           deployment_name = "deploy-#{state[:uuid]}"
           info "Creating deployment: #{deployment_name}"
-          resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
+          create_deployment_async(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
           follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
           if File.file?(config[:post_deployment_template])
             post_deployment_name = "post-deploy-#{state[:uuid]}"
             info "Creating deployment: #{post_deployment_name}"
-            resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], post_deployment_name, post_deployment(config[:post_deployment_template], config[:post_deployment_parameters])).value!
+            create_deployment_async(state[:azure_resource_group_name], post_deployment_name, post_deployment(config[:post_deployment_template], config[:post_deployment_parameters])).value!
             follow_deployment_until_end_state(state[:azure_resource_group_name], post_deployment_name)
           end
         rescue ::MsRestAzure::AzureOperationError => operation_error
@@ -302,17 +308,16 @@ module Kitchen
           end
         end
 
-        network_management_client = ::Azure::Network::Profiles::Latest::Mgmt::Client.new(options)
+        @network_management_client = ::Azure::Network::Profiles::Latest::Mgmt::Client.new(options)
 
         if config[:vnet_id] == "" || config[:public_ip]
           # Retrieve the public IP from the resource group:
-          result = network_management_client.public_ipaddresses.get(state[:azure_resource_group_name], "publicip")
+          result = get_public_ip(state[:azure_resource_group_name], "publicip")
           info "IP Address is: #{result.ip_address} [#{result.dns_settings.fqdn}]"
           state[:hostname] = result.ip_address
         else
           # Retrieve the internal IP from the resource group:
-          network_interfaces = ::Azure::Network::Profiles::Latest::Mgmt::NetworkInterfaces.new(network_management_client)
-          result = network_interfaces.get(state[:azure_resource_group_name], vmnic.to_s)
+          result = get_network_interface(state[:azure_resource_group_name], vmnic.to_s)
           info "IP Address is: #{result.ip_configurations[0].private_ipaddress}"
           state[:hostname] = result.ip_configurations[0].private_ipaddress
         end
@@ -475,7 +480,7 @@ module Kitchen
         until end_provisioning_state_reached
           list_outstanding_deployment_operations(resource_group, deployment_name)
           sleep config[:deployment_sleep]
-          deployment_provisioning_state = deployment_state(resource_group, deployment_name)
+          deployment_provisioning_state = get_deployment_state(resource_group, deployment_name)
           end_provisioning_state_reached = end_provisioning_states.split(",").include?(deployment_provisioning_state)
         end
         info "Resource Template deployment reached end state of '#{deployment_provisioning_state}'."
@@ -483,7 +488,7 @@ module Kitchen
       end
 
       def show_failed_operations(resource_group, deployment_name)
-        failed_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name)
+        failed_operations = list_deployment_operations(resource_group, deployment_name)
         failed_operations.each do |val|
           resource_code = val.properties.status_code
           raise val.properties.status_message.inspect.to_s if resource_code != "OK"
@@ -492,7 +497,7 @@ module Kitchen
 
       def list_outstanding_deployment_operations(resource_group, deployment_name)
         end_operation_states = "Failed,Succeeded"
-        deployment_operations = resource_management_client.deployment_operations.list(resource_group, deployment_name)
+        deployment_operations = list_deployment_operations(resource_group, deployment_name)
         deployment_operations.each do |val|
           resource_provisioning_state = val.properties.provisioning_state
           unless val.properties.target_resource.nil?
@@ -506,11 +511,6 @@ module Kitchen
         end
       end
 
-      def deployment_state(resource_group, deployment_name)
-        deployments = resource_management_client.deployments.get(resource_group, deployment_name)
-        deployments.properties.provisioning_state
-      end
-
       def destroy(state)
         return if state[:server_id].nil?
 
@@ -521,7 +521,7 @@ module Kitchen
           empty_deployment_name = "empty-deploy-#{state[:uuid]}"
           begin
             info "Creating deployment: #{empty_deployment_name}"
-            resource_management_client.deployments.begin_create_or_update_async(state[:azure_resource_group_name], empty_deployment_name, empty_deployment).value!
+            create_deployment_async(state[:azure_resource_group_name], empty_deployment_name, empty_deployment).value!
             follow_deployment_until_end_state(state[:azure_resource_group_name], empty_deployment_name)
           rescue ::MsRestAzure::AzureOperationError => operation_error
             error operation_error.body
@@ -536,7 +536,7 @@ module Kitchen
         info "Azure environment: #{state[:azure_environment]}"
         begin
           info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
-          resource_management_client.resource_groups.begin_delete(state[:azure_resource_group_name])
+          delete_resource_group_async(state[:azure_resource_group_name])
           info "Destroy operation accepted and will continue in the background."
         rescue ::MsRestAzure::AzureOperationError => operation_error
           error operation_error.body
@@ -675,6 +675,118 @@ module Kitchen
             Base64.strict_encode64(config[:custom_data])
           end
         end
+      end
+
+      private
+
+      #
+      # Wrapper methods for the Azure API calls to retry the calls when getting timeouts.
+      #
+
+      def create_resource_group(resource_group_name, resource_group)
+        retries = config[:azure_api_retries]
+        begin
+          resource_management_client.resource_groups.create_or_update(resource_group_name, resource_group)
+        rescue Faraday::TimeoutError, Faraday::ClientError => exception
+          send_exception_message(exception, "while creating resource group '#{resource_group_name}'. #{retries} retries left.")
+          raise if retries == 0
+
+          retries -= 1
+          retry
+        end
+      end
+
+      def create_deployment_async(resource_group, deployment_name, deployment)
+        retries = config[:azure_api_retries]
+        begin
+          resource_management_client.deployments.begin_create_or_update_async(resource_group, deployment_name, deployment)
+        rescue Faraday::TimeoutError, Faraday::ClientError => exception
+          send_exception_message(exception, "while sending deployment creation request for deployment '#{deployment_name}'. #{retries} retries left.")
+          raise if retries == 0
+
+          retries -= 1
+          retry
+        end
+      end
+
+      def get_public_ip(resource_group_name, public_ip_name)
+        retries = config[:azure_api_retries]
+        begin
+          network_management_client.public_ipaddresses.get(resource_group_name, public_ip_name)
+        rescue Faraday::TimeoutError, Faraday::ClientError => exception
+          send_exception_message(exception, "while fetching public ip '#{public_ip_name}' for resource group '#{resource_group_name}'. #{retries} retries left.")
+          raise if retries == 0
+
+          retries -= 1
+          retry
+        end
+      end
+
+      def get_network_interface(resource_group_name, network_interface_name)
+        retries = config[:azure_api_retries]
+        begin
+          network_interfaces = ::Azure::Network::Profiles::Latest::Mgmt::NetworkInterfaces.new(network_management_client)
+          network_interfaces.get(resource_group_name, network_interface_name)
+        rescue Faraday::TimeoutError, Faraday::ClientError => exception
+          send_exception_message(exception, "while fetching network interface '#{network_interface_name}' for resource group '#{resource_group_name}'. #{retries} retries left.")
+          raise if retries == 0
+
+          retries -= 1
+          retry
+        end
+      end
+
+      def list_deployment_operations(resource_group, deployment_name)
+        retries = config[:azure_api_retries]
+        begin
+          resource_management_client.deployment_operations.list(resource_group, deployment_name)
+        rescue Faraday::TimeoutError, Faraday::ClientError => exception
+          send_exception_message(exception, "while listing deployment operations for deployment '#{deployment_name}'. #{retries} retries left.")
+          raise if retries == 0
+
+          retries -= 1
+          retry
+        end
+      end
+
+      def get_deployment_state(resource_group, deployment_name)
+        retries = config[:azure_api_retries]
+        begin
+          deployments = resource_management_client.deployments.get(resource_group, deployment_name)
+          deployments.properties.provisioning_state
+        rescue Faraday::TimeoutError, Faraday::ClientError => exception
+          send_exception_message(exception, "while retrieving state for deployment '#{deployment_name}'. #{retries} retries left.")
+          raise if retries == 0
+
+          retries -= 1
+          retry
+        end
+      end
+
+      def delete_resource_group_async(resource_group_name)
+        retries = config[:azure_api_retries]
+        begin
+          resource_management_client.resource_groups.begin_delete(resource_group_name)
+        rescue Faraday::TimeoutError, Faraday::ClientError => exception
+          send_exception_message(exception, "while sending resource group deletion request for '#{resource_group_name}'. #{retries} retries left.")
+          raise if retries == 0
+
+          retries -= 1
+          retry
+        end
+      end
+
+      def send_exception_message(exception, message)
+        if exception.is_a?(Faraday::TimeoutError)
+          header = "Timed out"
+        elsif exception.is_a?(Faraday::ClientError)
+          header = "Connection reset by peer"
+        else
+          # Unhandled exception, return early
+          info "Unrecognized exception type."
+          return
+        end
+        info "#{header} #{message}"
       end
     end
   end
