@@ -26,12 +26,14 @@
                 "description": "User name for the Virtual Machine."
             }
         },
+        <%- if ssh_key.nil? -%>
         "adminPassword": {
             "type": "securestring",
             "metadata": {
                 "description": "Password for the Virtual Machine."
             }
         },
+        <%- end -%>
         "dnsNameForPublicIP": {
             "type": "string",
             "metadata": {
@@ -341,8 +343,10 @@
                         ]
                     ],
                     <%- end -%>
-                    "adminUsername": "[parameters('adminUsername')]",
-                    "adminPassword": "[parameters('adminPassword')]"
+                    <%- if ssh_key.nil? -%>
+                    "adminPassword": "[parameters('adminPassword')]",
+                    <%- end -%>
+                    "adminUsername": "[parameters('adminUsername')]"
                 },
                 "storageProfile": {
                     <%- if image_url.empty? and image_id.empty? -%>
