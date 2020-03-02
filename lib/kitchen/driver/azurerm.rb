@@ -264,7 +264,8 @@ module Kitchen
           deployment_parameters["imageVersion"] = image_version
         end
 
-        options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(config[:subscription_id], config[:azure_environment])
+        options = Kitchen::Driver::Credentials.new(subscription_id: config[:subscription_id],
+                                                   azure_environment: config[:azure_environment]).azure_options
 
         debug "Azure environment: #{config[:azure_environment]}"
         @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
@@ -517,7 +518,8 @@ module Kitchen
       def destroy(state)
         return if state[:server_id].nil?
 
-        options = Kitchen::Driver::Credentials.new.azure_options_for_subscription(state[:subscription_id], state[:azure_environment])
+        options = Kitchen::Driver::Credentials.new(subscription_id: state[:subscription_id],
+                                                   azure_environment: state[:azure_environment]).azure_options
         @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
         if config[:destroy_resource_group_contents] == true
           info "Destroying individual resources within the Resource Group."
