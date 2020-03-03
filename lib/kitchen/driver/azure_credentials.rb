@@ -3,9 +3,9 @@ require "inifile"
 module Kitchen
   module Driver
     #
-    # Credentials
+    # AzureCredentials
     #
-    class Credentials
+    class AzureCredentials
       CONFIG_PATH = "#{ENV["HOME"]}/.azure/credentials".freeze
 
       #
@@ -16,14 +16,14 @@ module Kitchen
       #
       # @return [String]
       #
-      attr_reader :azure_environment
+      attr_reader :environment
 
       #
       # Creates and initializes a new instance of the Credentials class.
       #
-      def initialize(subscription_id:, azure_environment: "Azure")
+      def initialize(subscription_id:, environment: "Azure")
         @subscription_id = subscription_id
-        @azure_environment = azure_environment
+        @environment = environment
         config_file = ENV["AZURE_CONFIG_FILE"] || File.expand_path(CONFIG_PATH)
         if File.file?(config_file)
           @credentials = IniFile.load(File.expand_path(config_file))
@@ -77,7 +77,7 @@ module Kitchen
       # @return [MsRestAzure::ActiveDirectoryServiceSettings] Settings to be used for subsequent requests
       #
       def ad_settings
-        case azure_environment.downcase
+        case environment.downcase
         when "azureusgovernment"
           ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_us_government_settings
         when "azurechina"
@@ -95,7 +95,7 @@ module Kitchen
       # @return [MsRestAzure::AzureEnvironment] Settings to be used for subsequent requests
       #
       def endpoint_settings
-        case azure_environment.downcase
+        case environment.downcase
         when "azureusgovernment"
           ::MsRestAzure::AzureEnvironments::AzureUSGovernment
         when "azurechina"
