@@ -49,10 +49,6 @@ module Kitchen
         options
       end
 
-      def self.singleton
-        @credentials ||= Credentials.new
-      end
-
       private
 
       def tenant_id
