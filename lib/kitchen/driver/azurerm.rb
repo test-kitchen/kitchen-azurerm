@@ -1,5 +1,5 @@
 require "kitchen"
-require_relative "credentials"
+require_relative "azure_credentials"
 require "securerandom"
 require "azure_mgmt_resources"
 require "azure_mgmt_network"
