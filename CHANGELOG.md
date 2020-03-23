@@ -2,6 +2,9 @@
 
 ## [0.15.2] - 2020-03-23
 - Fix require_relative for azure_credentials [PR #129](https://github.com/test-kitchen/kitchen-azurerm/pull/129) (@jasonwbarnett)
+- Default password is now generated rather than hard-coded [#124](https://github.com/test-kitchen/kitchen-azurerm/pull/124) (@stuartpreston)
+- Add retry logic when checking deployment state [#125](https://github.com/test-kitchen/kitchen-azurerm/pull/124) (@albertvaka)
+- Only add password to deployment template if ssh_key is not set [#126](https://github.com/test-kitchen/kitchen-azurerm/pull/124) (@KSerrania)
 
 ## [0.15.1] - 2020-01-14
 - Use require_relative instead of require [PR #123](https://github.com/test-kitchen/kitchen-azurerm/pull/123) (@tas50)
