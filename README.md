@@ -1,10 +1,10 @@
 # kitchen-azurerm
 
-[![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm) [![Build Status](https://travis-ci.org/test-kitchen/kitchen-azurerm.svg)](https://travis-ci.org/test-kitchen/kitchen-azurerm)
+[![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm) ![CI](https://github.com/test-kitchen/kitchen-azurerm/workflows/CI/badge.svg?branch=master)
 
-**kitchen-azurerm** is a driver for the popular test harness [Test Kitchen](http://kitchen.ci) that allows Microsoft Azure resources to be provisioned prior to testing. This driver uses the new Microsoft Azure Resource Management REST API via the [azure-sdk-for-ruby](https://github.com/azure/azure-sdk-for-ruby).
+**kitchen-azurerm** is a driver for the popular test harness [Test Kitchen](http://kitchen.ci) that allows Microsoft Azure resources to be provisioned before testing. This driver uses the new Microsoft Azure Resource Management REST API via the [azure-sdk-for-ruby](https://github.com/azure/azure-sdk-for-ruby).
 
-This version has been tested on Windows, OS/X and Ubuntu. If you encounter a problem on your platform, please raise an issue.
+This version has been tested on Windows, macOS, and Ubuntu. If you encounter a problem on your platform, please raise an issue.
 
 ## Quick-start
 
@@ -18,7 +18,7 @@ Note if you are running the ChefDK you may need to prefix the command with chef,
 
 ### Configuration
 
-For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Contributor rights against the specific subscription being targeted.  Using an Organizational (AAD) account and related password is no longer supported.  To create a Service Principal and apply the correct permissions, you will need to [create and authenticate a service principal](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli) using the [Azure CLI](https://azure.microsoft.com/en-us/documentation/articles/xplat-cli-install/). Make sure you stay within the section titled 'Authenticate service principal with password - Azure CLI'.
+For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Contributor rights against the specific subscription being targeted. Using an Organizational (AAD) account and related password is no longer supported. To create a Service Principal and apply the correct permissions, you will need to [create and authenticate a service principal](https://azure.microsoft.com/en-us/documentation/articles/resource-group-authenticate-service-principal/#authenticate-service-principal-with-password---azure-cli) using the [Azure CLI](https://azure.microsoft.com/en-us/documentation/articles/xplat-cli-install/). Make sure you stay within the section titled 'Authenticate service principal with password - Azure CLI'.
 
 You will also need to ensure you have an active Azure subscription (you can get started [for free](https://azure.microsoft.com/en-us/free/) or use your [MSDN Subscription](https://azure.microsoft.com/en-us/pricing/member-offers/msdn-benefits/)).
 
@@ -29,7 +29,7 @@ You are now ready to configure kitchen-azurerm to use the credentials from the s
 3. **Client Secret/Password**: this will be the password you supplied in the command in step 2.
 4. **Tenant ID**: use the command detailed in "Manually provide credentials through Azure CLI" step 1 to get the TenantId.
 
-Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID.  **Make sure you save the file with UTF-8 encoding**
+Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID. **Make sure you save the file with UTF-8 encoding**
 
 ```ruby
 [abcd1234-YOUR-SUBSCRIPTION-ID-HERE-abcdef123456]
@@ -84,7 +84,7 @@ suites:
 
 ### Concurrent execution
 
-Concurrent execution of create/converge/destroy is supported via the --concurrency parameter. Each machine is created in it's own Azure Resource Group so has no shared lifecycle with the other machines in the test run. To take advantage of parallel execution use the following command:
+Concurrent execution of create/converge/destroy is supported via the --concurrency parameter. Each machine is created in its own Azure Resource Group so it has no shared lifecycle with the other machines in the test run. To take advantage of parallel execution use the following command:
 
 ```kitchen test --concurrency <n>```
 
@@ -125,9 +125,9 @@ suites:
 ### .kitchen.yml example 3 - "pre-deployment" ARM template
 
 The following example introduces the ```pre_deployment_template``` and ```pre_deployment_parameters``` properties in the configuration file.
-You can use this capability to execute an ARM template containing Azure resources to provision before the system under test is created.  
+You can use this capability to execute an ARM template containing Azure resources to provision before the system under test is created.
 
-In the example the ARM template in the file ```predeploy.json``` would be executed with the parameters that are specified under ```pre_deployment_parameters```.  
+In the example the ARM template in the file ```predeploy.json``` would be executed with the parameters that are specified under ```pre_deployment_parameters```.
 These resources will be created in the same Azure Resource Group as the VM under test, and therefore will be destroyed when you type ```kitchen destroy```.
 
 ```yaml
@@ -198,7 +198,7 @@ Example predeploy.json:
 
 ### .kitchen.yml example 4 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios)
 
-The following example introduces the ```vnet_id``` and ```subnet_id``` properties under "driver" in the configuration file.  This can be applied at the top level, or per platform.
+The following example introduces the ```vnet_id``` and ```subnet_id``` properties under "driver" in the configuration file. This can be applied at the top level, or per platform.
 You can use this capability to create the VM on an existing virtual network and subnet created in a different resource group.
 
 In this case, the public IP address is not used unless ```public_ip``` is set to ```true```
@@ -270,7 +270,7 @@ suites:
 
 This example a classic Custom VM Image (aka a VHD file) is used. As the Image VHD must be in the same storage account then the disk of the instance, the os disk is created in an existing image account.
 
-Note: When the resource group ís deleted, the os disk is left in the extsing storage account blob. You must cleanup manually.
+Note: When the resource group ís deleted, the os disk is left in the existing storage account blob. You must clean up manually.
 
 This example will:
 
@@ -358,7 +358,7 @@ suites:
 
 This example demonstrates how to add 3 additional Managed data disks to a Windows Server 2016 VM. Not supported with legacy (pre-managed disk) storage accounts.
 
-Note the availability of a `format_data_disks` option (default: `false`).  When set to true, a PowerShell script will execute at first boot to initialize and format the disks with an NTFS filesystem.  This option has no effect on Linux machines.
+Note the availability of a `format_data_disks` option (default: `false`). When set to true, a PowerShell script will execute at first boot to initialize and format the disks with an NTFS filesystem. This option does not affect Linux machines.
 
 ```yaml
 ---
@@ -394,9 +394,9 @@ suites:
 ### .kitchen.yml example 9 - "post-deployment" ARM template with MSI authentication
 
 The following example introduces the ```post_deployment_template``` and ```post_deployment_parameters``` properties in the configuration file.
-You can use this capability to execute an ARM template containing Azure resources to provision after the system under test is created.  
+You can use this capability to execute an ARM template containing Azure resources to provision after the system under test is created.
 
-In the example the ARM template in the file ```postdeploy.json``` would be executed with the parameters that are specified under ```post_deployment_parameters```.  
+In the example the ARM template in the file ```postdeploy.json``` would be executed with the parameters that are specified under ```post_deployment_parameters```.
 These resources will be created in the same Azure Resource Group as the VM under test, and therefore will be destroyed when you type ```kitchen destroy```.
 
 ```yaml
@@ -546,7 +546,7 @@ suites:
 
 ## Support for Government and Sovereign Clouds (China and Germany)
 
-Starting with v0.9.0 this driver has support for Azure Government and Sovereign Clouds via the use of the ```azure_environment``` setting.  Valid Azure environments are ```Azure```, ```AzureUSGovernment```, ```AzureChina``` and ```AzureGermanCloud```
+Starting with v0.9.0 this driver has support for Azure Government and Sovereign Clouds via the use of the ```azure_environment``` setting. Valid Azure environments are ```Azure```, ```AzureUSGovernment```, ```AzureChina``` and ```AzureGermanCloud```
 
 Note that the ```use_managed_disks``` option should be set to false until supported by AzureUSGovernment.
 
@@ -640,7 +640,7 @@ info:    vm image list command OK
 
 * The ```azure_resource_group_prefix``` and ```azure_resource_group_suffix``` can be used to further disambiguate Azure resource group names created by the driver.
 
-* The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group.  Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
+* The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group. Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```
 
 * The ```destroy_resource_group_contents``` (default: "false") parameter can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase.
 
