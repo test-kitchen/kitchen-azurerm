@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.15.2] - 2020-03-23
+- Fix require_relative for azure_credentials [PR #129](https://github.com/test-kitchen/kitchen-azurerm/pull/129) (@jasonwbarnett)
+
 ## [0.15.1] - 2020-01-14
 - Use require_relative instead of require [PR #123](https://github.com/test-kitchen/kitchen-azurerm/pull/123) (@tas50)
 
