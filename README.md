@@ -626,6 +626,8 @@ info:    vm image list command OK
 
 * The optional ```vm_tags``` parameter allows you to define key:value pairs to tag VMs with on creation.
 
+* The optional ```plan``` parameter allows you to define plan information when creating VMs from Marketplace images. Please refer to [Deploy an image with Marketplace terms](https://aka.ms/azuremarketplaceapideployment) for more details. Not all Marketplace images support programmatic deployment, and support is controlled by the image publisher.
+
 * Managed disks are now enabled by default, to use the Storage account set ```use_managed_disks``` (default: true).
 
 * The ```image_url``` (unmanaged disks only) parameter can be used to specify a custom vhd (This VHD must be in the same storage account as the disks of the VM, therefore ```existing_storage_account_blob_url``` must also be set and ```use_managed_disks``` must be set to false)

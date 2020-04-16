@@ -132,6 +132,10 @@ module Kitchen
         {}
       end
 
+      default_config(:plan) do |_config|
+        {}
+      end
+
       default_config(:vm_tags) do |_config|
         {}
       end
@@ -643,11 +647,23 @@ module Kitchen
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ""
-          virtual_machine_deployment_template_file("public.erb", vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json, use_ephemeral_osdisk: config[:use_ephemeral_osdisk], ssh_key: instance.transport[:ssh_key])
+          virtual_machine_deployment_template_file("public.erb", vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json, use_ephemeral_osdisk: config[:use_ephemeral_osdisk], ssh_key: instance.transport[:ssh_key], plan_json: plan_json)
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_file("internal.erb", vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json, use_ephemeral_osdisk: config[:use_ephemeral_osdisk], ssh_key: instance.transport[:ssh_key])
+          virtual_machine_deployment_template_file("internal.erb", vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json: data_disks_for_vm_json, use_ephemeral_osdisk: config[:use_ephemeral_osdisk], ssh_key: instance.transport[:ssh_key], plan_json: plan_json)
         end
+      end
+
+      def plan_json
+        return nil if config[:plan].empty?
+
+        plan = {}
+        plan["name"] = config[:plan][:name]                    if config[:plan][:name]
+        plan["product"] = config[:plan][:product]              if config[:plan][:product]
+        plan["promotionCode"] = config[:plan][:promotion_code] if config[:plan][:promotion_code]
+        plan["publisher"] = config[:plan][:publisher]          if config[:plan][:publisher]
+
+        plan.to_json
       end
 
       def virtual_machine_deployment_template_file(template_file, data = {})
