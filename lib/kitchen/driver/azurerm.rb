@@ -20,6 +20,8 @@ module Kitchen
       attr_accessor :resource_management_client
       attr_accessor :network_management_client
 
+      kitchen_driver_api_version 2
+
       default_config(:azure_resource_group_prefix) do |_config|
         "kitchen-"
       end
