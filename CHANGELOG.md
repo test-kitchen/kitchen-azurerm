@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.16.0] - 2020-04-22
+- Add support for marketplace plan information [PR #133](https://github.com/test-kitchen/kitchen-azurerm/pull/133) (@jasonwbarnett)
+
 ## [0.15.2] - 2020-03-23
 - Fix require_relative for azure_credentials [PR #129](https://github.com/test-kitchen/kitchen-azurerm/pull/129) (@jasonwbarnett)
 - Refactor Kitchen::Driver::Credentials class [PR #128](https://github.com/test-kitchen/kitchen-azurerm/pull/128) (@jasonwbarnett)
