@@ -410,6 +410,9 @@
                     <%- end -%>
                 }
             },
+            <%- unless plan_json.nil? -%>
+            "plan": <%= plan_json %>,
+            <%- end -%>
             "identity": {
                 "type": "[variables('vmIdentityType')]",
                 "identityIds": "[if(empty(parameters('userAssignedIdentities')), json('null'), parameters('userAssignedIdentities'))]"
