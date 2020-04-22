@@ -19,7 +19,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "sshkey", ">= 1.0.0", "< 3"
   spec.add_dependency "test-kitchen", ">= 1.20", "< 3.0"
 
-  spec.add_development_dependency "bundler"
   spec.add_development_dependency "rake", ">= 11.0"
   spec.add_development_dependency "chefstyle"
   spec.add_development_dependency "rspec", "~> 3.5"
