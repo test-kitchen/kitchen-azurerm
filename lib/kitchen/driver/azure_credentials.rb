@@ -78,9 +78,9 @@ module Kitchen
         if client_id && client_secret
           ::MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, ad_settings)
         elsif client_id
-          ::MsRestAzure::MSITokenProvider.new(msi_id: { clientid: client_id })
+          ::MsRestAzure::MSITokenProvider.new(50342, ad_settings, { client_id: client_id })
         else
-          ::MsRestAzure::MSITokenProvider.new
+          ::MsRestAzure::MSITokenProvider.new(50342, ad_settings)
         end
       end
 
