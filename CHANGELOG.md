@@ -1,5 +1,8 @@
 # kitchen-azurerm Changelog
 
+## [0.17.0] - 2020-04-23
+- Add MSI Support [PR #134](https://github.com/test-kitchen/kitchen-azurerm/pull/134) (@jasonwbarnett)
+
 ## [0.16.0] - 2020-04-22
 - Add support for marketplace plan information [PR #132](https://github.com/test-kitchen/kitchen-azurerm/pull/132) (@jasonwbarnett)
 
