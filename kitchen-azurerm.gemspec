@@ -24,4 +24,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.5"
   spec.add_development_dependency "rspec-mocks", "~> 3.5"
   spec.add_development_dependency "rspec-expectations", "~> 3.5"
+  spec.add_development_dependency "rspec-its", "~> 1.3.0"
 end
