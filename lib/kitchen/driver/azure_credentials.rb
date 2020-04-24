@@ -24,12 +24,6 @@ module Kitchen
       def initialize(subscription_id:, environment: "Azure")
         @subscription_id = subscription_id
         @environment = environment
-        config_file = ENV["AZURE_CONFIG_FILE"] || File.expand_path(CONFIG_PATH)
-        if File.file?(config_file)
-          @credentials = IniFile.load(File.expand_path(config_file))
-        else
-          warn "#{CONFIG_PATH} was not found or not accessible. Will use environment variables or MSI."
-        end
       end
 
       #
@@ -50,8 +44,19 @@ module Kitchen
 
       private
 
+      def config_path
+        @config_path ||= File.expand_path(ENV["AZURE_CONFIG_FILE"] || CONFIG_PATH)
+      end
+
       def credentials
-        @credentials ||= {}
+        @credentials ||= begin
+          if File.file?(config_path)
+            IniFile.load(config_path)
+          else
+            warn "#{config_path} was not found or not accessible. Will attempt to use Managed Identity."
+            {}
+          end
+        end
       end
 
       def credentials_property(property)
@@ -59,7 +64,7 @@ module Kitchen
       end
 
       def tenant_id!
-        tenant_id || raise("Must provide tenant id. Use AZURE_TENANT_ID environment variable or set it in credentials file")
+        tenant_id || raise("Must provide tenant id. Use AZURE_TENANT_ID environment variable or set it in credentials file (#{config_path})")
       end
 
       def tenant_id
