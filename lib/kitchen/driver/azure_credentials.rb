@@ -1,4 +1,5 @@
 require "inifile"
+require "kitchen/logging"
 
 module Kitchen
   module Driver
@@ -6,6 +7,8 @@ module Kitchen
     # AzureCredentials
     #
     class AzureCredentials
+      include Kitchen::Logging
+
       CONFIG_PATH = "#{ENV["HOME"]}/.azure/credentials".freeze
 
       #
@@ -43,6 +46,10 @@ module Kitchen
       end
 
       private
+
+      def logger
+        Kitchen.logger
+      end
 
       def config_path
         @config_path ||= File.expand_path(ENV["AZURE_CONFIG_FILE"] || CONFIG_PATH)
