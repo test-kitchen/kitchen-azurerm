@@ -18,7 +18,7 @@ describe Kitchen::Driver::AzureCredentials do
   let(:client_id) { ini_credentials[subscription_id]["client_id"] }
   let(:client_secret) { ini_credentials[subscription_id]["client_secret"] }
   let(:tenant_id) { ini_credentials[subscription_id]["tenant_id"] }
-  let(:config_path) { File.expand_path(described_class::CONFIG_PATH) }
+  let(:default_config_path) { File.expand_path(described_class::CONFIG_PATH) }
   let(:ini_credentials) { IniFile.load("#{fixtures_path}/azure_credentials") }
 
   before do
@@ -29,9 +29,9 @@ describe Kitchen::Driver::AzureCredentials do
     allow(ENV).to receive(:[]).with("AZURE_CLIENT_SECRET").and_return(nil)
 
     allow(File).to receive(:file?).and_call_original
-    allow(File).to receive(:file?).with(config_path).and_return(true)
+    allow(File).to receive(:file?).with(default_config_path).and_return(true)
 
-    allow(IniFile).to receive(:load).with(config_path).and_return(ini_credentials)
+    allow(IniFile).to receive(:load).with(default_config_path).and_return(ini_credentials)
   end
 
   subject { instance }
@@ -69,6 +69,65 @@ describe Kitchen::Driver::AzureCredentials do
     let(:credentials) { azure_options[:credentials] }
     let(:token_provider) { credentials.instance_variable_get(:@token_provider) }
     let(:active_directory_settings) { azure_options[:active_directory_settings] }
+
+    context "when AZURE_CONFIG_FILE is set" do
+      let(:overridden_config_path) { "/tmp/my-config" }
+
+      before do
+        allow(ENV).to receive(:[]).with("AZURE_CONFIG_FILE").and_return(overridden_config_path)
+      end
+
+      it "loads credentials from the path specified in environment variable" do
+        allow(File).to receive(:file?).with(overridden_config_path).and_return(true)
+        expect(IniFile).to receive(:load).with(overridden_config_path).and_return(ini_credentials)
+        expect(IniFile).not_to receive(:load).with(default_config_path)
+        azure_options
+      end
+    end
+
+    context "when configuration file does not exist and at least one of the environment variables is not set" do
+      before do
+        allow(File).to receive(:file?).with(default_config_path).and_return(false)
+        allow(ENV).to receive(:[]).with("AZURE_TENANT_ID").and_return(tenant_id)
+        allow(ENV).to receive(:[]).with("AZURE_CLIENT_ID").and_return(client_id)
+        allow(ENV).to receive(:[]).with("AZURE_CLIENT_SECRET").and_return(nil)
+      end
+
+      it "logs a warning" do
+        expect(Kitchen.logger).to receive(:warn).with("#{default_config_path} was not found or not accessible. Will attempt to use Managed Identity.")
+        azure_options
+      end
+    end
+
+    context "when AZURE_TENANT_ID is set" do
+      let(:tenant_id) { "2d38055e-66a1-435c-be53-TENANT_ID" }
+
+      before do
+        allow(ENV).to receive(:[]).with("AZURE_TENANT_ID").and_return(tenant_id)
+      end
+
+      its([:tenant_id]) { is_expected.to eq(tenant_id) }
+    end
+
+    context "when AZURE_CLIENT_ID is set" do
+      let(:client_id) { "2e201a46-44a8-4508-84aa-CLIENT_ID" }
+
+      before do
+        allow(ENV).to receive(:[]).with("AZURE_CLIENT_ID").and_return(client_id)
+      end
+
+      its([:client_id]) { is_expected.to eq(client_id) }
+    end
+
+    context "when AZURE_CLIENT_SECRET is set" do
+      let(:client_secret) { "2e201a46-44a8-4508-84aa-CLIENT_SECRET" }
+
+      before do
+        allow(ENV).to receive(:[]).with("AZURE_CLIENT_SECRET").and_return(client_secret)
+      end
+
+      its([:client_secret]) { is_expected.to eq(client_secret) }
+    end
 
     context "when environment is Azure" do
       let(:environment) { "Azure" }
