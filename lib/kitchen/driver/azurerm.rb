@@ -214,7 +214,7 @@ module Kitchen
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           vmName: state[:vm_name],
           systemAssignedIdentity: config[:system_assigned_identity],
-          userAssignedIdentities: config[:user_assigned_identities],
+          userAssignedIdentities: config[:user_assigned_identities].map { |identity| [identity, {}] }.to_h,
           secretUrl: config[:secret_url],
           vaultName: config[:vault_name],
           vaultResourceGroup: config[:vault_resource_group],
