@@ -1,5 +1,11 @@
 # kitchen-azurerm Changelog
 
+## [1.0.0] - 2020-05-06
+
+- Add more specs and refactor Credentials [PR #135](https://github.com/test-kitchen/kitchen-azurerm/pull/135) (@jasonwbarnett)
+- Fix using `user_assigned_identities` config [PR #136](https://github.com/test-kitchen/kitchen-azurerm/pull/136) (@zanecodes)
+
+
 ## [0.17.0] - 2020-04-23
 - Add MSI Support [PR #134](https://github.com/test-kitchen/kitchen-azurerm/pull/134) (@jasonwbarnett)
 
