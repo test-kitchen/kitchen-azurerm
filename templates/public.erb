@@ -178,10 +178,10 @@
             }
         },
         "userAssignedIdentities": {
-            "type": "array",
-            "defaultValue": [],
+            "type": "object",
+            "defaultValue": {},
             "metadata": {
-                "description": "A list of resource IDs for user identities to associate with the Virtual Machine, or empty to disable user assigned identities."
+                "description": "An object whose keys are resource IDs for user identities to associate with the Virtual Machine and whose values are empty objects, or empty to disable user assigned identities."
             }
         },
         "bootDiagnosticsEnabled": {
@@ -434,7 +434,7 @@
             <%- end -%>
             "identity": {
                 "type": "[variables('vmIdentityType')]",
-                "identityIds": "[if(empty(parameters('userAssignedIdentities')), json('null'), parameters('userAssignedIdentities'))]"
+                "userAssignedIdentities": "[if(empty(parameters('userAssignedIdentities')), json('null'), parameters('userAssignedIdentities'))]"
             },
             "tags": {
                 <%= vm_tags unless vm_tags.empty? %>
