@@ -32,7 +32,7 @@ You are now ready to configure kitchen-azurerm to use the credentials from the s
 Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID. **Make sure you save the file with UTF-8 encoding**
 
 ```ruby
-[abcd1234-YOUR-SUBSCRIPTION-ID-HERE-abcdef123456]
+[ADD-YOUR-AZURE-SUBSCRIPTION-ID-HERE-IN-SQUARE-BRACKET]
 client_id = "48b9bba3-YOUR-GUID-HERE-90f0b68ce8ba"
 client_secret = "your-client-secret-here"
 tenant_id = "9c117323-YOUR-GUID-HERE-9ee430723ba3"
