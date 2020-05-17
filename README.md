@@ -33,17 +33,17 @@ Using a text editor, open or create the file ```~/.azure/credentials``` and add 
 
 ```ruby
 [ADD-YOUR-AZURE-SUBSCRIPTION-ID-HERE-IN-SQUARE-BRACKET]
-client_id = "48b9bba3-YOUR-GUID-HERE-90f0b68ce8ba"
+client_id = "your-azure-client-id-here"
 client_secret = "your-client-secret-here"
-tenant_id = "9c117323-YOUR-GUID-HERE-9ee430723ba3"
+tenant_id = "your-azure-tenant-id-here"
 ```
 
 If preferred, you may also set the following environment variables, however this would be incompatible with supporting multiple Azure subscriptions.
 
 ```ruby
-AZURE_CLIENT_ID="48b9bba3-YOUR-GUID-HERE-90f0b68ce8ba"
+AZURE_CLIENT_ID="your-azure-client-id-here"
 AZURE_CLIENT_SECRET="your-client-secret-here"
-AZURE_TENANT_ID="9c117323-YOUR-GUID-HERE-9ee430723ba3"
+AZURE_TENANT_ID="your-azure-tenant-id-here"
 ```
 
 Note that the environment variables, if set, take preference over the values in a configuration file.
@@ -56,7 +56,7 @@ Here's an example ```.kitchen.yml``` file that provisions an Ubuntu Server, usin
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_D1'
 
@@ -98,7 +98,7 @@ Here's a further example ```.kitchen.yml``` file that will provision a Windows S
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_DS2_v2'
 
@@ -134,7 +134,7 @@ These resources will be created in the same Azure Resource Group as the VM under
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_D1'
   pre_deployment_template: predeploy.json
@@ -207,7 +207,7 @@ In this case, the public IP address is not used unless ```public_ip``` is set to
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_D1'
 
@@ -241,7 +241,7 @@ Note: The image must be available first. On deletion the disk and everything is 
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_D1'
 
@@ -282,7 +282,7 @@ This example will:
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_D1'
 
@@ -319,7 +319,7 @@ Note: Custom data can be custom data or a file to custom data. Please also note 
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_D1'
 
@@ -364,7 +364,7 @@ Note the availability of a `format_data_disks` option (default: `false`). When s
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_F2s'
 
@@ -403,7 +403,7 @@ These resources will be created in the same Azure Resource Group as the VM under
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_D1'
   post_deployment_template: postdeploy.json
@@ -488,7 +488,7 @@ See the [Managed identities for Azure resources](https://docs.microsoft.com/en-u
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'West Europe'
   machine_size: 'Standard_D1'
 
@@ -521,7 +521,7 @@ This following example introduces ```secret_url```, ```vault_name```, and ```vau
 ---
 driver:
   name: azurerm
-  subscription_id: '4801fa9d-YOUR-GUID-HERE-b265ff49ce21'
+  subscription_id: 'your-azure-subscription-id-here'
   location: 'CentralUS'
   machine_size: 'Standard_D2s_v3'
   secret_url: 'https://YOUR-SECRET-PATH'
@@ -556,7 +556,7 @@ Note that the ```use_managed_disks``` option should be set to false until suppor
 ---
 driver:
   name: azurerm
-  subscription_id: 'abcdabcd-YOUR-GUID-HERE-abcdabcdabcd'
+  subscription_id: 'your-azure-subscription-id-here'
   azure_environment: 'AzureUSGovernment'
   location: 'US Gov Iowa'
   machine_size: 'Standard_D2_v2_Promo'
