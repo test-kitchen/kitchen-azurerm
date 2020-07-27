@@ -71,9 +71,6 @@ platforms:
     driver:
       image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
       vm_name: trusty-vm
-      vm_tags:
-        ostype: linux
-        distro: ubuntu
 
 suites:
   - name: default
@@ -113,6 +110,9 @@ platforms:
       resource_group_tags:
         project: 'My Cool Project'
         contact: 'me@somewhere.com'
+      vm_tags:
+        my_tag: its value
+        another_tag: its awesome value
     transport:
       name: winrm
 suites:
