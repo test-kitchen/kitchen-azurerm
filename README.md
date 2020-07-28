@@ -37,6 +37,8 @@ az ad sp create-for-rbac --name="kitchen-azurerm" --role="Contributor" --scopes=
 #}
 ```
 
+NOTE: Don't forget to save the values from the output -- most importantly the `password`.
+
 You will also need to ensure you have an active Azure subscription (you can get started [for free](https://azure.microsoft.com/en-us/free/) or use your [MSDN Subscription](https://azure.microsoft.com/en-us/pricing/member-offers/msdn-benefits/)).
 
 You are now ready to configure kitchen-azurerm to use the credentials from the service principal you created above. You will use four elements from the steps in that article:
@@ -64,6 +66,15 @@ AZURE_TENANT_ID="your-azure-tenant-id-here"
 ```
 
 Note that the environment variables, if set, take preference over the values in a configuration file.
+
+After adjusting your ```~/.azure/credentials``` file you will need to adjust your ```.kitchen.yml``` file to leverage the azurerm driver. Use the following examples to achieve this, then check your configuration with standard kitchen commands. For example,
+
+```bash
+% kitchen list
+Instance                Driver   Provisioner  Verifier  Transport  Last Action    Last Error
+wsus-windows-2012r2     Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
+windows-windows-2012r2  Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
+```
 
 ### .kitchen.yml example 1 - Linux/Ubuntu
 
