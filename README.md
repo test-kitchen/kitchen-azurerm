@@ -67,7 +67,7 @@ AZURE_TENANT_ID="your-azure-tenant-id-here"
 
 Note that the environment variables, if set, take preference over the values in a configuration file.
 
-After adjusting your ```~/.azure/credentials``` file you will need to adjust your ```.kitchen.yml``` file to leverage the azurerm driver. Use the following examples to achieve this, then check your configuration with standard kitchen commands. For example,
+After adjusting your ```~/.azure/credentials``` file you will need to adjust your ```kitchen.yml``` file to leverage the azurerm driver. Use the following examples to achieve this, then check your configuration with standard kitchen commands. For example,
 
 ```bash
 % kitchen list
