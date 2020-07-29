@@ -71,9 +71,9 @@ After adjusting your ```~/.azure/credentials``` file you will need to adjust you
 
 ```bash
 % kitchen list
-Instance                Driver   Provisioner  Verifier  Transport  Last Action    Last Error
-wsus-windows-2012r2     Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
-windows-windows-2012r2  Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
+Instance            Driver   Provisioner  Verifier  Transport  Last Action    Last Error
+wsus-windows-2019   Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
+wsus-windows-2016   Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
 ```
 
 ### .kitchen.yml example 1 - Linux/Ubuntu
