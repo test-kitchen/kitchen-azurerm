@@ -20,11 +20,11 @@ Note if you are running the ChefDK you may need to prefix the command with chef,
 
 For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Contributor rights against the specific subscription being targeted. Using an Organizational (AAD) account and related password is no longer supported. To create a Service Principal and apply the correct permissions, you will need to [create an Azure service principal with the Azure CLI](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli?view=azure-cli-latest#create-a-service-principal) using the [Azure CLI](https://azure.microsoft.com/en-us/documentation/articles/xplat-cli-install/). Make sure you stay within the section titled 'Authenticate service principal with password - Azure CLI'.
 
-If the above is TLDR then try this after `az login` using your target subscription ID:
+If the above is TLDR then try this after `az login` using your target subscription ID and the desired SP name:
 
 ```bash
 # Create a Service Principal using the desired subscription id from the command above
-az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+az ad sp create-for-rbac --name="kitchen-azurerm" --role="Contributor" --scopes="/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 #Output
 #
@@ -36,6 +36,8 @@ az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/xxxxxxxx-
 #  "tenant": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 #}
 ```
+
+NOTE: Don't forget to save the values from the output -- most importantly the `password`.
 
 You will also need to ensure you have an active Azure subscription (you can get started [for free](https://azure.microsoft.com/en-us/free/) or use your [MSDN Subscription](https://azure.microsoft.com/en-us/pricing/member-offers/msdn-benefits/)).
 
@@ -64,6 +66,15 @@ AZURE_TENANT_ID="your-azure-tenant-id-here"
 ```
 
 Note that the environment variables, if set, take preference over the values in a configuration file.
+
+After adjusting your ```~/.azure/credentials``` file you will need to adjust your ```kitchen.yml``` file to leverage the azurerm driver. Use the following examples to achieve this, then check your configuration with standard kitchen commands. For example,
+
+```bash
+% kitchen list
+Instance            Driver   Provisioner  Verifier  Transport  Last Action    Last Error
+wsus-windows-2019   Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
+wsus-windows-2016   Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
+```
 
 ### .kitchen.yml example 1 - Linux/Ubuntu
 
