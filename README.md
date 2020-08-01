@@ -10,11 +10,11 @@ This version has been tested on Windows, macOS, and Ubuntu. If you encounter a p
 
 ### Installation
 
-This plugin is distributed as a [Ruby Gem](https://rubygems.org/gems/kitchen-azurerm). To install it, run:
+This plugin ships in Chef Workstation out of the box so there is no need to install it when using Chef Workstation[https://downloads.chef.io/products/workstation].
+
+If you're not using Chef Workstation and need to install the plugin as a gem run:
 
 ```$ gem install kitchen-azurerm```
-
-Note if you are running the ChefDK you may need to prefix the command with chef, i.e. ```$ chef gem install kitchen-azurerm```
 
 ### Configuration
 
