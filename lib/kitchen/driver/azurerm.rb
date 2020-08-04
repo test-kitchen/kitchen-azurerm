@@ -75,7 +75,7 @@ module Kitchen
       end
 
       default_config(:password) do |_config|
-        SecureRandom.base64(12)
+        SecureRandom.base64(24)
       end
 
       default_config(:vm_name) do |_config|
