@@ -644,9 +644,9 @@ data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509220  westeurope
 info:    vm image list command OK
 ```
 
-### Additional parameters that can be specified
+### Additional parameters that can be specified in your `kitchen.yml` or added to your personal `kitchen.local.yml`
 
-* Note that the ```driver``` section can also takes a ```username``` and ```password```. The default username is "azure" and the password is a randomly generated 12 character password that can be found in your local kitchen state file (typically .kitchen/<instance-name>.yml) if you require it for any reason.
+* Note that the ```driver``` section can also take explicit values for ```username``` and ```password```. Otherwise, the default username is "azure" and the password is a randomly generated 24 character password that can be found in your local kitchen state file (typically `.kitchen/<instance-name>.yml`) if you require it for any reason.
 
 * The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
 
