@@ -1,15 +1,15 @@
 require "kitchen"
 require_relative "azure_credentials"
-require "securerandom"
+require "securerandom" unless defined?(SecureRandom)
 require "azure_mgmt_resources"
 require "azure_mgmt_network"
-require "base64"
+require "base64" unless defined?(Base64)
 require "sshkey"
-require "fileutils"
-require "erb"
-require "ostruct"
-require "json"
-require "faraday"
+require "fileutils" unless defined?(FileUtils)
+require "erb" unless defined?(Erb)
+require "ostruct" unless defined?(OpenStruct)
+require "json" unless defined?(JSON)
+require "faraday" unless defined?(Faraday)
 
 module Kitchen
   module Driver
