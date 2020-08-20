@@ -174,6 +174,10 @@ module Kitchen
         true
       end
 
+      default_config(:destroy_explicit_resource_group_tags) do |_config|
+        true
+      end
+
       default_config(:destroy_resource_group_contents) do |_config|
         false
       end
@@ -277,12 +281,9 @@ module Kitchen
         @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
 
         # Create Resource Group
-        resource_group = ::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
-        resource_group.location = config[:location]
-        resource_group.tags = config[:resource_group_tags]
         begin
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
-          create_resource_group(state[:azure_resource_group_name], resource_group)
+          create_resource_group(state[:azure_resource_group_name], get_resource_group)
         rescue ::MsRestAzure::AzureOperationError => operation_error
           error operation_error.body
           raise operation_error
@@ -534,6 +535,35 @@ module Kitchen
             info "Creating deployment: #{empty_deployment_name}"
             create_deployment_async(state[:azure_resource_group_name], empty_deployment_name, empty_deployment).value!
             follow_deployment_until_end_state(state[:azure_resource_group_name], empty_deployment_name)
+
+            # Maintain tags on the resource group
+            if config[:destroy_explicit_resource_group_tags] == false
+              warn 'The "destroy_explicit_resource_group_tags" setting value is set to "false". The tags on the resource group will NOT be removed.'
+              # NOTE: We are using the internal wrapper function create_resource_group() which wraps the API
+              # method of create_or_update().
+              begin
+                create_resource_group(state[:azure_resource_group_name], get_resource_group)
+              rescue ::MsRestAzure::AzureOperationError => operation_error
+                error operation_error.body
+                raise operation_error
+              end
+            end
+
+            # Corner case where we want to use kitchen to remove the tags
+            if config[:destroy_explicit_resource_group_tags] == true
+              warn 'The "destroy_explicit_resource_group_tags" setting value is set to "true". The tags on the resource group will be removed.'
+              # NOTE: We are using the internal wrapper function create_resource_group() which wraps the API
+              # method of create_or_update().
+              resource_group = get_resource_group
+              resource_group.tags = {}
+              begin
+                create_resource_group(state[:azure_resource_group_name], resource_group)
+              rescue ::MsRestAzure::AzureOperationError => operation_error
+                error operation_error.body
+                raise operation_error
+              end
+            end
+
           rescue ::MsRestAzure::AzureOperationError => operation_error
             error operation_error.body
             raise operation_error
@@ -705,6 +735,13 @@ module Kitchen
       #
       # Wrapper methods for the Azure API calls to retry the calls when getting timeouts.
       #
+
+      def get_resource_group
+        resource_group = ::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
+        resource_group.location = config[:location]
+        resource_group.tags = config[:resource_group_tags]
+        resource_group
+      end
 
       def create_resource_group(resource_group_name, resource_group)
         retries = config[:azure_api_retries]
