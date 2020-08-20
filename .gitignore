@@ -4,6 +4,5 @@ Gemfile.lock
 /docs/examples
 coverage
 *.log
-kitchen.local.yml
-.kitchen.local.yml
+*kitchen.local.yml
 .kitchen/
