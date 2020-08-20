@@ -1,5 +1,10 @@
 # kitchen-azurerm Changelog
 
+## [1.2.0] - 2020-08-20
+
+- Add support for deletion or preservation of resource group tags with a new `destroy_explicit_resource_group_tags` config that defaults to `true` (@StylusEaterChef)
+- Optimize our requires to make load the gem a tiny bit faster (@tas50)
+
 ## [1.1.0] - 2020-08-19
 
 - Update error messages to mention `kitchen.yml` not `.kitchen.yml` (@tas50)
