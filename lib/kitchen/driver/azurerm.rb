@@ -225,7 +225,7 @@ module Kitchen
         end
 
         if config[:subscription_id].to_s == ""
-          raise "A subscription_id config value was not detected and kitchen-azurerm cannot continue. Please check your .kitchen.yml configuration. Exiting."
+          raise "A subscription_id config value was not detected and kitchen-azurerm cannot continue. Please check your kitchen.yml configuration. Exiting."
         end
 
         if config[:nic_name].to_s == ""
