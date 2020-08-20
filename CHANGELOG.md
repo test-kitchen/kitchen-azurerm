@@ -1,5 +1,15 @@
 # kitchen-azurerm Changelog
 
+## [1.1.0] - 2020-08-19
+
+- Update error messages to mention `kitchen.yml` not `.kitchen.yml` (@tas50)
+- Update the default password we generate to be 25 characters to avoid failures on newer Windows releases (@StylusEaterChef)
+- Remove `simplecov` development dependency (@tas50)
+- Updated Readme to be more explicit about credentials settings (@Vasu1105)
+- Remove tags in readme that could possibly confuse users (@jasonwbarnett)
+- Fix Azure SP documentation link and give an example on how to setup (@StylusEaterChef)
+- Update installation instructions not to mention ChefDK (@tas50)
+
 ## [1.0.0] - 2020-05-06
 
 - Add more specs and refactor Credentials [PR #135](https://github.com/test-kitchen/kitchen-azurerm/pull/135) (@jasonwbarnett)
