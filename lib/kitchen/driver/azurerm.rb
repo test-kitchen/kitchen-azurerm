@@ -736,6 +736,9 @@ module Kitchen
       # Wrapper methods for the Azure API calls to retry the calls when getting timeouts.
       #
 
+      # Create a new resource group object and set the location and tags attributes then return it.
+      #
+      # @return [::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup] A new resource group object.
       def get_resource_group
         resource_group = ::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
         resource_group.location = config[:location]
