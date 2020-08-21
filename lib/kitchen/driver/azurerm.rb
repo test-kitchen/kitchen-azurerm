@@ -523,11 +523,38 @@ module Kitchen
       end
 
       def destroy(state)
+        # TODO: We have some not so fun state issues we need to clean up
+        state[:azure_environment] = config[:azure_environment] unless state[:azure_environment]
+        state[:subscription_id] = config[:subscription_id] unless state[:subscription_id]
+
+        # Setup our authentication components for the SDK
+        options = Kitchen::Driver::AzureCredentials.new(subscription_id: state[:subscription_id],
+          environment: state[:azure_environment]).azure_options
+        @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+
+        # If we don't have any instances, let's check to see if the user wants to delete a resource group and if so let's delete!
+        if state[:server_id].nil? && state[:azure_resource_group_name].nil? && !config[:explicit_resource_group_name].nil? && config[:destroy_explicit_resource_group]
+          if resource_group_exists(config[:explicit_resource_group_name])
+            info "This instance doesn't exist but you asked to delete the resource group."
+            begin
+              info "Destroying Resource Group: #{config[:explicit_resource_group_name]}"
+              delete_resource_group_async(config[:explicit_resource_group_name])
+              info "Destroy operation accepted and will continue in the background."
+              return
+            rescue ::MsRestAzure::AzureOperationError => operation_error
+              error operation_error.body
+              raise operation_error
+            end
+          end
+        end
+
+        # Our working environment
+        info "Azure environment: #{state[:azure_environment]}"
+
+        # Skip if we don't have any instances
         return if state[:server_id].nil?
 
-        options = Kitchen::Driver::AzureCredentials.new(subscription_id: state[:subscription_id],
-                                                        environment: state[:azure_environment]).azure_options
-        @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+        # Destroy resource group contents
         if config[:destroy_resource_group_contents] == true
           info "Destroying individual resources within the Resource Group."
           empty_deployment_name = "empty-deploy-#{state[:uuid]}"
@@ -536,32 +563,20 @@ module Kitchen
             create_deployment_async(state[:azure_resource_group_name], empty_deployment_name, empty_deployment).value!
             follow_deployment_until_end_state(state[:azure_resource_group_name], empty_deployment_name)
 
-            # Maintain tags on the resource group
-            if config[:destroy_explicit_resource_group_tags] == false
-              warn 'The "destroy_explicit_resource_group_tags" setting value is set to "false". The tags on the resource group will NOT be removed.'
-              # NOTE: We are using the internal wrapper function create_resource_group() which wraps the API
-              # method of create_or_update().
-              begin
-                create_resource_group(state[:azure_resource_group_name], get_resource_group)
-              rescue ::MsRestAzure::AzureOperationError => operation_error
-                error operation_error.body
-                raise operation_error
-              end
-            end
-
-            # Corner case where we want to use kitchen to remove the tags
-            if config[:destroy_explicit_resource_group_tags] == true
-              warn 'The "destroy_explicit_resource_group_tags" setting value is set to "true". The tags on the resource group will be removed.'
-              # NOTE: We are using the internal wrapper function create_resource_group() which wraps the API
-              # method of create_or_update().
+            # NOTE: We are using the internal wrapper function create_resource_group() which wraps the API
+            # method of create_or_update()
+            begin
+              # Maintain tags on the resource group
+              create_resource_group(state[:azure_resource_group_name], get_resource_group) unless config[:destroy_explicit_resource_group_tags] == true
+              warn 'The "destroy_explicit_resource_group_tags" setting value is set to "false". The tags on the resource group will NOT be removed.' unless config[:destroy_explicit_resource_group_tags] == true
+              # Corner case where we want to use kitchen to remove the tags
               resource_group = get_resource_group
               resource_group.tags = {}
-              begin
-                create_resource_group(state[:azure_resource_group_name], resource_group)
-              rescue ::MsRestAzure::AzureOperationError => operation_error
-                error operation_error.body
-                raise operation_error
-              end
+              create_resource_group(state[:azure_resource_group_name], resource_group) unless config[:destroy_explicit_resource_group_tags] == false
+              warn 'The "destroy_explicit_resource_group_tags" setting value is set to "true". The tags on the resource group will be removed.' unless config[:destroy_explicit_resource_group_tags] == false
+            rescue ::MsRestAzure::AzureOperationError => operation_error
+              error operation_error.body
+              raise operation_error
             end
 
           rescue ::MsRestAzure::AzureOperationError => operation_error
@@ -569,20 +584,27 @@ module Kitchen
             raise operation_error
           end
         end
+
+        # Do not remove the explicitly named resource group
         if config[:destroy_explicit_resource_group] == false && !config[:explicit_resource_group_name].nil?
           warn 'The "destroy_explicit_resource_group" setting value is set to "false". The resource group will not be deleted.'
           warn 'Remember to manually destroy resources, or set "destroy_resource_group_contents: true" to save costs!' unless config[:destroy_resource_group_contents] == true
-          return
+          return state
         end
-        info "Azure environment: #{state[:azure_environment]}"
+
+        # Destroy the world
         begin
           info "Destroying Resource Group: #{state[:azure_resource_group_name]}"
           delete_resource_group_async(state[:azure_resource_group_name])
           info "Destroy operation accepted and will continue in the background."
+          # Remove resource group name from driver state
+          state.delete(:azure_resource_group_name)
         rescue ::MsRestAzure::AzureOperationError => operation_error
           error operation_error.body
           raise operation_error
         end
+
+        # Clear state of components
         state.delete(:server_id)
         state.delete(:hostname)
         state.delete(:username)
@@ -744,6 +766,26 @@ module Kitchen
         resource_group.location = config[:location]
         resource_group.tags = config[:resource_group_tags]
         resource_group
+      end
+
+      # Checks whether a resource group exists.
+      #
+      # @param resource_group_name [String] The name of the resource group to check.
+      # The name is case insensitive.
+      #
+      # @return [Boolean] operation results.
+      #
+      def resource_group_exists(resource_group_name)
+        retries = config[:azure_api_retries]
+        begin
+          resource_management_client.resource_groups.check_existence(resource_group_name)
+        rescue Faraday::TimeoutError, Faraday::ClientError => exception
+          send_exception_message(exception, "while checking if resource group '#{resource_group_name}' exists. #{retries} retries left.")
+          raise if retries == 0
+
+          retries -= 1
+          retry
+        end
       end
 
       def create_resource_group(resource_group_name, resource_group)
