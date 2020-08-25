@@ -214,7 +214,7 @@ module Kitchen
           storageAccountType: config[:storage_account_type],
           bootDiagnosticsEnabled: config[:boot_diagnostics_enabled],
           newStorageAccountName: "storage#{state[:uuid]}",
-          adminUsername: state[:username],
+          adminUsername: config[:username],
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           vmName: state[:vm_name],
           systemAssignedIdentity: config[:system_assigned_identity],
@@ -225,7 +225,7 @@ module Kitchen
         }
 
         if instance.transport[:ssh_key].nil?
-          deployment_parameters["adminPassword"] = state[:password]
+          deployment_parameters["adminPassword"] = config[:password]
         end
 
         if config[:subscription_id].to_s == ""
@@ -301,6 +301,9 @@ module Kitchen
           info "Creating deployment: #{deployment_name}"
           create_deployment_async(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
           follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
+          state[:username] = config[:username] unless existing_state_value?(state, :username)
+          state[:password] = config[:password] unless existing_state_value?(state, :password)
+
           if File.file?(config[:post_deployment_template])
             post_deployment_name = "post-deploy-#{state[:uuid]}"
             info "Creating deployment: #{post_deployment_name}"
@@ -334,15 +337,24 @@ module Kitchen
         end
       end
 
+      # Return a True of False if the state is already stored for a particular property.
+      #
+      # @param [Hash] Hash of existing state values.
+      # @param [String] A property to check
+      # @return [Boolean]
       def existing_state_value?(state, property)
         state.key?(property) && !state[property].nil?
       end
 
+      # Leverage existing state values or bring state into existence from a configuration file.
+      #
+      # @param [Hash] Existing Hash of state values.
+      # @return [Hash] Updated Hash of state values.
       def validate_state(state = {})
         state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
         state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value?(state, :server_id)
         state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value?(state, :azure_resource_group_name)
-        %i{subscription_id username password vm_name azure_environment use_managed_disks}.each do |config_element|
+        %i{subscription_id vm_name azure_environment use_managed_disks}.each do |config_element|
           state[config_element] = config[config_element] unless existing_state_value?(state, config_element)
         end
         state.delete(:password) unless instance.transport[:ssh_key].nil?
