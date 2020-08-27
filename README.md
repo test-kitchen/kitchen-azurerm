@@ -674,7 +674,7 @@ info:    vm image list command OK
 
 * The ```destroy_resource_group_contents``` (default: "false") parameter can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase. If you wish to destroy the empty resource group created after you empty the resource group with this flag you can now set the ```destroy_explicit_resource_group``` to "true" to destroy the empty resource group. 
 
-* The ```destroy_explicit_resource_group_tags``` (default: "true") parameter can be used when you want to remove tags associated with an explicit resource group. The default setting is set to "true" to remain consistent with previous behavior. This should be used in combination with an explicitly named resource group and will be honored during the ```kitchen destroy``` phase.
+* The ```destroy_explicit_resource_group_tags``` (default: "true") parameter can be used when you want to remove tags associated with an explicit resource group. The default setting is set to "true" to remain consistent with previous behavior. This should be used in combination with an ```explicit_resource_group_name``` and will be honored during the ```kitchen destroy``` phase.
 
 ```yaml
 ---
