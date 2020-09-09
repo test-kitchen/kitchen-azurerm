@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [1.3.0] - 2020-09-09
+
+- Improve performance by loading depedencies only when we need them (@mwrock)
+
 ## [1.2.0] - 2020-08-20
 
 - Add support for deletion or preservation of resource group tags with a new `destroy_explicit_resource_group_tags` config that defaults to `true` (@StylusEaterChef)
