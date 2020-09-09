@@ -1,15 +1,17 @@
 require "kitchen"
 require_relative "azure_credentials"
 require "securerandom" unless defined?(SecureRandom)
-require "azure_mgmt_resources"
-require "azure_mgmt_network"
+module Azure
+  autoload :Resources, "azure_mgmt_resources"
+  autoload :Network, "azure_mgmt_network"
+end
 require "base64" unless defined?(Base64)
-require "sshkey"
+autoload :SSHKey, "sshkey"
 require "fileutils" unless defined?(FileUtils)
 require "erb" unless defined?(Erb)
 require "ostruct" unless defined?(OpenStruct)
 require "json" unless defined?(JSON)
-require "faraday" unless defined?(Faraday)
+autoload :Faraday, "faraday"
 
 module Kitchen
   module Driver
