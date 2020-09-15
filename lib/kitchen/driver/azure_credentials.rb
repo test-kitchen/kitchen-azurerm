@@ -60,7 +60,7 @@ module Kitchen
           if File.file?(config_path)
             IniFile.load(config_path)
           else
-            warn "#{config_path} was not found or not accessible. Will attempt to use Managed Identity."
+            warn "#{config_path} was not found or not accessible."
             {}
           end
         end
@@ -71,7 +71,7 @@ module Kitchen
       end
 
       def tenant_id!
-        tenant_id || raise("Must provide tenant id. Use AZURE_TENANT_ID environment variable or set it in credentials file (#{config_path})")
+        tenant_id || warn("(#{config_path}) does not contain tenant_id neither is the AZURE_TENANT_ID environment variable set.")
       end
 
       def tenant_id
@@ -86,13 +86,37 @@ module Kitchen
         ENV["AZURE_CLIENT_SECRET"] || credentials_property("client_secret")
       end
 
+      # Retrieve a token based upon the preferred authentication method.
+      #
+      # @return [::MsRest::TokenProvider] A new token provider object.
       def token_provider
-        if client_id && client_secret
+        # Login with a credentials file or setting the environment variables
+        #
+        # Typically used with a service principal.
+        #
+        # SPN with client_id, client_secret and tenant_id
+        if client_id && client_secret && tenant_id
           ::MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, ad_settings)
-        elsif client_id
+        # Login with a Managed Service Identity.
+        #
+        # Typically used with a Managed Service Identity when you have a particular object registered in a tenant.
+        #
+        # MSI with client_id and tenant_id (aka User Assigned Identity).
+        elsif client_id && tenant_id
           ::MsRestAzure::MSITokenProvider.new(50342, ad_settings, { client_id: client_id })
-        else
+        # Default approach to inheriting existing object permissions (application or device this code is running on).
+        #
+        # Typically used when you want to inherit the permissions of the system you're running on that are in a tenant.
+        #
+        # MSI with just tenant_id (aka System Assigned Identity).
+        elsif tenant_id
           ::MsRestAzure::MSITokenProvider.new(50342, ad_settings)
+        # Login using the Azure CLI
+        #
+        # Typically used when you want to rely upon `az login` as your preferred authentication method.
+        else
+          warn("Using tenant id set through `az login`.")
+          ::MsRestAzure::AzureCliTokenProvider.new(ad_settings)
         end
       end
 

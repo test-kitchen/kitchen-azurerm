@@ -94,7 +94,7 @@ describe Kitchen::Driver::AzureCredentials do
       end
 
       it "logs a warning" do
-        expect(Kitchen.logger).to receive(:warn).with("#{default_config_path} was not found or not accessible. Will attempt to use Managed Identity.")
+        expect(Kitchen.logger).to receive(:warn).with("#{default_config_path} was not found or not accessible.")
         azure_options
       end
     end
@@ -152,7 +152,7 @@ describe Kitchen::Driver::AzureCredentials do
 
       context "active_directory_settings" do
         it "sets the authentication_endpoint correctly" do
-          expect(active_directory_settings.authentication_endpoint).to eq("https://login-us.microsoftonline.com/")
+          expect(active_directory_settings.authentication_endpoint).to eq("https://login.microsoftonline.us/")
         end
 
         it "sets the token_audience correctly" do
