@@ -14,7 +14,7 @@ describe Kitchen::Driver::AzureCredentials do
   end
 
   let(:environment) { "Azure" }
-  let(:fixtures_path) { File.expand_path("../../../../fixtures", __FILE__) }
+  let(:fixtures_path) { File.expand_path("../../../fixtures", __dir__) }
   let(:subscription_id) { ini_credentials.sections[CLIENT_ID_AND_SECRET_SUB] }
   let(:client_id) { ini_credentials[subscription_id]["client_id"] }
   let(:client_secret) { ini_credentials[subscription_id]["client_secret"] }
