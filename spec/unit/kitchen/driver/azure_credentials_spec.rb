@@ -1,4 +1,5 @@
 require "spec_helper"
+require "MsRestAzure"
 
 describe Kitchen::Driver::AzureCredentials do
   CLIENT_ID_AND_SECRET_SUB = 0
