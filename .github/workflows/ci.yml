@@ -22,8 +22,6 @@ jobs:
       - name: Setup Ruby environment
         run: |
           gem install bundler
-          gem install rspec
-          gem install rspec-its
           bundle install --jobs 4 --retry 3
       - name: RuboCop & Rspec
         run: bundle exec rake
