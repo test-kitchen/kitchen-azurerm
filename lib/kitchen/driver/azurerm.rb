@@ -17,7 +17,9 @@ module Kitchen
   module Driver
     #
     # Azurerm
+    # Create a new resource group object and set the location and tags attributes then return it.
     #
+    # @return [::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup] A new resource group object.
     class Azurerm < Kitchen::Driver::Base
       attr_accessor :resource_management_client
       attr_accessor :network_management_client
