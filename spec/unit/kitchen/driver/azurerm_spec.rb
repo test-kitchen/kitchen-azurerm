@@ -116,7 +116,7 @@ describe Kitchen::Driver::Azurerm do
       rg.tags = vm_tags
 
       # https://github.com/Azure/azure-sdk-for-ruby/blob/master/runtime/ms_rest_azure/spec/azure_operation_error_spec.rb
-      expect{ resource_groups.create_or_update(rgn, rg) }.to raise_error(an_instance_of(MsRestAzure::AzureOperationError))
+      expect{ resource_groups.create_or_update(rgn, rg) }.to raise_error( an_instance_of(MsRestAzure::AzureOperationError) )
     end
 
   end
