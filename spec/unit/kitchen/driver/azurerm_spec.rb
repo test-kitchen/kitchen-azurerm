@@ -1,6 +1,5 @@
 require "spec_helper"
 require "kitchen/transport/dummy"
-require "ms_rest"
 
 describe Kitchen::Driver::Azurerm do
   let(:logged_output) { StringIO.new }
@@ -46,7 +45,7 @@ describe Kitchen::Driver::Azurerm do
   end
 
   let(:client) do
-    ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+    Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
   end
 
   let(:instance) do
@@ -58,7 +57,7 @@ describe Kitchen::Driver::Azurerm do
   end
 
   let(:resource_group) do
-    ::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
+    Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
   end
 
   let(:resource_groups) do
@@ -87,7 +86,6 @@ describe Kitchen::Driver::Azurerm do
     let(:resource_group_name) { "testingrocks" }
     let(:base_url) { "https://management.chinacloudapi.cn" }
 
-
     before do
       allow(ENV).to receive(:[]).with("AZURE_TENANT_ID").and_return(tenant_id)
       allow(ENV).to receive(:[]).with("AZURE_CLIENT_ID").and_return(client_id)
@@ -97,6 +95,7 @@ describe Kitchen::Driver::Azurerm do
       allow(ENV).to receive(:[]).with("AZURE_HTTP_LOGGING").and_return("")
       allow(ENV).to receive(:[]).with("GEM_SKIP").and_return("")
       allow(ENV).to receive(:[]).with("http_proxy").and_return("")
+      allow(ENV).to receive(:[]).with("GEM_REQUIREMENT_AZURE_MGMT_RESOURCES").and_return("azure_mgmt_resources")
 
     end
 
@@ -117,7 +116,7 @@ describe Kitchen::Driver::Azurerm do
       rg.tags = vm_tags
 
       # https://github.com/Azure/azure-sdk-for-ruby/blob/master/runtime/ms_rest_azure/spec/azure_operation_error_spec.rb
-      expect{ resource_groups.create_or_update(rgn, rg) }.to raise_error( an_instance_of(MsRestAzure::AzureOperationError) )
+      expect { resource_groups.create_or_update(rgn, rg) }.to raise_error( an_instance_of(MsRestAzure::AzureOperationError) )
     end
 
   end
