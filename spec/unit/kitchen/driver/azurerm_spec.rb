@@ -1,6 +1,5 @@
 require "spec_helper"
 require "kitchen/transport/dummy"
-require "ms_rest"
 
 describe Kitchen::Driver::Azurerm do
   let(:logged_output) { StringIO.new }
@@ -19,6 +18,8 @@ describe Kitchen::Driver::Azurerm do
     }
   end
 
+  let(:azure_environment) { "AzureChina" }
+
   let(:image_urn) { "RedHat:rhel-byos:rhel-raw76:7.6.20190620" }
   let(:vm_name) { "my-awesome-vm" }
 
@@ -30,7 +31,21 @@ describe Kitchen::Driver::Azurerm do
       vm_tags: vm_tags,
       image_urn: image_urn,
       vm_name: vm_name,
+      azure_environment: azure_environment,
     }
+  end
+
+  let(:credentials) do
+    Kitchen::Driver::AzureCredentials.new(subscription_id: config[:subscription_id],
+      environment: config[:azure_environment])
+  end
+
+  let(:options) do
+    credentials.azure_options
+  end
+
+  let(:client) do
+    Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
   end
 
   let(:instance) do
@@ -39,6 +54,14 @@ describe Kitchen::Driver::Azurerm do
       transport: transport,
       platform:  platform,
       to_str:    "instance_str")
+  end
+
+  let(:resource_group) do
+    Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
+  end
+
+  let(:resource_groups) do
+    client.resource_groups
   end
 
   before do
@@ -56,6 +79,46 @@ describe Kitchen::Driver::Azurerm do
   end
 
   describe "#create" do
+    let(:tenant_id) { "2d38055e-66a1-435c-be53-TENANT_ID" }
+    let(:client_id) { "2e201a46-44a8-4508-84aa-CLIENT_ID" }
+    let(:client_secret) { "2e201a46-44a8-4508-84aa-CLIENT_SECRET" }
+    let(:environment) { "AzureChina" }
+    let(:resource_group_name) { "testingrocks" }
+    let(:base_url) { "https://management.chinacloudapi.cn" }
+
+    before do
+      allow(ENV).to receive(:[]).with("AZURE_TENANT_ID").and_return(tenant_id)
+      allow(ENV).to receive(:[]).with("AZURE_CLIENT_ID").and_return(client_id)
+      allow(ENV).to receive(:[]).with("AZURE_CLIENT_SECRET").and_return(client_secret)
+      allow(ENV).to receive(:[]).with("AZURE_SUBSCRIPTION_ID").and_return(subscription_id)
+      allow(ENV).to receive(:[]).with("https_proxy").and_return("")
+      allow(ENV).to receive(:[]).with("AZURE_HTTP_LOGGING").and_return("")
+      allow(ENV).to receive(:[]).with("GEM_SKIP").and_return("")
+      allow(ENV).to receive(:[]).with("http_proxy").and_return("")
+      allow(ENV).to receive(:[]).with("GEM_REQUIREMENT_AZURE_MGMT_RESOURCES").and_return("azure_mgmt_resources")
+
+    end
+
+    it "has credentials available" do
+      expect(credentials).to be_an_instance_of(Kitchen::Driver::AzureCredentials)
+    end
+
+    it "has options" do
+      expect(options[:tenant_id]).to eq(tenant_id)
+      expect(options[:client_id]).to eq(client_id)
+      expect(options[:client_secret]).to eq(client_secret)
+    end
+
+    it "fails to create or update a resource group because we are not authenticated" do
+      rgn = resource_group_name
+      rg = resource_group
+      rg.location = location
+      rg.tags = vm_tags
+
+      # https://github.com/Azure/azure-sdk-for-ruby/blob/master/runtime/ms_rest_azure/spec/azure_operation_error_spec.rb
+      expect { resource_groups.create_or_update(rgn, rg) }.to raise_error( an_instance_of(MsRestAzure::AzureOperationError) )
+    end
+
   end
 
   describe "#virtual_machine_deployment_template" do
