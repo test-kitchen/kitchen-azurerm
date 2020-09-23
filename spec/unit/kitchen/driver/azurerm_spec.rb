@@ -1,5 +1,6 @@
 require "spec_helper"
 require "kitchen/transport/dummy"
+require "ms_rest"
 
 describe Kitchen::Driver::Azurerm do
   let(:logged_output) { StringIO.new }
