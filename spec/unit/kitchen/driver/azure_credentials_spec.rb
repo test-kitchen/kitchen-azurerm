@@ -152,7 +152,7 @@ describe Kitchen::Driver::AzureCredentials do
 
       context "active_directory_settings" do
         it "sets the authentication_endpoint correctly" do
-          expect(active_directory_settings.authentication_endpoint).to eq("https://login-us.microsoftonline.com/")
+          expect(active_directory_settings.authentication_endpoint).to eq("https://login.microsoftonline.us/")
         end
 
         it "sets the token_audience correctly" do

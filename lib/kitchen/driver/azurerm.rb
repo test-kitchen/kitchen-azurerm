@@ -534,7 +534,7 @@ module Kitchen
 
         # If we don't have any instances, let's check to see if the user wants to delete a resource group and if so let's delete!
         if state[:server_id].nil? && state[:azure_resource_group_name].nil? && !config[:explicit_resource_group_name].nil? && config[:destroy_explicit_resource_group]
-          if resource_group_exists(config[:explicit_resource_group_name])
+          if resource_group_exists?(config[:explicit_resource_group_name])
             info "This instance doesn't exist but you asked to delete the resource group."
             begin
               info "Destroying Resource Group: #{config[:explicit_resource_group_name]}"
@@ -775,7 +775,7 @@ module Kitchen
       #
       # @return [Boolean] operation results.
       #
-      def resource_group_exists(resource_group_name)
+      def resource_group_exists?(resource_group_name)
         retries = config[:azure_api_retries]
         begin
           resource_management_client.resource_groups.check_existence(resource_group_name)
