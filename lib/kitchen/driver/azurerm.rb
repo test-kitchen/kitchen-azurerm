@@ -214,6 +214,10 @@ module Kitchen
         5
       end
 
+      default_config(:use_fqdn_hostname) do |_config|
+        false
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
@@ -337,6 +341,10 @@ module Kitchen
           result = get_public_ip(state[:azure_resource_group_name], "publicip")
           info "IP Address is: #{result.ip_address} [#{result.dns_settings.fqdn}]"
           state[:hostname] = result.ip_address
+          if config[:use_fqdn_hostname]
+            info "Using FQDN to communicate instead of IP"
+            state[:hostname] = result.dns_settings.fqdn
+          end
         else
           # Retrieve the internal IP from the resource group:
           result = get_network_interface(state[:azure_resource_group_name], vmnic.to_s)
