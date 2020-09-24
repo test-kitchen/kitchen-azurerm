@@ -1,5 +1,6 @@
 require "inifile"
 require "kitchen/logging"
+autoload :MsRest, "ms_rest"
 
 module Kitchen
   module Driver

@@ -1,8 +1,6 @@
 require "kitchen"
 
-require "ms_rest"
-require "ms_rest_azure"
-
+autoload :MsRestAzure, "ms_rest_azure"
 require_relative "azure_credentials"
 require "securerandom" unless defined?(SecureRandom)
 module Azure
