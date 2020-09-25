@@ -81,9 +81,22 @@ describe Kitchen::Driver::Azurerm do
   describe "#default_config" do
     let(:default_config) { driver.instance_variable_get(:@config) }
 
+    it "Should have the username option available" do
+      expect(default_config).to have_key(:username)
+    end
+
+    it "Should use 'azure' as the default username" do
+      expect(default_config[:username]).to eq("azure")
+    end
+
+    it "Should have the password option available" do
+      expect(default_config).to have_key(:password)
+    end
+
     it "Should have the use_fqdn_hostname option available" do
       expect(default_config).to have_key(:use_fqdn_hostname)
     end
+
     it "Should use the IP to communicate with VM by default" do
       expect(default_config[:use_fqdn_hostname]).to eq(false)
     end
