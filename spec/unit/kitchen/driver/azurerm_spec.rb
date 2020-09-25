@@ -78,6 +78,17 @@ describe Kitchen::Driver::Azurerm do
     end
   end
 
+  describe "#default_config" do
+    let(:default_config) { driver.instance_variable_get(:@config) }
+
+    it "Should have the use_fqdn_hostname option available" do
+      expect(default_config).to have_key(:use_fqdn_hostname)
+    end
+    it "Should use the IP to communicate with VM by default" do
+      expect(default_config[:use_fqdn_hostname]).to eq(false)
+    end
+  end
+
   describe "#create" do
     let(:tenant_id) { "2d38055e-66a1-435c-be53-TENANT_ID" }
     let(:client_id) { "2e201a46-44a8-4508-84aa-CLIENT_ID" }
@@ -96,7 +107,6 @@ describe Kitchen::Driver::Azurerm do
       allow(ENV).to receive(:[]).with("GEM_SKIP").and_return("")
       allow(ENV).to receive(:[]).with("http_proxy").and_return("")
       allow(ENV).to receive(:[]).with("GEM_REQUIREMENT_AZURE_MGMT_RESOURCES").and_return("azure_mgmt_resources")
-
     end
 
     it "has credentials available" do

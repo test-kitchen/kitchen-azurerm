@@ -688,6 +688,8 @@ driver:
 
 * The ```secret_url```, ```vault_name```, and ```vault_resource_group``` parameters can be used to deploy VM with specified key vault certificate.
 
+* The ```use_fqdn_hostname``` (default: "false") parameter can be used to determine how kitchen communicates with the Virtual Machine. When true, Kitchen will use the FQDN that is assigned to the Virtual Machine. When false, kitchen will use the public IP address of the machine. This may overcome issues with Corporate firewalls or VPNs blocking Public IP addresses.
+
 ## Enabling alternative WinRM configurations
 
 * By default on Windows machines, a PowerShell script runs that enables WinRM over the SSL transport, for Basic, Negotiate and CredSSP connections. To supply your own PowerShell script (e.g. to enable HTTP), use the `winrm_powershell_script` parameter. Windows 2008 R2 example:
