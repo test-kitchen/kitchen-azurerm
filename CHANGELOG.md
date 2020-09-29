@@ -1,5 +1,14 @@
 # kitchen-azurerm Changelog
 
+## [1.4.0] - 2020-09-29
+
+- Resolved an issue where VM state was persisted before VM is provisioned
+- Added linting and unit testing for each pull request via GitHub Actions
+- Resolved issues where resource groups where not being destroyed
+- Set 'az login' the default authentication mechanism
+- Added new `use_fqdn_hostname` config option to set Test Kitchen to communicate using the instance's FQDN
+- Resolved an issue where username was not being added to Test Kitchen's state
+
 ## [1.3.0] - 2020-09-09
 
 - Improve performance by loading depedencies only when we need them (@mwrock)
