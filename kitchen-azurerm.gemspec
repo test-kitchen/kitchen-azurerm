@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "test-kitchen", ">= 1.20", "< 3.0"
 
   spec.add_development_dependency "rake", ">= 11.0"
-  spec.add_development_dependency "chefstyle", "1.5.2"
+  spec.add_development_dependency "chefstyle", "1.5.8"
   spec.add_development_dependency "rspec", "~> 3.5"
   spec.add_development_dependency "rspec-mocks", "~> 3.5"
   spec.add_development_dependency "rspec-expectations", "~> 3.5"
