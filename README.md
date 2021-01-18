@@ -1,6 +1,7 @@
 # kitchen-azurerm
 
-[![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](http://badge.fury.io/rb/kitchen-azurerm) ![CI](https://github.com/test-kitchen/kitchen-azurerm/workflows/CI/badge.svg?branch=master)
+[![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](https://badge.fury.io/rb/kitchen-azurerm) 
+![CI](https://github.com/test-kitchen/kitchen-azurerm/workflows/CI/badge.svg?branch=master)
 
 **kitchen-azurerm** is a driver for the popular test harness [Test Kitchen](http://kitchen.ci) that allows Microsoft Azure resources to be provisioned before testing. This driver uses the new Microsoft Azure Resource Management REST API via the [azure-sdk-for-ruby](https://github.com/azure/azure-sdk-for-ruby).
 
