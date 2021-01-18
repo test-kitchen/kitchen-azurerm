@@ -20,11 +20,4 @@ Gem::Specification.new do |spec|
   spec.add_dependency "inifile", "~> 3.0", ">= 3.0.0"
   spec.add_dependency "sshkey", ">= 1.0.0", "< 3"
   spec.add_dependency "test-kitchen", ">= 1.20", "< 3.0"
-
-  spec.add_development_dependency "rake", ">= 11.0"
-  spec.add_development_dependency "chefstyle", "1.5.9"
-  spec.add_development_dependency "rspec", "~> 3.5"
-  spec.add_development_dependency "rspec-mocks", "~> 3.5"
-  spec.add_development_dependency "rspec-expectations", "~> 3.5"
-  spec.add_development_dependency "rspec-its", "~> 1.3.0"
 end
