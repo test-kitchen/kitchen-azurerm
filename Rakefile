@@ -1,10 +1,15 @@
 require "bundler/gem_tasks"
-require "rubocop/rake_task"
-require "chefstyle"
 require "rspec/core/rake_task"
+RSpec::Core::RakeTask.new(:test)
 
-RuboCop::RakeTask.new
-RSpec::Core::RakeTask.new(:spec)
+begin
+  require "chefstyle"
+  require "rubocop/rake_task"
+  RuboCop::RakeTask.new(:style) do |task|
+    task.options += ["--display-cop-names", "--no-color"]
+  end
+rescue LoadError
+  puts "chefstyle is not available. (sudo) gem install chefstyle to do style checking."
+end
 
-task default: [:rubocop] # run linting
-task default: [:spec] # run rspec tests
+task default: %i{test style}
