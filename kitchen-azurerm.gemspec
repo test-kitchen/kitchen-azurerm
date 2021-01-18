@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.files         = Dir["LICENSE", "README.md", "lib/**/*", "templates/**/*"]
   spec.require_paths = ["lib"]
 
-  gem.required_ruby_version = ">= 2.5"
+  spec.required_ruby_version = ">= 2.5"
 
   spec.add_dependency "azure_mgmt_network", "~> 0.18", ">= 0.18.2"
   spec.add_dependency "azure_mgmt_resources", "~> 0.17", ">= 0.17.2"
