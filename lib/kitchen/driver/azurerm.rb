@@ -208,6 +208,10 @@ module Kitchen
         ENV["AZURE_SUBSCRIPTION_ID"]
       end
 
+      default_config(:public_ip_sku) do |_config|
+        "Basic"
+      end
+
       default_config(:azure_api_retries) do |_config|
         5
       end
@@ -236,6 +240,12 @@ module Kitchen
 
         if instance.transport[:ssh_key].nil?
           deployment_parameters[:adminPassword] = config[:password]
+        end
+
+        deployment_parameters[:publicIPSKU] = config[:public_ip_sku]
+
+        if config[:public_ip_sku] == "Standard"
+          deployment_parameters[:publicIPAddressType] = "Static"
         end
 
         if config[:subscription_id].to_s == ""

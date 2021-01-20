@@ -260,7 +260,45 @@ suites:
     attributes:
 ```
 
-### .kitchen.yml example 5 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Managed Image
+### .kitchen.yml example 5 - deploy VM to existing virtual network/subnet with a Standard SKU public IP (use for ExpressRoute/VPN scenarios)
+
+The following example introduces the ```vnet_id``` and ```subnet_id``` properties under "driver" in the configuration file. This can be applied at the top level, or per platform.
+You can use this capability to create the VM on an existing virtual network and subnet created in a different resource group.
+
+This enables scenarios that require a Standard SKU public IP resource, for example when a NAT gateway is present on the target subnet.
+
+
+```yaml
+---
+driver:
+  name: azurerm
+  subscription_id: 'your-azure-subscription-id-here'
+  location: 'West Europe'
+  machine_size: 'Standard_D1'
+
+transport:
+  ssh_key: ~/.ssh/id_kitchen-azurerm
+
+provisioner:
+  name: chef_zero
+
+platforms:
+  - name: ubuntu-1404
+    driver:
+      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+      vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
+      subnet_id: subnet-10.1.0
+	  public_ip: true
+	  public_ip_sku: Standard
+
+suites:
+  - name: default
+    run_list:
+      - recipe[kitchen-azurerm-demo::default]
+    attributes:
+```
+
+### .kitchen.yml example 6 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Managed Image
 
 This example is the same as above, but uses a private managed image to provision the vm.
 
@@ -295,7 +333,7 @@ suites:
     attributes:
 ```
 
-### .kitchen.yml example 6 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image
+### .kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image
 
 This example a classic Custom VM Image (aka a VHD file) is used. As the Image VHD must be in the same storage account then the disk of the instance, the os disk is created in an existing image account.
 
@@ -338,7 +376,7 @@ suites:
     attributes:
 ```
 
-### .kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image and providing custom data and extra large os disk
+### .kitchen.yml example 8 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image and providing custom data and extra large os disk
 
 This is the same as above, but uses custom data to customize the instance.
 
@@ -383,7 +421,7 @@ suites:
     attributes:
 ```
 
-### .kitchen.yml example 8 - Windows 2016 VM with additional data disks
+### .kitchen.yml example 9 - Windows 2016 VM with additional data disks
 
 This example demonstrates how to add 3 additional Managed data disks to a Windows Server 2016 VM. Not supported with legacy (pre-managed disk) storage accounts.
 
@@ -420,7 +458,7 @@ suites:
     attributes:
 ```
 
-### .kitchen.yml example 9 - "post-deployment" ARM template with MSI authentication
+### .kitchen.yml example 10 - "post-deployment" ARM template with MSI authentication
 
 The following example introduces the ```post_deployment_template``` and ```post_deployment_parameters``` properties in the configuration file.
 You can use this capability to execute an ARM template containing Azure resources to provision after the system under test is created.
@@ -506,7 +544,7 @@ Example postdeploy.json to enable MSI extention on VM:
 }
 ```
 
-### .kitchen.yml example 10 - Enabling Managed Service Identities
+### .kitchen.yml example 11 - Enabling Managed Service Identities
 
 This example demonstrates how to enable a System Assigned Identity and User Assigned Identities on a Kitchen VM.
 Any combination of System and User assigned identities may be enabled, and multiple User Assigned Identities can be supplied.
@@ -542,7 +580,7 @@ suites:
     attributes:
 ```
 
-### .kitchen.yml example 11 - deploy VM with key vault certificate
+### .kitchen.yml example 12 - deploy VM with key vault certificate
 
 This following example introduces ```secret_url```, ```vault_name```, and ```vault_resource_group``` properties under "driver" in the configuration file. You can use this capability to create a VM with a specified key vault certificate.
 
