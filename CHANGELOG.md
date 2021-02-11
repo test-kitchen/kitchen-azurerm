@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [1.5.0] - 2021-02-11
+
+- Add support for setting the public IP SkU with a new `public_ip_sku` for use under the `subnet` config. Thanks [@simonjefford](https://github.com/simonjefford)
+
 ## [1.4.0] - 2020-09-29
 
 - Resolved an issue where VM state was persisted before VM is provisioned
@@ -11,7 +15,7 @@
 
 ## [1.3.0] - 2020-09-09
 
-- Improve performance by loading depedencies only when we need them (@mwrock)
+- Improve performance by loading dependencies only when we need them (@mwrock)
 
 ## [1.2.0] - 2020-08-20
 
