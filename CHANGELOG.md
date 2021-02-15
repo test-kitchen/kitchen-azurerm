@@ -2,7 +2,7 @@
 
 ## [1.5.0] - 2021-02-11
 
-- Add support for setting the public IP SkU with a new `public_ip_sku` for use under the `subnet` config. Thanks [@simonjefford](https://github.com/simonjefford)
+- Add support for setting the public IP SkU with a new `public_ip_sku` configuration option within the `subnet` config. Thanks [@simonjefford](https://github.com/simonjefford)
 
 ## [1.4.0] - 2020-09-29
 
