@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [1.5.1] - 2021-02-18
+
+- Populate publicIPSKU in template only if provided by kitchen config [@collinmcneese](https://github.com/collinmcneese)
+
 ## [1.5.0] - 2021-02-11
 
 - Add support for setting the public IP SkU with a new `public_ip_sku` configuration option within the `subnet` config. Thanks [@simonjefford](https://github.com/simonjefford)
