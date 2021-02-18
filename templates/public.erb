@@ -375,6 +375,9 @@
                         <%- unless os_disk_size_gb.to_s.empty? -%>
                         "diskSizeGB": "[parameters('osDiskSizeGB')]",
                         <%- end -%>
+                        "managedDisk": {
+                            "storageAccountType": "[parameters('storageAccountType')]",
+                        },
                         "createOption": "FromImage"
                     }
                     <%- else -%>
