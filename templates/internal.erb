@@ -40,20 +40,22 @@
                 "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
             }
         },
-	"publicIPSKU": {
-	    "type": "string",
-	    "defaultValue": "Standard",
-	    "metadata": {
-	        "description": "SKU name for the Public IP used to access the Virtual Machine."
-	    }
-	},
-	"publicIPAddressType": {
-	    "type": "string",
-	    "defaultValue": "Dynamic",
-	    "metadata": {
-	        "description": "SKU name for the Public IP used to access the Virtual Machine."
-	    }
-	},
+        <%- if public_ip_sku %>
+        "publicIPSKU": {
+            "type": "string",
+            "defaultValue": "Standard",
+            "metadata": {
+                "description": "SKU name for the Public IP used to access the Virtual Machine."
+            }
+        },
+        "publicIPAddressType": {
+            "type": "string",
+            "defaultValue": "Dynamic",
+            "metadata": {
+                "description": "SKU name for the Public IP used to access the Virtual Machine."
+            }
+        },
+        <%- end %>
         <%- unless os_disk_size_gb.to_s.empty?  -%>
         "osDiskSizeGb": {
             "type": "int",
@@ -359,12 +361,12 @@
                     },
                     <%- end -%>
                     <%- if use_ephemeral_osdisk -%>
-                    "osDisk": { 
-                        "diffDiskSettings": { 
-                             "option": "Local" 
-                        }, 
-                        "caching": "ReadOnly", 
-                        "createOption": "FromImage" 
+                    "osDisk": {
+                        "diffDiskSettings": {
+                             "option": "Local"
+                        },
+                        "caching": "ReadOnly",
+                        "createOption": "FromImage"
                     }
                     <%- elsif use_managed_disks -%>
                     "osDisk": {
