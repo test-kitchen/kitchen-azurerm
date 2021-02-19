@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [1.5.2] - 2021-02-18
+
+- Fix using `storage_account_type` config option to set data disk storage types - [@reasland](https://github.com/reasland)
+
 ## [1.5.1] - 2021-02-18
 
 - Populate publicIPSKU in template only if provided by kitchen config [@collinmcneese](https://github.com/collinmcneese)
