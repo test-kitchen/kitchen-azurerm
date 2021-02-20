@@ -209,7 +209,7 @@ module Kitchen
       end
 
       default_config(:public_ip_sku) do |_config|
-        "Basic"
+        ""
       end
 
       default_config(:azure_api_retries) do |_config|
