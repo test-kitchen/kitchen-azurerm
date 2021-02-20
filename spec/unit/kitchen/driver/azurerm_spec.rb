@@ -100,10 +100,6 @@ describe Kitchen::Driver::Azurerm do
     it "Should use the IP to communicate with VM by default" do
       expect(default_config[:use_fqdn_hostname]).to eq(false)
     end
-
-    it "Should use basic public IP resources" do
-      expect(default_config[:public_ip_sku]).to eq("Basic")
-    end
   end
 
   describe "#create" do
