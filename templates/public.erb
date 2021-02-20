@@ -163,6 +163,20 @@
                 "description": "The nic name created inside of the resource group."
             }
         },
+        "publicIPSKU": {
+            "type": "string",
+            "defaultValue": "Basic",
+            "metadata": {
+                "description": "SKU name for the Public IP used to access the Virtual Machine."
+            }
+        },
+        "publicIPAddressType": {
+            "type": "string",
+            "defaultValue": "Dynamic",
+            "metadata": {
+                "description": "SKU name for the Public IP used to access the Virtual Machine."
+            }
+        },
         "storageAccountType": {
             "type": "string",
             "defaultValue": "<%= storage_account_type %>",
@@ -201,7 +215,6 @@
         "subnetPrefix": "10.0.0.0/24",
         "storageAccountType": "[parameters('storageAccountType')]",
         "publicIPAddressName": "publicip",
-        "publicIPAddressType": "Dynamic",
         "vmStorageAccountContainerName": "vhds",
         "vmName": "[parameters('vmName')]",
         "vmSize": "[parameters('vmSize')]",
@@ -213,7 +226,7 @@
     "resources": [
         {
             "apiVersion": "2017-05-10",
-            "name": "pid-18d63047-6cdf-4f34-beed-62f01fc73fc2", 
+            "name": "pid-18d63047-6cdf-4f34-beed-62f01fc73fc2",
             "type": "Microsoft.Resources/deployments",
             "properties": {
                 "mode": "Incremental",
@@ -241,15 +254,18 @@
         <%- end -%>
         <%- end -%>
         {
-            "apiVersion": "2015-05-01-preview",
+            "apiVersion": "2017-08-01",
             "type": "Microsoft.Network/publicIPAddresses",
             "name": "[variables('publicIPAddressName')]",
             "location": "[variables('location')]",
             "properties": {
-                "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+                "publicIPAllocationMethod": "[parameters('publicIPAddressType')]",
                 "dnsSettings": {
                     "domainNameLabel": "[parameters('dnsNameForPublicIP')]"
                 }
+            },
+            "sku": {
+              "name": "[parameters('publicIPSKU')]"
             },
             "tags": {
                 <%= vm_tags unless vm_tags.empty? %>
@@ -362,12 +378,12 @@
                     },
                     <%- end -%>
                     <%- if use_ephemeral_osdisk -%>
-                    "osDisk": { 
-                        "diffDiskSettings": { 
-                             "option": "Local" 
-                        }, 
-                        "caching": "ReadOnly", 
-                        "createOption": "FromImage" 
+                    "osDisk": {
+                        "diffDiskSettings": {
+                             "option": "Local"
+                        },
+                        "caching": "ReadOnly",
+                        "createOption": "FromImage"
                     }
                     <%- elsif use_managed_disks -%>
                     "osDisk": {
@@ -408,7 +424,7 @@
                     }
                     <%- end -%>
                     <%- unless data_disks_for_vm_json.nil? -%>
-                      ,"dataDisks": 
+                      ,"dataDisks":
                           <%= data_disks_for_vm_json %>
                     <%- end -%>
                 },
