@@ -242,7 +242,9 @@ module Kitchen
           deployment_parameters[:adminPassword] = config[:password]
         end
 
-        deployment_parameters[:publicIPSKU] = config[:public_ip_sku]
+        unless config[:public_ip_sku] == ""
+          deployment_parameters[:publicIPSKU] = config[:public_ip_sku]
+        end
 
         if config[:public_ip_sku] == "Standard"
           deployment_parameters[:publicIPAddressType] = "Static"
