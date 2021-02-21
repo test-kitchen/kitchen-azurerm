@@ -1,6 +1,6 @@
 # kitchen-azurerm
 
-[![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](https://badge.fury.io/rb/kitchen-azurerm) 
+[![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](https://badge.fury.io/rb/kitchen-azurerm)
 ![CI](https://github.com/test-kitchen/kitchen-azurerm/workflows/CI/badge.svg?branch=master)
 
 **kitchen-azurerm** is a driver for the popular test harness [Test Kitchen](http://kitchen.ci) that allows Microsoft Azure resources to be provisioned before testing. This driver uses the new Microsoft Azure Resource Management REST API via the [azure-sdk-for-ruby](https://github.com/azure/azure-sdk-for-ruby).
@@ -76,6 +76,62 @@ Instance            Driver   Provisioner  Verifier  Transport  Last Action    La
 wsus-windows-2019   Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
 wsus-windows-2016   Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <None>
 ```
+
+### Driver Properties
+
+The following properties are able to be specified in the `driver` section of the Test Kitchen configuration:
+
+| Name | Required | Default Value | Description |
+| --- | --- | --- | --- |
+| subscription_id | `true` | `ENV["AZURE_SUBSCRIPTION_ID"]` | Reads string from `ENV["AZURE_SUBSCRIPTION_ID"]` or must be specified if not present in `ENV`.
+| azure_environment | `false` | `"Azure"` | Optional name of Azure environment to use. |
+| machine_size | `true` | `nil` | Machine size to use for instances created. |
+| location | `true` | `nil` | Azure location to use, example `"Central US"` |
+| azure_resource_group_prefix | `false` | `"kitchen-"` | Prefix to use for the resource group configuration which will be created. |
+| azure_resource_group_suffix | `false` | `""` | Optional suffix to append to resource group name. |
+| azure_resource_group_name | `false` | kitchen suite instance name | Optional override for base name of the Azure Resource group which is created, uses prefix and suffix. |
+| explicit_resource_group_name | `false` | `nil` | Optional explicit resource group name, does not use `azure_resource_group_prefix`/`azure_resource_group_suffix` |
+| resource_group_tags | `false` | `{}` | Optional hash of tags to pass to resource group |
+| image_urn | `false` | `"Canonical:UbuntuServer:14.04.3-LTS:latest"` | Image URN to use for vm creation. List can be found using `az` cli - [https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage#list-popular-images] |
+| image_url | `false` | `""` | Optional explicit URL to use for fetching image. |
+| image_id | `false` | `""` | Optional explicit id to use for image. |
+| use_ephemeral_osdisk | `false` | `false` | Optional flag to use ephermeal disk for instances. |
+| os_disk_size_gb | `false` | `""` | Optional override of os disk size for instances. |
+| os_type | `false` | `"linux"` | Should be specified when os type is not `linux`. |
+| custom_data | `false` | `""` | Optional custom data which may be specified for instances [https://docs.microsoft.com/en-us/azure/virtual-machines/custom-data] |
+| username | `false` | `"azure"` | Username to use for connecting to instances. |
+| password | `false` | `SecureRandom.base64(25)` | Optional password to use for connecting to instances.  Defaults to creating random 25-digit password. |
+| vm_name | `false` | `"vm"` | Optional name for vm instances to create. |
+| nic_name | `false` | `""` | Optional name to provide for nic, if not specified then nic name will be `"nic-#{config[:vm_name]}"`. |
+| vnet_id | `false` | `""` | Optional `vnet` to provide.  If no `vnet` is chosen then public IP will be assigned using default values. |
+| subnet_id | `false` | `""` | Optional subnet to provide, should be used with `vnet_id`. |
+| public_ip | `false` | `false` | Option to specify if a public IP should be assigned.  In default configuration if all other options are left at default then a public IP _will_ be assigned, due to `vnet_id` having no value. |
+| public_ip_sku | `false` | `"Basic"` | Optional string to change the SKU of allocated public IP address.  Defaults to `Basic`. |
+| storage_account_type | `false` | `"Standard_LRS"` | Optional storage account type. |
+| existing_storage_account_blob_url | `false` | `""` | Used with private image specification, the URL of the existing storage account (blob) (without container) |
+| existing_storage_account_container | `false` | Used with private image specification, the Container Name for OS Images (blob) |
+| boot_diagnostics_enabled | `false` | `true` | Whether to enable (true) or disable (false) boot diagnostics. Default: true (requires Standard storage). |
+| winrm_powershell_script | `false` | `false` | Optional block to specify custom winrm enable contents or else use defaults in driver. |
+| pre_deployment_template | `false` | `""` | Optional path to name of pre-deployment template to use. |
+| pre_deployment_parameters | `false` | `{}` | Optional parameters to pass to pre-deployment template. |
+| post_deployment_template | `false` | `""` | Optional path to name of post-deployment template to use. |
+| post_deployment_parameters | `false` | `{}` | Optional parameters to pass to post-deployment template. |
+| plan | `false` | `{}` | Optional JSON object to use for plan data. |
+| vm_tags | `false` | `{}` | Optional hash of vm tags to populate. |
+| use_managed_disks | `false` | `true` | Must be set to `true` to use `data_disks` property. |
+| data_disks | `false` | `nil` | Additional disks to configure for instances. |
+| format_data_disks | `false` | `false` | Run format operations on attached data disks|
+| format_data_disks_powershell_script | `false` | `false` | Customize the content of format operations for attached `data_disks` |
+| system_assigned_identity | `false` | `false` | Whether to enable system assigned identity for the vm. |
+| user_assigned_identities | `false` | `[]` | An object whose keys are resource IDs for user identities to associate with the Virtual Machine and whose values are empty objects, or empty to disable user assigned identities. |
+| destroy_explicit_resource_group | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
+| destroy_explicit_resource_group_tags | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
+| deployment_sleep | `false` | `10` | Time in seconds to sleep at the end of deployment before fetching details. |
+| secret_url | `false` | `""` | used with connecting to Azure Key Vault |
+| vault_name | `false` | `""` | used with connecting to Azure Key Vault |
+| vault_resource_group | `false` | `""` | used with connecting to Azure Key Vault |
+| azure_api_retries | `false` | `5` | Number of times to retry connections to Azure API. |
+| use_fqdn_hostname | `false` | `false` | Use FQDN to communicate with instances instead of IP. |
 
 ### .kitchen.yml example 1 - Linux/Ubuntu
 
@@ -711,7 +767,7 @@ info:    vm image list command OK
 
 * The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group. Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```. The ```destroy_explicit_resource_group``` option can now be used after using the ```destroy_resource_group_contents``` option creates an empty resource group to destroy the resource group previously created.
 
-* The ```destroy_resource_group_contents``` (default: "false") parameter can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase. If you wish to destroy the empty resource group created after you empty the resource group with this flag you can now set the ```destroy_explicit_resource_group``` to "true" to destroy the empty resource group. 
+* The ```destroy_resource_group_contents``` (default: "false") parameter can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase. If you wish to destroy the empty resource group created after you empty the resource group with this flag you can now set the ```destroy_explicit_resource_group``` to "true" to destroy the empty resource group.
 
 * The ```destroy_explicit_resource_group_tags``` (default: "true") parameter can be used when you want to remove tags associated with an explicit resource group. The default setting is set to "true" to remain consistent with previous behavior. This should be used in combination with an ```explicit_resource_group_name``` and will be honored during the ```kitchen destroy``` phase.
 
