@@ -40,10 +40,9 @@
                 "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
             }
         },
-        <%- if public_ip_sku %>
         "publicIPSKU": {
             "type": "string",
-            "defaultValue": "Standard",
+            "defaultValue": "Basic",
             "metadata": {
                 "description": "SKU name for the Public IP used to access the Virtual Machine."
             }
@@ -55,7 +54,6 @@
                 "description": "SKU name for the Public IP used to access the Virtual Machine."
             }
         },
-        <%- end %>
         <%- unless os_disk_size_gb.to_s.empty?  -%>
         "osDiskSizeGb": {
             "type": "int",
@@ -261,9 +259,9 @@
             "type": "Microsoft.Network/publicIPAddresses",
             "name": "[variables('publicIPAddressName')]",
             "location": "[variables('location')]",
-	    "sku": {
-	    	"name": "[parameters('publicIPSKU')]"
-	    },
+            "sku": {
+              "name": "[parameters('publicIPSKU')]"
+            },
             "properties": {
                 "publicIPAllocationMethod": "[parameters('publicIPAddressType')]",
                 "dnsSettings": {
