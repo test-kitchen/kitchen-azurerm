@@ -81,58 +81,58 @@ wsus-windows-2016   Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <N
 
 The following properties are able to be specified in the `driver` section of the Test Kitchen configuration:
 
-| Name | Required | Default Value | Description |
-| --- | --- | --- | --- |
-| subscription_id | `true` | `ENV["AZURE_SUBSCRIPTION_ID"]` | Reads string from `ENV["AZURE_SUBSCRIPTION_ID"]` or must be specified if not present in `ENV`.
-| azure_environment | `false` | `"Azure"` | Optional name of Azure environment to use. |
-| machine_size | `true` | `nil` | Machine size to use for instances created. |
-| location | `true` | `nil` | Azure location to use, example `"Central US"` |
-| azure_resource_group_prefix | `false` | `"kitchen-"` | Prefix to use for the resource group configuration which will be created. |
-| azure_resource_group_suffix | `false` | `""` | Optional suffix to append to resource group name. |
-| azure_resource_group_name | `false` | kitchen suite instance name | Optional override for base name of the Azure Resource group which is created, uses prefix and suffix. |
-| explicit_resource_group_name | `false` | `nil` | Optional explicit resource group name, does not use `azure_resource_group_prefix`/`azure_resource_group_suffix` |
-| destroy_explicit_resource_group | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
-| destroy_explicit_resource_group_tags | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
-| destroy_resource_group_contents | `false` | `false` | can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase. If you wish to destroy the empty resource group created after you empty the resource group with this flag you can now set the ```destroy_explicit_resource_group``` to "true" to destroy the empty resource group. |
-| resource_group_tags | `false` | `{}` | Optional hash of tags to pass to resource group |
-| image_urn | `false` | `"Canonical:UbuntuServer:14.04.3-LTS:latest"` | Image URN to use for vm creation. List can be found using `az` cli - [https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage#list-popular-images] |
-| image_url | `false` | `""` | (unmanaged disks only) can be used to specify a custom vhd (This VHD must be in the same storage account as the disks of the VM, therefore ```existing_storage_account_blob_url``` must also be set and ```use_managed_disks``` must be set to false) |
-| image_id | `false` | `""` | (managed disks only) can be used to specify an image by id (managed disk). This works only with managed disks. |
-| use_ephemeral_osdisk | `false` | `false` | Optional flag to use ephermeal disk for instances. |
-| os_disk_size_gb | `false` | `""` | Optional override of os disk size for instances. |
-| os_type | `false` | `"linux"` | Should be specified when os type is not `linux`. |
-| custom_data | `false` | `""` | Optional custom data which may be specified for instances [https://docs.microsoft.com/en-us/azure/virtual-machines/custom-data].  This can be a file or the data itself. This module handles base64 encoding for you.|
-| username | `false` | `"azure"` | Username to use for connecting to instances. |
-| password | `false` | `SecureRandom.base64(25)` | Optional password to use for connecting to instances.  Defaults to creating random 24-digit password. |
-| vm_name | `false` | `"vm"` | Optional name for vm instances to create. |
-| nic_name | `false` | `""` | Optional name to provide for nic, if not specified then nic name will be `"nic-#{config[:vm_name]}"`. |
-| vnet_id | `false` | `""` | Optional `vnet` to provide.  If no `vnet` is chosen then public IP will be assigned using default values. |
-| subnet_id | `false` | `""` | Optional subnet to provide, should be used with `vnet_id`. |
-| public_ip | `false` | `false` | Option to specify if a public IP should be assigned.  In default configuration if all other options are left at default then a public IP _will_ be assigned, due to `vnet_id` having no value. |
-| public_ip_sku | `false` | `"Basic"` | Optional string to change the SKU of allocated public IP address.  Defaults to `Basic`. |
-| storage_account_type | `false` | `"Standard_LRS"` | Optional storage account type. |
-| existing_storage_account_blob_url | `false` | `""` | Used with private image specification, the URL of the existing storage account (blob) (without container) |
-| existing_storage_account_container | `false` | Used with private image specification, the Container Name for OS Images (blob) |
-| boot_diagnostics_enabled | `false` | `true` | Whether to enable (true) or disable (false) boot diagnostics. Default: true (requires Standard storage). |
-| winrm_powershell_script | `false` | `false` | Optional block to specify custom winrm enable contents or else use defaults in driver. |
-| pre_deployment_template | `false` | `""` | Optional path to name of pre-deployment template to use. |
-| pre_deployment_parameters | `false` | `{}` | Optional parameters to pass to pre-deployment template. |
-| post_deployment_template | `false` | `""` | Optional path to name of post-deployment template to use. |
-| post_deployment_parameters | `false` | `{}` | Optional parameters to pass to post-deployment template. |
-| plan | `false` | `{}` | Optional JSON object which allows you to define plan information when creating VMs from Marketplace images. Please refer to [Deploy an image with Marketplace terms](https://aka.ms/azuremarketplaceapideployment) for more details. Not all Marketplace images support programmatic deployment, and support is controlled by the image publisher.|
-| vm_tags | `false` | `{}` | Optional hash of vm tags to populate. |
-| use_managed_disks | `false` | `true` | Must be set to `true` to use `data_disks` property. |
-| data_disks | `false` | `nil` | Additional disks to configure for instances. |
-| format_data_disks | `false` | `false` | Run format operations on attached data disks|
-| format_data_disks_powershell_script | `false` | `false` | Customize the content of format operations for attached `data_disks` |
-| system_assigned_identity | `false` | `false` | Whether to enable system assigned identity for the vm. |
-| user_assigned_identities | `false` | `[]` | An object whose keys are resource IDs for user identities to associate with the Virtual Machine and whose values are empty objects, or empty to disable user assigned identities. |
-| deployment_sleep | `false` | `10` | Time in seconds to sleep at the end of deployment before fetching details. |
-| secret_url | `false` | `""` | used with connecting to Azure Key Vault |
-| vault_name | `false` | `""` | used with connecting to Azure Key Vault |
-| vault_resource_group | `false` | `""` | used with connecting to Azure Key Vault |
-| azure_api_retries | `false` | `5` | Number of times to retry connections to Azure API. |
-| use_fqdn_hostname | `false` | `false` | When true, Kitchen will use the FQDN that is assigned to the Virtual Machine. When false, kitchen will use the public IP address of the machine. This may overcome issues with Corporate firewalls or VPNs blocking Public IP addresses. |
+| Name                                  | Required  | Default Value     | Description   |
+| ---                                   | ---       | ---               | ---           |
+| subscription_id                       | `true` | `ENV["AZURE_SUBSCRIPTION_ID"]` | Reads string from `ENV["AZURE_SUBSCRIPTION_ID"]` or must be specified if not present in `ENV`.
+| azure_environment                     | `false` | `"Azure"` | Optional name of Azure environment to use. |
+| machine_size                          | `true` | `nil` | Machine size to use for instances created. |
+| location                              | `true` | `nil` | Azure location to use, example `"Central US"` |
+| azure_resource_group_prefix           | `false` | `"kitchen-"` | Prefix to use for the resource group configuration which will be created. |
+| azure_resource_group_suffix           | `false` | `""` | Optional suffix to append to resource group name. |
+| azure_resource_group_name             | `false` | kitchen suite instance name | Optional override for base name of the Azure Resource group which is created, uses prefix and suffix. |
+| explicit_resource_group_name          | `false` | `nil` | Optional explicit resource group name, does not use `azure_resource_group_prefix`/`azure_resource_group_suffix` |
+| destroy_explicit_resource_group       | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
+| destroy_explicit_resource_group_tags  | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
+| destroy_resource_group_contents       | `false` | `false` | can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase. If you wish to destroy the empty resource group created after you empty the resource group with this flag you can now set the ```destroy_explicit_resource_group``` to "true" to destroy the empty resource group. |
+| resource_group_tags                   | `false` | `{}` | Optional hash of tags to pass to resource group |
+| image_urn                             | `false` | `"Canonical:UbuntuServer:14.04.3-LTS:latest"` | Image URN to use for vm creation. List can be found using `az` cli - [https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage#list-popular-images] |
+| image_url                             | `false` | `""` | (unmanaged disks only) can be used to specify a custom vhd (This VHD must be in the same storage account as the disks of the VM, therefore ```existing_storage_account_blob_url``` must also be set and ```use_managed_disks``` must be set to false) |
+| image_id                              | `false` | `""` | (managed disks only) can be used to specify an image by id (managed disk). This works only with managed disks. |
+| use_ephemeral_osdisk                  | `false` | `false` | Optional flag to use ephermeal disk for instances. |
+| os_disk_size_gb                       | `false` | `""` | Optional override of os disk size for instances. |
+| os_type                               | `false` | `"linux"` | Should be specified when os type is not `linux`. |
+| custom_data                           | `false` | `""` | Optional custom data which may be specified for instances [https://docs.microsoft.com/en-us/azure/virtual-machines/custom-data].  This can be a file or the data itself. This module handles base64 encoding for you.|
+| username                              | `false` | `"azure"` | Username to use for connecting to instances. |
+| password                              | `false` | `SecureRandom.base64(25)` | Optional password to use for connecting to instances.  Defaults to creating random 24-digit password. |
+| vm_name                               | `false` | `"vm"` | Optional name for vm instances to create. |
+| nic_name                              | `false` | `""` | Optional name to provide for nic, if not specified then nic name will be `"nic-#{config[:vm_name]}"`. |
+| vnet_id                               | `false` | `""` | Optional `vnet` to provide.  If no `vnet` is chosen then public IP will be assigned using default values. |
+| subnet_id                             | `false` | `""` | Optional subnet to provide, should be used with `vnet_id`. |
+| public_ip                             | `false` | `false` | Option to specify if a public IP should be assigned.  In default configuration if all other options are left at default then a public IP _will_ be assigned, due to `vnet_id` having no value. |
+| public_ip_sku                         | `false` | `"Basic"` | Optional string to change the SKU of allocated public IP address.  Defaults to `Basic`. |
+| storage_account_type                  | `false` | `"Standard_LRS"` | Optional storage account type. |
+| existing_storage_account_blob_url     | `false` | `""` | Used with private image specification, the URL of the existing storage account (blob) (without container) |
+| existing_storage_account_container    | `false` | Used with private image specification, the Container Name for OS Images (blob) |
+| boot_diagnostics_enabled              | `false` | `true` | Whether to enable (true) or disable (false) boot diagnostics. Default: true (requires Standard storage). |
+| winrm_powershell_script               | `false` | `false` | Optional block to specify custom winrm enable contents or else use defaults in driver. |
+| pre_deployment_template               | `false` | `""` | Optional path to name of pre-deployment template to use. |
+| pre_deployment_parameters             | `false` | `{}` | Optional parameters to pass to pre-deployment template. |
+| post_deployment_template              | `false` | `""` | Optional path to name of post-deployment template to use. |
+| post_deployment_parameters            | `false` | `{}` | Optional parameters to pass to post-deployment template. |
+| plan                                  | `false` | `{}` | Optional JSON object which allows you to define plan information when creating VMs from Marketplace images. Please refer to [Deploy an image with Marketplace terms](https://aka.ms/azuremarketplaceapideployment) for more details. Not all Marketplace images support programmatic deployment, and support is controlled by the image publisher.|
+| vm_tags                               | `false` | `{}` | Optional hash of vm tags to populate. |
+| use_managed_disks                     | `false` | `true` | Must be set to `true` to use `data_disks` property. |
+| data_disks                            | `false` | `nil` | Additional disks to configure for instances. |
+| format_data_disks                     | `false` | `false` | Run format operations on attached data disks|
+| format_data_disks_powershell_script   | `false` | `false` | Customize the content of format operations for attached `data_disks` |
+| system_assigned_identity              | `false` | `false` | Whether to enable system assigned identity for the vm. |
+| user_assigned_identities              | `false` | `[]` | An object whose keys are resource IDs for user identities to associate with the Virtual Machine and whose values are empty objects, or empty to disable user assigned identities. |
+| deployment_sleep                      | `false` | `10` | Time in seconds to sleep at the end of deployment before fetching details. |
+| secret_url                            | `false` | `""` | used with connecting to Azure Key Vault |
+| vault_name                            | `false` | `""` | used with connecting to Azure Key Vault |
+| vault_resource_group                  | `false` | `""` | used with connecting to Azure Key Vault |
+| azure_api_retries                     | `false` | `5` | Number of times to retry connections to Azure API. |
+| use_fqdn_hostname                     | `false` | `false` | When true, Kitchen will use the FQDN that is assigned to the Virtual Machine. When false, kitchen will use the public IP address of the machine. This may overcome issues with Corporate firewalls or VPNs blocking Public IP addresses. |
 
 #### Driver Properties - Enabling alternative WinRM configurations
 
@@ -155,7 +155,7 @@ platforms:
 
 ### kitchen.yml example 1 - Linux/Ubuntu
 
-Here's an example ```.kitchen.yml``` file that provisions an Ubuntu Server, using Chef Zero as the provisioner and SSH as the transport. Note that if the key does not exist at the specified location, it will be created. Also note that if ```ssh_key``` is supplied, Test Kitchen will use this in preference to any default/configured passwords that are supplied.
+Here's an example ```kitchen.yml``` file that provisions an Ubuntu Server, using Chef Zero as the provisioner and SSH as the transport. Note that if the key does not exist at the specified location, it will be created. Also note that if ```ssh_key``` is supplied, Test Kitchen will use this in preference to any default/configured passwords that are supplied.
 
 ```yaml
 ---
@@ -192,7 +192,7 @@ Where n is the number of threads to create. Note that any failure (e.g. an Azure
 
 ### kitchen.yml example 2 - Windows
 
-Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2019 [smalldisk] instance, using WinRM as the transport. An [ephemeral os disk](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/ephemeral-os-disks) is used. The resource created in Azure will enable itself for remote access at deployment time (it does this by customizing the machine at provisioning time) and tags the Azure Resource Group with metadata using the ```resource_group_tags``` property. Notice that the ```vm_tags``` and ```resource_group_tags``` properties use a simple ```key : value``` structure per line:
+Here's a further example ```kitchen.yml``` file that will provision a Windows Server 2019 [smalldisk] instance, using WinRM as the transport. An [ephemeral os disk](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/ephemeral-os-disks) is used. The resource created in Azure will enable itself for remote access at deployment time (it does this by customizing the machine at provisioning time) and tags the Azure Resource Group with metadata using the ```resource_group_tags``` property. Notice that the ```vm_tags``` and ```resource_group_tags``` properties use a simple ```key : value``` structure per line:
 
 ```yaml
 ---
@@ -751,7 +751,7 @@ Stuart Preston
 
 ## License and Copyright
 
-Copyright 2015-2020, Chef Software, Inc.
+Copyright 2015-2021, Chef Software, Inc.
 
 ```
 Licensed under the Apache License, Version 2.0 (the "License");
