@@ -91,16 +91,19 @@ The following properties are able to be specified in the `driver` section of the
 | azure_resource_group_suffix | `false` | `""` | Optional suffix to append to resource group name. |
 | azure_resource_group_name | `false` | kitchen suite instance name | Optional override for base name of the Azure Resource group which is created, uses prefix and suffix. |
 | explicit_resource_group_name | `false` | `nil` | Optional explicit resource group name, does not use `azure_resource_group_prefix`/`azure_resource_group_suffix` |
+| destroy_explicit_resource_group | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
+| destroy_explicit_resource_group_tags | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
+| destroy_resource_group_contents | `false` | `false` | can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase. If you wish to destroy the empty resource group created after you empty the resource group with this flag you can now set the ```destroy_explicit_resource_group``` to "true" to destroy the empty resource group. |
 | resource_group_tags | `false` | `{}` | Optional hash of tags to pass to resource group |
 | image_urn | `false` | `"Canonical:UbuntuServer:14.04.3-LTS:latest"` | Image URN to use for vm creation. List can be found using `az` cli - [https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage#list-popular-images] |
-| image_url | `false` | `""` | Optional explicit URL to use for fetching image. |
-| image_id | `false` | `""` | Optional explicit id to use for image. |
+| image_url | `false` | `""` | (unmanaged disks only) can be used to specify a custom vhd (This VHD must be in the same storage account as the disks of the VM, therefore ```existing_storage_account_blob_url``` must also be set and ```use_managed_disks``` must be set to false) |
+| image_id | `false` | `""` | (managed disks only) can be used to specify an image by id (managed disk). This works only with managed disks. |
 | use_ephemeral_osdisk | `false` | `false` | Optional flag to use ephermeal disk for instances. |
 | os_disk_size_gb | `false` | `""` | Optional override of os disk size for instances. |
 | os_type | `false` | `"linux"` | Should be specified when os type is not `linux`. |
-| custom_data | `false` | `""` | Optional custom data which may be specified for instances [https://docs.microsoft.com/en-us/azure/virtual-machines/custom-data] |
+| custom_data | `false` | `""` | Optional custom data which may be specified for instances [https://docs.microsoft.com/en-us/azure/virtual-machines/custom-data].  This can be a file or the data itself. This module handles base64 encoding for you.|
 | username | `false` | `"azure"` | Username to use for connecting to instances. |
-| password | `false` | `SecureRandom.base64(25)` | Optional password to use for connecting to instances.  Defaults to creating random 25-digit password. |
+| password | `false` | `SecureRandom.base64(25)` | Optional password to use for connecting to instances.  Defaults to creating random 24-digit password. |
 | vm_name | `false` | `"vm"` | Optional name for vm instances to create. |
 | nic_name | `false` | `""` | Optional name to provide for nic, if not specified then nic name will be `"nic-#{config[:vm_name]}"`. |
 | vnet_id | `false` | `""` | Optional `vnet` to provide.  If no `vnet` is chosen then public IP will be assigned using default values. |
@@ -116,7 +119,7 @@ The following properties are able to be specified in the `driver` section of the
 | pre_deployment_parameters | `false` | `{}` | Optional parameters to pass to pre-deployment template. |
 | post_deployment_template | `false` | `""` | Optional path to name of post-deployment template to use. |
 | post_deployment_parameters | `false` | `{}` | Optional parameters to pass to post-deployment template. |
-| plan | `false` | `{}` | Optional JSON object to use for plan data. |
+| plan | `false` | `{}` | Optional JSON object which allows you to define plan information when creating VMs from Marketplace images. Please refer to [Deploy an image with Marketplace terms](https://aka.ms/azuremarketplaceapideployment) for more details. Not all Marketplace images support programmatic deployment, and support is controlled by the image publisher.|
 | vm_tags | `false` | `{}` | Optional hash of vm tags to populate. |
 | use_managed_disks | `false` | `true` | Must be set to `true` to use `data_disks` property. |
 | data_disks | `false` | `nil` | Additional disks to configure for instances. |
@@ -124,16 +127,33 @@ The following properties are able to be specified in the `driver` section of the
 | format_data_disks_powershell_script | `false` | `false` | Customize the content of format operations for attached `data_disks` |
 | system_assigned_identity | `false` | `false` | Whether to enable system assigned identity for the vm. |
 | user_assigned_identities | `false` | `[]` | An object whose keys are resource IDs for user identities to associate with the Virtual Machine and whose values are empty objects, or empty to disable user assigned identities. |
-| destroy_explicit_resource_group | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
-| destroy_explicit_resource_group_tags | `false` | `true` | Used for cleanup with `explicit_resource_group_name` |
 | deployment_sleep | `false` | `10` | Time in seconds to sleep at the end of deployment before fetching details. |
 | secret_url | `false` | `""` | used with connecting to Azure Key Vault |
 | vault_name | `false` | `""` | used with connecting to Azure Key Vault |
 | vault_resource_group | `false` | `""` | used with connecting to Azure Key Vault |
 | azure_api_retries | `false` | `5` | Number of times to retry connections to Azure API. |
-| use_fqdn_hostname | `false` | `false` | Use FQDN to communicate with instances instead of IP. |
+| use_fqdn_hostname | `false` | `false` | When true, Kitchen will use the FQDN that is assigned to the Virtual Machine. When false, kitchen will use the public IP address of the machine. This may overcome issues with Corporate firewalls or VPNs blocking Public IP addresses. |
 
-### .kitchen.yml example 1 - Linux/Ubuntu
+#### Driver Properties - Enabling alternative WinRM configurations
+
+* By default on Windows machines, a PowerShell script runs that enables WinRM over the SSL transport, for Basic, Negotiate and CredSSP connections. To supply your own PowerShell script (e.g. to enable HTTP), use the `winrm_powershell_script` parameter. Windows 2008 R2 example:
+
+```yaml
+platforms:
+  - name: windows2008-r2
+    driver_config:
+      image_urn: MicrosoftWindowsServer:WindowsServer:2008-R2-SP1:latest
+      winrm_powershell_script: |-
+        winrm quickconfig -q
+        winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="512"}'
+        winrm set winrm/config '@{MaxTimeoutms="1800000"}'
+        winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+        winrm set winrm/config/service/auth '@{Basic="true"}'
+
+```
+
+
+### kitchen.yml example 1 - Linux/Ubuntu
 
 Here's an example ```.kitchen.yml``` file that provisions an Ubuntu Server, using Chef Zero as the provisioner and SSH as the transport. Note that if the key does not exist at the specified location, it will be created. Also note that if ```ssh_key``` is supplied, Test Kitchen will use this in preference to any default/configured passwords that are supplied.
 
@@ -159,8 +179,6 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchentesting::default]
     attributes:
 ```
 
@@ -172,7 +190,7 @@ Concurrent execution of create/converge/destroy is supported via the --concurren
 
 Where n is the number of threads to create. Note that any failure (e.g. an AzureOperationError) will cause the whole test to fail, though resources already in creation will continue to be created.
 
-### .kitchen.yml example 2 - Windows
+### kitchen.yml example 2 - Windows
 
 Here's a further example ```.kitchen.yml``` file that will provision a Windows Server 2019 [smalldisk] instance, using WinRM as the transport. An [ephemeral os disk](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/ephemeral-os-disks) is used. The resource created in Azure will enable itself for remote access at deployment time (it does this by customizing the machine at provisioning time) and tags the Azure Resource Group with metadata using the ```resource_group_tags``` property. Notice that the ```vm_tags``` and ```resource_group_tags``` properties use a simple ```key : value``` structure per line:
 
@@ -202,12 +220,10 @@ platforms:
       name: winrm
 suites:
   - name: default
-    run_list:
-      - recipe[kitchentesting::default]
     attributes:
 ```
 
-### .kitchen.yml example 3 - "pre-deployment" ARM template
+### kitchen.yml example 3 - "pre-deployment" ARM template
 
 The following example introduces the ```pre_deployment_template``` and ```pre_deployment_parameters``` properties in the configuration file.
 You can use this capability to execute an ARM template containing Azure resources to provision before the system under test is created.
@@ -281,7 +297,7 @@ Example predeploy.json:
 }
 ```
 
-### .kitchen.yml example 4 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios)
+### kitchen.yml example 4 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios)
 
 The following example introduces the ```vnet_id``` and ```subnet_id``` properties under "driver" in the configuration file. This can be applied at the top level, or per platform.
 You can use this capability to create the VM on an existing virtual network and subnet created in a different resource group.
@@ -311,12 +327,10 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchen-azurerm-demo::default]
     attributes:
 ```
 
-### .kitchen.yml example 5 - deploy VM to existing virtual network/subnet with a Standard SKU public IP (use for ExpressRoute/VPN scenarios)
+### kitchen.yml example 5 - deploy VM to existing virtual network/subnet with a Standard SKU public IP (use for ExpressRoute/VPN scenarios)
 
 The following example introduces the ```vnet_id``` and ```subnet_id``` properties under "driver" in the configuration file. This can be applied at the top level, or per platform.
 You can use this capability to create the VM on an existing virtual network and subnet created in a different resource group.
@@ -349,12 +363,10 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchen-azurerm-demo::default]
     attributes:
 ```
 
-### .kitchen.yml example 6 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Managed Image
+### kitchen.yml example 6 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Managed Image
 
 This example is the same as above, but uses a private managed image to provision the vm.
 
@@ -384,12 +396,10 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchen-azurerm-demo::default]
     attributes:
 ```
 
-### .kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image
+### kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image
 
 This example a classic Custom VM Image (aka a VHD file) is used. As the Image VHD must be in the same storage account then the disk of the instance, the os disk is created in an existing image account.
 
@@ -427,12 +437,10 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchen-azurerm-demo::default]
     attributes:
 ```
 
-### .kitchen.yml example 8 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image and providing custom data and extra large os disk
+### kitchen.yml example 8 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image and providing custom data and extra large os disk
 
 This is the same as above, but uses custom data to customize the instance.
 
@@ -472,12 +480,10 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchen-azurerm-demo::default]
     attributes:
 ```
 
-### .kitchen.yml example 9 - Windows 2016 VM with additional data disks
+### kitchen.yml example 9 - Windows 2016 VM with additional data disks
 
 This example demonstrates how to add 3 additional Managed data disks to a Windows Server 2016 VM. Not supported with legacy (pre-managed disk) storage accounts.
 
@@ -509,12 +515,10 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchentesting::default]
     attributes:
 ```
 
-### .kitchen.yml example 10 - "post-deployment" ARM template with MSI authentication
+### kitchen.yml example 10 - "post-deployment" ARM template with MSI authentication
 
 The following example introduces the ```post_deployment_template``` and ```post_deployment_parameters``` properties in the configuration file.
 You can use this capability to execute an ARM template containing Azure resources to provision after the system under test is created.
@@ -546,8 +550,6 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchen-azurerm-demo::default]
     attributes:
 ```
 
@@ -600,7 +602,7 @@ Example postdeploy.json to enable MSI extention on VM:
 }
 ```
 
-### .kitchen.yml example 11 - Enabling Managed Service Identities
+### kitchen.yml example 11 - Enabling Managed Service Identities
 
 This example demonstrates how to enable a System Assigned Identity and User Assigned Identities on a Kitchen VM.
 Any combination of System and User assigned identities may be enabled, and multiple User Assigned Identities can be supplied.
@@ -631,12 +633,10 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchentesting::default]
     attributes:
 ```
 
-### .kitchen.yml example 12 - deploy VM with key vault certificate
+### kitchen.yml example 12 - deploy VM with key vault certificate
 
 This following example introduces ```secret_url```, ```vault_name```, and ```vault_resource_group``` properties under "driver" in the configuration file. You can use this capability to create a VM with a specified key vault certificate.
 
@@ -662,8 +662,6 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[kitchentesting::default]
     attributes:
 ```
 
@@ -673,7 +671,7 @@ Starting with v0.9.0 this driver has support for Azure Government and Sovereign 
 
 Note that the ```use_managed_disks``` option should be set to false until supported by AzureUSGovernment.
 
-### Example .kitchen.yml for Azure US Government cloud
+### Example kitchen.yml for Azure US Government cloud
 
 ```yaml
 ---
@@ -700,8 +698,6 @@ platforms:
 
 suites:
   - name: default
-    run_list:
-      - recipe[vmtesting::default]
 ```
 
 ### How to retrieve the image_urn
@@ -737,70 +733,6 @@ data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509190  westeurope
 data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509210  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509210
 data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509220  westeurope  Canonical:UbuntuServer:15.10-DAILY:15.10.201509220
 info:    vm image list command OK
-```
-
-### Additional parameters that can be specified in your `kitchen.yml` or added to your personal `kitchen.local.yml`
-
-* Note that the ```driver``` section can also take explicit values for ```username``` and ```password```. Otherwise, the default username is "azure" and the password is a randomly generated 24 character password that can be found in your local kitchen state file (typically `.kitchen/<instance-name>.yml`) if you require it for any reason.
-
-* The ```storage_account_type``` parameter defaults to 'Standard_LRS' and allows you to switch to premium storage (e.g. 'Premium_LRS')
-
-* The ```enable_boot_diagnostics``` parameter defaults to 'true' and allows you to switch off boot diagnostics in case you are using premium storage.
-
-* The optional ```vm_tags``` parameter allows you to define key:value pairs to tag VMs with on creation.
-
-* The optional ```plan``` parameter allows you to define plan information when creating VMs from Marketplace images. Please refer to [Deploy an image with Marketplace terms](https://aka.ms/azuremarketplaceapideployment) for more details. Not all Marketplace images support programmatic deployment, and support is controlled by the image publisher.
-
-* Managed disks are now enabled by default, to use the Storage account set ```use_managed_disks``` (default: true).
-
-* The ```image_url``` (unmanaged disks only) parameter can be used to specify a custom vhd (This VHD must be in the same storage account as the disks of the VM, therefore ```existing_storage_account_blob_url``` must also be set and ```use_managed_disks``` must be set to false)
-
-* The ```image_id``` (managed disks only) parameter can be used to specify an image by id (managed disk). This works only with managed disks.
-
-* The ```existing_storage_account_blob_url``` can be specified to specify an url to an existing storage account (needed for ```image_url```)
-
-* The ```custom_data``` parameter can be used to specify custom data to provide to the instance. This can be a file or the data itself. This module handles base64 encoding for you.
-
-* The ```os_disk_size_gb``` parameter can be used to specify a custom os disk size.
-
-* The ```azure_resource_group_prefix``` and ```azure_resource_group_suffix``` can be used to further disambiguate Azure resource group names created by the driver.
-
-* The ```explicit_resource_group_name``` and ```destroy_explicit_resource_group``` (default: "true") parameters can be used in scenarios where you are provided a pre-created Resource Group. Example usage: ```explicit_resource_group_name: kitchen-<%= ENV["USERNAME"] %>```. The ```destroy_explicit_resource_group``` option can now be used after using the ```destroy_resource_group_contents``` option creates an empty resource group to destroy the resource group previously created.
-
-* The ```destroy_resource_group_contents``` (default: "false") parameter can be used when you want to destroy the resources within a resource group without destroying the resource group itself. For example, the following configuration options used in combination would use an existing resource group (or create one if it doesn't exist) and will destroy the contents of the resource group in the ```kitchen destroy``` phase. If you wish to destroy the empty resource group created after you empty the resource group with this flag you can now set the ```destroy_explicit_resource_group``` to "true" to destroy the empty resource group.
-
-* The ```destroy_explicit_resource_group_tags``` (default: "true") parameter can be used when you want to remove tags associated with an explicit resource group. The default setting is set to "true" to remain consistent with previous behavior. This should be used in combination with an ```explicit_resource_group_name``` and will be honored during the ```kitchen destroy``` phase.
-
-```yaml
----
-driver:
-  explicit_resource_group_name: stuart-rg-demo-001
-  destroy_explicit_resource_group: false
-  destroy_resource_group_contents: true
-```
-
-* The ```use_ephemeral_osdisk``` (default: false) parameter can be used if you wish to use [ephemeral OS disk functionality](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/ephemeral-os-disks).
-
-* The ```secret_url```, ```vault_name```, and ```vault_resource_group``` parameters can be used to deploy VM with specified key vault certificate.
-
-* The ```use_fqdn_hostname``` (default: "false") parameter can be used to determine how kitchen communicates with the Virtual Machine. When true, Kitchen will use the FQDN that is assigned to the Virtual Machine. When false, kitchen will use the public IP address of the machine. This may overcome issues with Corporate firewalls or VPNs blocking Public IP addresses.
-
-## Enabling alternative WinRM configurations
-
-* By default on Windows machines, a PowerShell script runs that enables WinRM over the SSL transport, for Basic, Negotiate and CredSSP connections. To supply your own PowerShell script (e.g. to enable HTTP), use the `winrm_powershell_script` parameter. Windows 2008 R2 example:
-
-```yaml
-platforms:
-  - name: windows2008-r2
-    driver_config:
-      image_urn: MicrosoftWindowsServer:WindowsServer:2008-R2-SP1:latest
-      winrm_powershell_script: |-
-        winrm quickconfig -q
-        winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="512"}'
-        winrm set winrm/config '@{MaxTimeoutms="1800000"}'
-        winrm set winrm/config/service '@{AllowUnencrypted="true"}'
-        winrm set winrm/config/service/auth '@{Basic="true"}'
-
 ```
 
 ## Contributing
