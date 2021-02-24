@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [1.5.3] - 2021-02-24
+
+- Additional fixes for `public_ip_sku` to update the default behavior to match pre-1.5.0 behavior [@collinmcneese](https://github.com/collinmcneese)
+
 ## [1.5.2] - 2021-02-18
 
 - Fix using `storage_account_type` config option to set data disk storage types - [@reasland](https://github.com/reasland)
