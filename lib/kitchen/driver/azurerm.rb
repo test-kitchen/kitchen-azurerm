@@ -84,9 +84,7 @@ module Kitchen
         SecureRandom.base64(25)
       end
 
-      default_config(:vm_name) do |_config|
-        "vm"
-      end
+      default_config :vm_name, nil
 
       default_config(:nic_name) do |_config|
         ""
@@ -253,7 +251,7 @@ module Kitchen
         end
 
         if config[:nic_name].to_s == ""
-          vmnic = "nic-#{config[:vm_name]}"
+          vmnic = "nic-#{state[:vm_name]}"
         else
           vmnic = config[:nic_name]
         end
@@ -376,9 +374,10 @@ module Kitchen
       # @return [Hash] Updated Hash of state values.
       def validate_state(state = {})
         state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
+        state[:vm_name] = config[:vm_name] || "tk-#{state[:uuid][0..11]}" unless existing_state_value?(state, :vm_name)
         state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value?(state, :server_id)
         state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value?(state, :azure_resource_group_name)
-        %i{subscription_id vm_name azure_environment use_managed_disks}.each do |config_element|
+        %i{subscription_id azure_environment use_managed_disks}.each do |config_element|
           state[config_element] = config[config_element] unless existing_state_value?(state, config_element)
         end
         state.delete(:password) unless instance.transport[:ssh_key].nil?

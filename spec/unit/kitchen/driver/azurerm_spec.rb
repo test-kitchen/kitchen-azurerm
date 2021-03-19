@@ -6,6 +6,7 @@ describe Kitchen::Driver::Azurerm do
   let(:logger)        { Logger.new(logged_output) }
   let(:platform)      { Kitchen::Platform.new(name: "fake_platform") }
   let(:transport)     { Kitchen::Transport::Dummy.new }
+  let(:instance_name) { "my-instance-name" }
   let(:driver)        { described_class.new(config) }
 
   let(:subscription_id) { "115b12cb-b0d3-4ed9-94db-f73733be6f3c" }
@@ -50,6 +51,7 @@ describe Kitchen::Driver::Azurerm do
 
   let(:instance) do
     instance_double(Kitchen::Instance,
+      name:      instance_name,
       logger:    logger,
       transport: transport,
       platform:  platform,
@@ -103,6 +105,55 @@ describe Kitchen::Driver::Azurerm do
 
     it "Should use basic public IP resources" do
       expect(default_config[:public_ip_sku]).to eq("Basic")
+    end
+  end
+
+  describe "#validate_state" do
+    let(:state) { {} }
+    let(:uuid) { SecureRandom.hex(8) }
+
+    it "generates uuid, when one does not exist" do
+      driver.validate_state(state)
+      expect(state[:uuid].length).to eq(16)
+      expect(state[:uuid]).to be_an_instance_of(String)
+      expect(state[:uuid]).not_to eq(uuid)
+    end
+
+    it "does not set uuid, when one exists" do
+      state[:uuid] = uuid
+      driver.validate_state(state)
+      expect(state[:uuid]).to eq(uuid)
+    end
+
+    context "when vm_name is set in config" do
+      before do
+        config[:vm_name] = vm_name
+      end
+
+      it "sets state[:vm_name] to config vm_name" do
+        driver.validate_state(state)
+        expect(state[:vm_name]).to eq(vm_name)
+      end
+    end
+
+    context "when vm_name is not set in config" do
+      before do
+        config.delete(:vm_name)
+      end
+
+      it "generates vm_name, when one does not exist in state" do
+        driver.validate_state(state)
+        expect(state[:vm_name].length).to eq(15)
+        expect(state[:vm_name]).to be_an_instance_of(String)
+        expect(state[:vm_name]).not_to eq(vm_name)
+      end
+
+      it "does not generate vm_name, when one exists in state" do
+        vm_name_in_state = "blah-doh"
+        state[:vm_name] = vm_name_in_state
+        driver.validate_state(state)
+        expect(state[:vm_name]).to eq(vm_name_in_state)
+      end
     end
   end
 
