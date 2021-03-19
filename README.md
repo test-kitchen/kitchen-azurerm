@@ -190,7 +190,7 @@ The following properties are able to be specified in the `driver` section of the
 #### vm_name
 
 * _string_ : Optional name for vm instances to create.
-  * Default Value: `"vm"`
+  * Default Value: `"tk-#{SecureRandom.hex(6)[0..11]}"` (Randomly generated 12 character name prefixed with `tk-`)
 
 #### nic_name
 
