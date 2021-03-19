@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [1.6.0] - 2021-03.19
+
+- The default VM name has been changed from `vm` to `tk-RANDOMVALUE` to avoid name conflicts and make it easier to find systems in the portal [@jasonwbarnett](https://github.com/jasonwbarnett)
+
 ## [1.5.3] - 2021-02-24
 
 - Additional fixes for `public_ip_sku` to update the default behavior to match pre-1.5.0 behavior [@collinmcneese](https://github.com/collinmcneese)
