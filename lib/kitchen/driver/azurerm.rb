@@ -778,13 +778,11 @@ module Kitchen
         # If user_data is a file reference, lets read it as such
         return nil if config[:custom_data].nil?
 
-        @custom_data ||= begin
-          if File.file?(config[:custom_data])
-            Base64.strict_encode64(File.read(config[:custom_data]))
-          else
-            Base64.strict_encode64(config[:custom_data])
-          end
-        end
+        @custom_data ||= if File.file?(config[:custom_data])
+                           Base64.strict_encode64(File.read(config[:custom_data]))
+                         else
+                           Base64.strict_encode64(config[:custom_data])
+                         end
       end
 
       private
