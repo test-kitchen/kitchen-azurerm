@@ -57,14 +57,12 @@ module Kitchen
       end
 
       def credentials
-        @credentials ||= begin
-          if File.file?(config_path)
-            IniFile.load(config_path)
-          else
-            warn "#{config_path} was not found or not accessible."
-            {}
-          end
-        end
+        @credentials ||= if File.file?(config_path)
+                           IniFile.load(config_path)
+                         else
+                           warn "#{config_path} was not found or not accessible."
+                           {}
+                         end
       end
 
       def credentials_property(property)
