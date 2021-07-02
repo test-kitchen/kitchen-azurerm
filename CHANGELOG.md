@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [1.7.0] - 2021-07.02
+
+- Support Test Kitchen 3.0
+
 ## [1.6.0] - 2021-03.19
 
 - The default VM name has been changed from `vm` to `tk-RANDOMVALUE` to avoid name conflicts and make it easier to find systems in the portal [@jasonwbarnett](https://github.com/jasonwbarnett)
