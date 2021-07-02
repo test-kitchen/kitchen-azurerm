@@ -19,5 +19,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "azure_mgmt_resources", "~> 0.17", ">= 0.17.2"
   spec.add_dependency "inifile", "~> 3.0", ">= 3.0.0"
   spec.add_dependency "sshkey", ">= 1.0.0", "< 3"
-  spec.add_dependency "test-kitchen", ">= 1.20", "< 3.0"
+  spec.add_dependency "test-kitchen", ">= 1.20", "< 4.0"
 end
