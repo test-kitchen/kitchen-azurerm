@@ -175,6 +175,7 @@ describe Kitchen::Driver::Azurerm do
       allow(ENV).to receive(:[]).with("GEM_SKIP").and_return("")
       allow(ENV).to receive(:[]).with("http_proxy").and_return("")
       allow(ENV).to receive(:[]).with("GEM_REQUIREMENT_AZURE_MGMT_RESOURCES").and_return("azure_mgmt_resources")
+      allow(ENV).to receive(:[]).with("SSL_CERT_FILE").and_call_original
     end
 
     it "has credentials available" do
