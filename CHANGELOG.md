@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [1.8.0] - 2021-08.27
+
+- Increase max OS volume size from 1023 to 2048 [@jasonwbarnett](https://github.com/jasonwbarnett)
+
 ## [1.7.0] - 2021-07.02
 
 - Support Test Kitchen 3.0
