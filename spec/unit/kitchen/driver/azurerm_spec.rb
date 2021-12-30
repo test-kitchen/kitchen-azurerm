@@ -106,6 +106,10 @@ describe Kitchen::Driver::Azurerm do
     it "Should use basic public IP resources" do
       expect(default_config[:public_ip_sku]).to eq("Basic")
     end
+
+    it "Should use 1 availability zone" do
+      expect(default_config[:zone]).to eq("1")
+    end
   end
 
   describe "#validate_state" do

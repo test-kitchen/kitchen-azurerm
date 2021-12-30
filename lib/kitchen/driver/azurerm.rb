@@ -219,7 +219,7 @@ module Kitchen
       end
 
       default_config(:zone) do |_config|
-        '1'
+        "1"
       end
 
       def create(state)
