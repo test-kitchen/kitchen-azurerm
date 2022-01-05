@@ -19,7 +19,7 @@ If you're not using Chef Workstation and need to install the plugin as a gem run
 
 ### Configuration
 
-For the driver to interact with the Microsoft Azure Resource management REST API, a Service Principal needs to be configured with Contributor rights against the specific subscription being targeted. Using an Organizational (AAD) account and related password is no longer supported. To create a Service Principal and apply the correct permissions, you will need to [create an Azure service principal with the Azure CLI](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli?view=azure-cli-latest#create-a-service-principal) using the [Azure CLI](https://azure.microsoft.com/en-us/documentation/articles/xplat-cli-install/). Make sure you stay within the section titled 'Authenticate service principal with password - Azure CLI'.
+For the driver to interact with the Microsoft Azure Resource Management REST API, you need to configure a Service Principal with Contributor rights for a specific subscription. Using an Organizational (AAD) account and related password is no longer supported. To create a Service Principal and apply the correct permissions, see the [create an Azure service principal with the Azure CLI](https://docs.microsoft.com/en-us/cli/azure/create-an-azure-service-principal-azure-cli?view=azure-cli-latest#create-a-service-principal) and the [Azure CLI](https://azure.microsoft.com/en-us/documentation/articles/xplat-cli-install/) documentation. Make sure you stay within the section titled 'Password-based authentication'.
 
 If the above is TLDR then try this after `az login` using your target subscription ID and the desired SP name:
 
@@ -42,12 +42,12 @@ NOTE: Don't forget to save the values from the output -- most importantly the `p
 
 You will also need to ensure you have an active Azure subscription (you can get started [for free](https://azure.microsoft.com/en-us/free/) or use your [MSDN Subscription](https://azure.microsoft.com/en-us/pricing/member-offers/msdn-benefits/)).
 
-You are now ready to configure kitchen-azurerm to use the credentials from the service principal you created above. You will use four elements from the steps in that article:
+You are now ready to configure kitchen-azurerm to use the credentials from the service principal you created above. You will use four elements from the output:
 
 1. **Subscription ID**: available from the Azure portal
-2. **Client ID**: this will be the Application Id from the application in step 2.
-3. **Client Secret/Password**: this will be the password you supplied in the command in step 2.
-4. **Tenant ID**: use the command detailed in "Manually provide credentials through Azure CLI" step 1 to get the TenantId.
+2. **Client ID**: the appId value from the output.
+3. **Client Secret/Password**: the password from the output.
+4. **Tenant ID**: the tenant from the output.
 
 Using a text editor, open or create the file ```~/.azure/credentials``` and add the following section, noting there is one section per Subscription ID. **Make sure you save the file with UTF-8 encoding**
 
