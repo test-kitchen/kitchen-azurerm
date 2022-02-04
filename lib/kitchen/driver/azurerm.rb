@@ -218,10 +218,15 @@ module Kitchen
         false
       end
 
+      default_config(:zone) do |_config|
+        "1"
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
           location: config[:location],
+          zone: config[:zone],
           vmSize: config[:machine_size],
           storageAccountType: config[:storage_account_type],
           bootDiagnosticsEnabled: config[:boot_diagnostics_enabled],
