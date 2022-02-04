@@ -2,7 +2,7 @@ lib = File.expand_path("lib", __dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 Gem::Specification.new do |spec|
   spec.name          = "kitchen-azurerm"
-  spec.version       = "1.8.0"
+  spec.version       = "1.9.0"
   spec.authors       = ["Stuart Preston"]
   spec.email         = ["stuart@chef.io"]
   spec.summary       = "Test Kitchen driver for Azure Resource Manager."
@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.files         = Dir["LICENSE", "lib/**/*", "templates/**/*"]
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = ">= 2.5"
+  spec.required_ruby_version = ">= 2.6"
 
   spec.add_dependency "azure_mgmt_network", "~> 0.18", ">= 0.18.2"
   spec.add_dependency "azure_mgmt_resources", "~> 0.17", ">= 0.17.2"

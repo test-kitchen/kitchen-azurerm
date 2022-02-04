@@ -1,5 +1,10 @@
 # kitchen-azurerm Changelog
 
+## [1.9.0] - 2022-02.04
+
+- Support setting the VM availability zone with a new `zone` config. [@pkazi](https://github.com/pkazi)
+- Drop support for EOL Ruby 2.5
+
 ## [1.8.0] - 2021-08.27
 
 - Increase max OS volume size from 1023 to 2048 [@jasonwbarnett](https://github.com/jasonwbarnett)
