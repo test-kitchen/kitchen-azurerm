@@ -110,6 +110,10 @@ describe Kitchen::Driver::Azurerm do
     it "Should use 1 availability zone" do
       expect(default_config[:zone]).to eq("1")
     end
+
+    it "should set store_deployment_credentials_in_state to true" do
+      expect(default_config[:store_deployment_credentials_in_state]).to eq(true)
+    end
   end
 
   describe "#validate_state" do
@@ -169,6 +173,12 @@ describe Kitchen::Driver::Azurerm do
     let(:resource_group_name) { "testingrocks" }
     let(:base_url) { "https://management.chinacloudapi.cn" }
 
+    let(:deployment_double) { double("DeploymentDouble", value!: nil) }
+    let(:network_interfaces_double) { double("NetworkInterfacesDouble", ip_configurations: [ip_configuration_double]) }
+    let(:ip_configuration_double) { double("IPConfigurationDouble", private_ipaddress: "192.168.1.5") }
+    let(:public_ip_double) { double("PublicIPDouble", ip_address: "100.100.2.5", dns_settings: dns_settings_double) }
+    let(:dns_settings_double) { double("DNSSettingsDouble", fqdn: "dns-settings-fqdn") }
+
     before do
       allow(ENV).to receive(:[]).with("AZURE_TENANT_ID").and_return(tenant_id)
       allow(ENV).to receive(:[]).with("AZURE_CLIENT_ID").and_return(client_id)
@@ -202,6 +212,43 @@ describe Kitchen::Driver::Azurerm do
       expect { resource_groups.create_or_update(rgn, rg) }.to raise_error( an_instance_of(MsRestAzure::AzureOperationError) )
     end
 
+    it "saves deployment credentials to state, when store_deployment_credentials_in_state is true" do
+      # This MUST come first
+      config[:store_deployment_credentials_in_state] = true
+      config[:username] = "azure"
+      config[:password] = "admin-password"
+
+      allow(driver).to receive(:create_resource_group)
+      allow(driver).to receive(:deployment)
+      allow(driver).to receive(:create_deployment_async).and_return(deployment_double)
+      allow(driver).to receive(:follow_deployment_until_end_state)
+      allow(driver).to receive(:get_network_interface).and_return(network_interfaces_double)
+      allow(driver).to receive(:get_public_ip).and_return(public_ip_double)
+
+      state = {}
+      driver.create(state)
+      expect(state[:username]).to eq("azure")
+      expect(state[:password]).to eq("admin-password")
+    end
+
+    it "does not save deployment credentials to state, when store_deployment_credentials_in_state is false" do
+      # This MUST come first
+      config[:store_deployment_credentials_in_state] = false
+      config[:username] = "azure"
+      config[:password] = "admin-password"
+
+      allow(driver).to receive(:create_resource_group)
+      allow(driver).to receive(:deployment)
+      allow(driver).to receive(:create_deployment_async).and_return(deployment_double)
+      allow(driver).to receive(:follow_deployment_until_end_state)
+      allow(driver).to receive(:get_network_interface).and_return(network_interfaces_double)
+      allow(driver).to receive(:get_public_ip).and_return(public_ip_double)
+
+      state = {}
+      driver.create(state)
+      expect(state[:username]).to eq(nil)
+      expect(state[:password]).to eq(nil)
+    end
   end
 
   describe "#virtual_machine_deployment_template" do
