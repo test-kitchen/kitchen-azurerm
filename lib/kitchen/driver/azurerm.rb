@@ -86,6 +86,8 @@ module Kitchen
 
       default_config :vm_name, nil
 
+      default_config :store_deployment_credentials_in_state, true
+
       default_config(:nic_name) do |_config|
         ""
       end
@@ -324,8 +326,11 @@ module Kitchen
           info "Creating deployment: #{deployment_name}"
           create_deployment_async(state[:azure_resource_group_name], deployment_name, deployment(deployment_parameters)).value!
           follow_deployment_until_end_state(state[:azure_resource_group_name], deployment_name)
-          state[:username] = deployment_parameters[:adminUsername] unless existing_state_value?(state, :username)
-          state[:password] = deployment_parameters[:adminPassword] unless existing_state_value?(state, :password) && instance.transport[:ssh_key].nil?
+
+          if config[:store_deployment_credentials_in_state] == true
+            state[:username] = deployment_parameters[:adminUsername] unless existing_state_value?(state, :username)
+            state[:password] = deployment_parameters[:adminPassword] unless existing_state_value?(state, :password) && instance.transport[:ssh_key].nil?
+          end
 
           if File.file?(config[:post_deployment_template])
             post_deployment_name = "post-deploy-#{state[:uuid]}"
