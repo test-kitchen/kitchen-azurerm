@@ -8,18 +8,6 @@
                 "description": "The location where the resources will be created."
             }
         },
-        "zone": {
-            "type": "string",
-            "defaultValue": "1",
-            "allowedValues": [
-                "1",
-                "2",
-                "3"
-            ],
-            "metadata": {
-                "description": "Zone number for the virtual machine"
-            }
-        },
         "vmSize": {
             "type": "string",
             "metadata": {
@@ -220,7 +208,9 @@
     },
     "variables": {
         "location": "[parameters('location')]",
-        "zone": "[parameters('zone')]",
+        <% unless zone.nil? %>
+        "zone": "<%= zone -%>",
+        <% end %>
         "OSDiskName": "osdisk",
         "nicName": "[parameters('nicName')]",
         "addressPrefix": "10.0.0.0/16",
@@ -272,9 +262,11 @@
             "type": "Microsoft.Network/publicIPAddresses",
             "name": "[variables('publicIPAddressName')]",
             "location": "[variables('location')]",
+            <% unless zone.nil? %>
             "zones": [
-                "[variables('zone')]"
+                "<%= zone -%>"
             ],
+            <% end %>
             "sku": {
               "name": "[parameters('publicIPSKU')]"
             },
@@ -326,9 +318,11 @@
             "type": "Microsoft.Compute/virtualMachines",
             "name": "[variables('vmName')]",
             "location": "[variables('location')]",
+            <% unless zone.nil? %>
             "zones": [
-                "[variables('zone')]"
+                "<%= zone -%>"
             ],
+            <% end %>
             "dependsOn": [
                 <%- unless use_managed_disks -%>
                 <%- if existing_storage_account_blob_url.empty? -%>
