@@ -107,8 +107,8 @@ describe Kitchen::Driver::Azurerm do
       expect(default_config[:public_ip_sku]).to eq("Basic")
     end
 
-    it "Should use 1 availability zone" do
-      expect(default_config[:zone]).to eq("1")
+    it "should set zone to nil" do
+      expect(default_config[:zone]).to eq(nil)
     end
 
     it "should set store_deployment_credentials_in_state to true" do
@@ -257,43 +257,78 @@ describe Kitchen::Driver::Azurerm do
     let(:parsed_json) { JSON.parse(subject) }
     let(:vm_resource) { parsed_json["resources"].find { |x| x["type"] == "Microsoft.Compute/virtualMachines" } }
 
-    context "when plan config is provided" do
-      let(:plan_name) { "plan-abc" }
-      let(:plan_product) { "my-product" }
-      let(:plan_publisher) { "captain-america" }
-      let(:plan_promotion_code) { "50-percent-off" }
-
-      let(:plan) do
-        {
-          name: plan_name,
-          product: plan_product,
-          publisher: plan_publisher,
-          promotion_code: plan_promotion_code,
-        }
-      end
-
+    context "when vnet_id is not provided" do
       let(:config) do
         {
           subscription_id: subscription_id,
           location: location,
           machine_size: machine_size,
           vm_tags: vm_tags,
-          plan: plan,
           image_urn: image_urn,
           vm_name: vm_name,
         }
       end
 
-      it "includes plan information in deployment template" do
-        expect(vm_resource).to have_key("plan")
-        expect(vm_resource["plan"]["name"]).to eq(plan_name)
-        expect(vm_resource["plan"]["product"]).to eq(plan_product)
-        expect(vm_resource["plan"]["publisher"]).to eq(plan_publisher)
-        expect(vm_resource["plan"]["promotionCode"]).to eq(plan_promotion_code)
+      it 'uses public template' do
+        expect(driver).to receive(:virtual_machine_deployment_template_file).with("public.erb", any_args)
+        subject
+      end
+
+      context "when plan config is provided" do
+        let(:plan_name) { "plan-abc" }
+        let(:plan_product) { "my-product" }
+        let(:plan_publisher) { "captain-america" }
+        let(:plan_promotion_code) { "50-percent-off" }
+
+        let(:plan) do
+          {
+            name: plan_name,
+            product: plan_product,
+            publisher: plan_publisher,
+            promotion_code: plan_promotion_code,
+          }
+        end
+
+        let(:config) do
+          {
+            subscription_id: subscription_id,
+            location: location,
+            machine_size: machine_size,
+            vm_tags: vm_tags,
+            plan: plan,
+            image_urn: image_urn,
+            vm_name: vm_name,
+          }
+        end
+
+        it "includes plan information in deployment template" do
+          expect(vm_resource).to have_key("plan")
+          expect(vm_resource["plan"]["name"]).to eq(plan_name)
+          expect(vm_resource["plan"]["product"]).to eq(plan_product)
+          expect(vm_resource["plan"]["publisher"]).to eq(plan_publisher)
+          expect(vm_resource["plan"]["promotionCode"]).to eq(plan_promotion_code)
+        end
+      end
+
+      context "when plan config is not provided" do
+        let(:config) do
+          {
+            subscription_id: subscription_id,
+            location: location,
+            machine_size: machine_size,
+            vm_tags: vm_tags,
+            image_urn: image_urn,
+            vm_name: vm_name,
+          }
+        end
+
+        it "does not include plan information in deployment template" do
+          expect(vm_resource).not_to have_key("plan")
+        end
       end
     end
 
-    context "when plan config is not provided" do
+    context "when vnet_id is provided" do
       let(:config) do
         {
           subscription_id: subscription_id,
@@ -302,11 +337,13 @@ describe Kitchen::Driver::Azurerm do
           vm_tags: vm_tags,
           image_urn: image_urn,
           vm_name: vm_name,
+          vnet_id: "vnet-1234",
         }
       end
 
-      it "does not include plan information in deployment template" do
-        expect(vm_resource).not_to have_key("plan")
+      it 'uses internal template' do
+        expect(driver).to receive(:virtual_machine_deployment_template_file).with("internal.erb", any_args)
+        subject
       end
     end
   end

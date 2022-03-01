@@ -220,9 +220,7 @@ module Kitchen
         false
       end
 
-      default_config(:zone) do |_config|
-        "1"
-      end
+      default_config :zone, nil
 
       def create(state)
         state = validate_state(state)
