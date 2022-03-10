@@ -107,10 +107,6 @@ describe Kitchen::Driver::Azurerm do
       expect(default_config[:public_ip_sku]).to eq("Basic")
     end
 
-    it "Should use 1 availability zone" do
-      expect(default_config[:zone]).to eq("1")
-    end
-
     it "should set store_deployment_credentials_in_state to true" do
       expect(default_config[:store_deployment_credentials_in_state]).to eq(true)
     end
