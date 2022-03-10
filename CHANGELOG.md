@@ -1,5 +1,9 @@
 # kitchen-azurerm Changelog
 
+## [1.10.1] - 2022-03.10
+
+- Rollback #228 by [@jasonwbarnett](https://github.com/jasonwbarnett) in #234
+
 ## [1.10.0] - 2022-02.28
 
 - Add a new `store_deployment_credentials_in_state` configuration option to skip storing sensitive data in the state [@jasonwbarnett](https://github.com/jasonwbarnett)
