@@ -60,7 +60,7 @@ module Kitchen
         @credentials ||= if File.file?(config_path)
                            IniFile.load(config_path)
                          else
-                           warn "#{config_path} was not found or not accessible."
+                           debug "#{config_path} was not found or not accessible."
                            {}
                          end
       end
