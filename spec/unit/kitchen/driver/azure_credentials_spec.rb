@@ -95,7 +95,7 @@ describe Kitchen::Driver::AzureCredentials do
       end
 
       it "logs a warning" do
-        expect(Kitchen.logger).to receive(:warn).with("#{default_config_path} was not found or not accessible.")
+        expect(Kitchen.logger).to receive(:debug).with("#{default_config_path} was not found or not accessible.")
         azure_options
       end
     end
