@@ -763,7 +763,7 @@ module Kitchen
       def virtual_machine_deployment_template_file(template_file, data = {})
         template = File.read(File.expand_path(File.join(__dir__, "../../../templates", template_file)))
         render_binding = OpenStruct.new(data)
-        ERB.new(template, nil, "-").result(render_binding.instance_eval { binding })
+        ERB.new(template, trim_mode: "-").result(render_binding.instance_eval { binding })
       end
 
       def resource_manager_endpoint_url(azure_environment)
