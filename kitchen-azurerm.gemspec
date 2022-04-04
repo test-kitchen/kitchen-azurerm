@@ -1,8 +1,11 @@
 lib = File.expand_path("lib", __dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+
+require "kitchen/driver/azurerm_version"
+
 Gem::Specification.new do |spec|
   spec.name          = "kitchen-azurerm"
-  spec.version       = KitchenAzureRM::VERSION
+  spec.version       = Kitchen::Driver::AZURERM_VERSION
   spec.authors       = ["Stuart Preston"]
   spec.email         = ["stuart@chef.io"]
   spec.summary       = "Test Kitchen driver for Azure Resource Manager."
