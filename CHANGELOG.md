@@ -1,6 +1,12 @@
 # kitchen-azurerm Changelog
 
-## [1.10.1] - 2022-03.10
+## [1.10.2] - 2022-04-04
+
+- move warning about missing credentials into debug by @jasonwbarnett in <https://github.com/test-kitchen/kitchen-azurerm/pull/235>
+- Deprecation/positional arguments by @damacus in <https://github.com/test-kitchen/kitchen-azurerm/pull/236>
+- Publish gem to GitHub by @damacus in <https://github.com/test-kitchen/kitchen-azurerm/pull/237>
+
+## [1.10.1] - 2022-03-10
 
 - Rollback #228 by [@jasonwbarnett](https://github.com/jasonwbarnett) in #234
 
