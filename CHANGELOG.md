@@ -1,5 +1,12 @@
 # kitchen-azurerm Changelog
 
+### [1.10.4](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.3...v1.10.4) (2022-04-04)
+
+
+### Bug Fixes
+
+* AZURERM_VERSION ([38b9475](https://github.com/test-kitchen/kitchen-azurerm/commit/38b9475da1ad421ea7ce927463c8a9e20761a56f))
+
 ### [1.10.3](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.2...v1.10.3) (2022-04-04)
 
 
