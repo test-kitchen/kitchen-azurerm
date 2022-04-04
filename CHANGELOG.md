@@ -1,5 +1,12 @@
 # kitchen-azurerm Changelog
 
+### [1.10.3](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.2...v1.10.3) (2022-04-04)
+
+
+### Features
+
+* Add release please releaser ([#238](https://github.com/test-kitchen/kitchen-azurerm/issues/238)) ([32cf4b8](https://github.com/test-kitchen/kitchen-azurerm/commit/32cf4b84a1a864d6f5272bd53b438d74bc141339))
+
 ## [1.10.2] - 2022-04-04
 
 - move warning about missing credentials into debug by @jasonwbarnett in <https://github.com/test-kitchen/kitchen-azurerm/pull/235>
