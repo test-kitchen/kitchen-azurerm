@@ -13,4 +13,4 @@ jobs:
         with:
           release-type: ruby
           package-name: kitchen-azurerm
-          version-file: lib/kitchen/version.rb
+          version-file: lib/kitchen/driver/azurerm_version.rb
