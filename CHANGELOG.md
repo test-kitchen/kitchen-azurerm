@@ -1,5 +1,18 @@
 # kitchen-azurerm Changelog
 
+### [1.10.5](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.4...v1.10.5) (2022-04-13)
+
+
+### Features
+
+* Add release please releaser ([#238](https://github.com/test-kitchen/kitchen-azurerm/issues/238)) ([32cf4b8](https://github.com/test-kitchen/kitchen-azurerm/commit/32cf4b84a1a864d6f5272bd53b438d74bc141339))
+
+
+### Bug Fixes
+
+* Add PR template, release, publsh and unit workflows ([#242](https://github.com/test-kitchen/kitchen-azurerm/issues/242)) ([56b31cc](https://github.com/test-kitchen/kitchen-azurerm/commit/56b31ccc38bc53f997e35323ce5ef13e5ef61803))
+* AZURERM_VERSION ([38b9475](https://github.com/test-kitchen/kitchen-azurerm/commit/38b9475da1ad421ea7ce927463c8a9e20761a56f))
+
 ### [1.10.4](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.3...v1.10.4) (2022-04-04)
 
 
