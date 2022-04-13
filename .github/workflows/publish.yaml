@@ -6,7 +6,7 @@ name: Publish
     types: [published]
 
 jobs:
-  build:
+  github-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -14,4 +14,13 @@ jobs:
         uses: jstastny/publish-gem-to-github@master
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ secrets.OWNER }}
+  rubygems-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build and publish gem
+        uses: actionshub/publish-gem-to-rubygems@main
+        env:
+          token: ${{ secrets.RUBYGEMS_TOKEN }}
           owner: ${{ secrets.OWNER }}
