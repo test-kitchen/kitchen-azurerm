@@ -265,7 +265,6 @@ You can use this capability to create the VM on an existing virtual network and 
 
 This enables scenarios that require a Standard SKU public IP resource, for example when a NAT gateway is present on the target subnet.
 
-
 ```yaml
 ---
 driver:
@@ -286,8 +285,8 @@ platforms:
       image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
-	  public_ip: true
-	  public_ip_sku: Standard
+    public_ip: true
+    public_ip_sku: Standard
 
 suites:
   - name: default
@@ -681,7 +680,7 @@ Stuart Preston
 
 Copyright 2015-2021, Chef Software, Inc.
 
-```
+```text
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
