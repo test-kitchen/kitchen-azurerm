@@ -4,13 +4,6 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
-### [1.10.6](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.5...v1.10.6) (2022-04-20)
-
-
-### Bug Fixes
-
-* switch to reusable GitHub workflows ([#244](https://github.com/test-kitchen/kitchen-azurerm/issues/244)) ([0abd514](https://github.com/test-kitchen/kitchen-azurerm/commit/0abd514aeb8c588409422be0c71d10cff82a8ebe))
-
 ### [1.10.5](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.4...v1.10.5) (2022-04-13)
 
 ### Features
