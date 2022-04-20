@@ -1,1 +1,3 @@
-Please refer to https://github.com/chef/chef/blob/master/CONTRIBUTING.md
+# Contributing
+
+Please refer to <https://github.com/chef/chef/blob/master/CONTRIBUTING.md>
