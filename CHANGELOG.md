@@ -4,6 +4,21 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+### [1.10.7](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.6...v1.10.7) (2022-04-20)
+
+
+### Features
+
+* Add release please releaser ([#238](https://github.com/test-kitchen/kitchen-azurerm/issues/238)) ([32cf4b8](https://github.com/test-kitchen/kitchen-azurerm/commit/32cf4b84a1a864d6f5272bd53b438d74bc141339))
+
+
+### Bug Fixes
+
+* Add PR template, release, publsh and unit workflows ([#242](https://github.com/test-kitchen/kitchen-azurerm/issues/242)) ([56b31cc](https://github.com/test-kitchen/kitchen-azurerm/commit/56b31ccc38bc53f997e35323ce5ef13e5ef61803))
+* AZURERM_VERSION ([38b9475](https://github.com/test-kitchen/kitchen-azurerm/commit/38b9475da1ad421ea7ce927463c8a9e20761a56f))
+* publish workflow ([#247](https://github.com/test-kitchen/kitchen-azurerm/issues/247)) ([a68d380](https://github.com/test-kitchen/kitchen-azurerm/commit/a68d380bd44e7e4de7abb177034ba4109880dcef))
+* switch to reusable GitHub workflows ([#244](https://github.com/test-kitchen/kitchen-azurerm/issues/244)) ([0abd514](https://github.com/test-kitchen/kitchen-azurerm/commit/0abd514aeb8c588409422be0c71d10cff82a8ebe))
+
 ### [1.10.5](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.4...v1.10.5) (2022-04-13)
 
 ### Features
