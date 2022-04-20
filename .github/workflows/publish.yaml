@@ -15,9 +15,7 @@ jobs:
           release-type: ruby
           package-name: kitchen-azurerm
           version-file: lib/kitchen/driver/azurerm_version.rb
-  github-release:
-    runs-on: ubuntu-latest
-    steps:
+
       - name: Checkout
         uses: actions/checkout@v2
         if: ${{ steps.release.outputs.release_created }}
@@ -28,13 +26,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           owner: ${{ secrets.OWNER }}
-
-  rubygems-release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        if: ${{ steps.release.outputs.release_created }}
 
       - name: Build and publish to RubyGems
         uses: actionshub/publish-gem-to-rubygems@main
