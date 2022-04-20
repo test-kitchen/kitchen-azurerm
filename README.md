@@ -287,8 +287,8 @@ platforms:
       image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
-    public_ip: true
-    public_ip_sku: Standard
+      public_ip: true
+      public_ip_sku: Standard
 
 suites:
   - name: default
