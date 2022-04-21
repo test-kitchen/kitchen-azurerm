@@ -1,0 +1,23 @@
+'on':
+  push:
+    branches: [main]
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        id: release
+        with:
+          release-type: ruby
+          package-name: kitchen-azurerm
+          version-file: lib/kitchen/driver/azurerm_version.rb
+      - run: |
+          echo "Step 1: ${{ steps.release.outputs.release_created }}"
+          echo "Step ${{ steps.release.outputs.upload_url }}"
+          echo "Step ${{ steps.release.outputs.html_url }}"
+          echo "Step ${{ steps.release.outputs.tag_name }}"
+          echo "Step ${{ steps.release.outputs.major }}"
+          echo "Step ${{ steps.release.outputs.minor }}"
+          echo "Step ${{ steps.release.outputs.sha }}"
+          echo "Step ${{ steps.release.outputs.pr }}"

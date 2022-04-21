@@ -20,16 +20,16 @@ jobs:
         uses: actions/checkout@v2
         if: ${{ steps.release.outputs.release_created }}
 
-      - name: Build and publish to GitHub Package
-        uses: jstastny/publish-gem-to-github@master
-        if: ${{ steps.release.outputs.release_created }}
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          owner: ${{ secrets.OWNER }}
+      # - name: Build and publish to GitHub Package
+      #   uses: jstastny/publish-gem-to-github@master
+      #   if: ${{ steps.release.outputs.release_created }}
+      #   with:
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     owner: ${{ secrets.OWNER }}
 
-      - name: Build and publish to RubyGems
-        uses: actionshub/publish-gem-to-rubygems@main
-        if: ${{ steps.release.outputs.release_created }}
-        env:
-          token: ${{ secrets.RUBYGEMS_TOKEN }}
-          owner: ${{ secrets.OWNER }}
+      # - name: Build and publish to RubyGems
+      #   uses: actionshub/publish-gem-to-rubygems@main
+      #   if: ${{ steps.release.outputs.release_created }}
+      #   env:
+      #     token: ${{ secrets.RUBYGEMS_TOKEN }}
+      #     owner: ${{ secrets.OWNER }}
