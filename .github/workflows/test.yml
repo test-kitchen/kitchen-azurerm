@@ -11,9 +11,5 @@ jobs:
           release-type: ruby
           package-name: kitchen-azurerm
           version-file: lib/kitchen/driver/azurerm_version.rb
-
-  lint-unit:
-    runs-on: ubuntu-latest
-    steps:
       - run: |
           echo ${{ steps.release.outputs }}
