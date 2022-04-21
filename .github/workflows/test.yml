@@ -1,0 +1,19 @@
+'on':
+  pull_request:
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        id: release
+        with:
+          release-type: ruby
+          package-name: kitchen-azurerm
+          version-file: lib/kitchen/driver/azurerm_version.rb
+
+  lint-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo ${{ steps.release.outputs }}
