@@ -12,7 +12,7 @@ jobs:
           package-name: kitchen-azurerm
           version-file: lib/kitchen/driver/azurerm_version.rb
       - run: |
-          echo "Step 1: $${{ steps.release.outputs.release_created }}"
+          echo "Step 1: ${ steps.release.outputs.release_created }"
           echo "Step ${{ steps.release.outputs.upload_url }}"
           echo "Step ${{ steps.release.outputs.html_url }}"
           echo "Step ${{ steps.release.outputs.tag_name }}"
