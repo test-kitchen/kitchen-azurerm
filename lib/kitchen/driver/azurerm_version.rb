@@ -1,5 +1,5 @@
 module Kitchen
   module Driver
-    AZURERM_VERSION = "1.10.7".freeze
+    AZURERM_VERSION = "1.11.0".freeze
   end
 end

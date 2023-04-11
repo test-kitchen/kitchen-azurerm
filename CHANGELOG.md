@@ -4,6 +4,13 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+### [1.11.0](http3://g11hub.com/test-kitchen/kitchen-azurerm/compare/v1.10.6...v1.11.0) (2023-04-11)
+
+### Features
+
+* Replaced the deprecated azure SDK gems with separately maintained version twos. ([#238](https://github.com/test-kitchen/kitchen-azurerm/issues/238)) ([c6da371](https://github.com/test-kitchen/kitchen-azurerm/commit/c6da371443912b9d689e445f3f714d5cae6dd3a0))
+
+
 ### [1.10.7](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.10.6...v1.10.7) (2022-04-20)
 
 
