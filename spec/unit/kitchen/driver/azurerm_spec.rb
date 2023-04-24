@@ -46,7 +46,7 @@ describe Kitchen::Driver::Azurerm do
   end
 
   let(:client) do
-    Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+    Azure::Resources2::Profiles::Latest::Mgmt::Client.new(options)
   end
 
   let(:instance) do
@@ -59,7 +59,7 @@ describe Kitchen::Driver::Azurerm do
   end
 
   let(:resource_group) do
-    Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
+    Azure::Resources2::Profiles::Latest::Mgmt::Models::ResourceGroup.new
   end
 
   let(:resource_groups) do
@@ -204,8 +204,8 @@ describe Kitchen::Driver::Azurerm do
       rg.location = location
       rg.tags = vm_tags
 
-      # https://github.com/Azure/azure-sdk-for-ruby/blob/master/runtime/ms_rest_azure/spec/azure_operation_error_spec.rb
-      expect { resource_groups.create_or_update(rgn, rg) }.to raise_error( an_instance_of(MsRestAzure::AzureOperationError) )
+      # https://github.com/Azure/azure-sdk-for-ruby/blob/master/runtime/ms_rest_azure2/spec/azure_operation_error_spec.rb
+      expect { resource_groups.create_or_update(rgn, rg) }.to raise_error( an_instance_of(MsRestAzure2::AzureOperationError) )
     end
 
     it "saves deployment credentials to state, when store_deployment_credentials_in_state is true" do
