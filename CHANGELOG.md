@@ -4,6 +4,13 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [1.11.1](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.11.0...v1.11.1) (2023-05-08)
+
+
+### Features
+
+* Azure sdk namespace updates ([#258](https://github.com/test-kitchen/kitchen-azurerm/issues/258)) ([d3041f1](https://github.com/test-kitchen/kitchen-azurerm/commit/d3041f19dd68e4c3ea00631e9fa5d3a63ea92a76))
+
 ### [1.11.0](http3://g11hub.com/test-kitchen/kitchen-azurerm/compare/v1.10.6...v1.11.0) (2023-04-11)
 
 ### Features
