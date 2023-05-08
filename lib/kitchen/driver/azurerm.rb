@@ -1,11 +1,11 @@
 require "kitchen"
 
-autoload :MsRestAzure, "ms_rest_azure"
+autoload :MsRestAzure2, "ms_rest_azure2"
 require_relative "azure_credentials"
 require "securerandom" unless defined?(SecureRandom)
 module Azure
-  autoload :Resources, "azure_mgmt_resources"
-  autoload :Network, "azure_mgmt_network"
+  autoload :Resources2, "azure_mgmt_resources2"
+  autoload :Network2, "azure_mgmt_network2"
 end
 require "base64" unless defined?(Base64)
 autoload :SSHKey, "sshkey"
@@ -21,7 +21,7 @@ module Kitchen
     # Azurerm
     # Create a new resource group object and set the location and tags attributes then return it.
     #
-    # @return [::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup] A new resource group object.
+    # @return [::Azure::Resources2::Profiles::Latest::Mgmt::Models::ResourceGroup] A new resource group object.
     class Azurerm < Kitchen::Driver::Base
       attr_accessor :resource_management_client
       attr_accessor :network_management_client
@@ -298,13 +298,13 @@ module Kitchen
                                                         environment: config[:azure_environment]).azure_options
 
         debug "Azure environment: #{config[:azure_environment]}"
-        @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+        @resource_management_client = ::Azure::Resources2::Profiles::Latest::Mgmt::Client.new(options)
 
         # Create Resource Group
         begin
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
           create_resource_group(state[:azure_resource_group_name], get_resource_group)
-        rescue ::MsRestAzure::AzureOperationError => operation_error
+        rescue ::MsRestAzure2::AzureOperationError => operation_error
           error operation_error.body
           raise operation_error
         end
@@ -333,7 +333,7 @@ module Kitchen
             create_deployment_async(state[:azure_resource_group_name], post_deployment_name, post_deployment(config[:post_deployment_template], config[:post_deployment_parameters])).value!
             follow_deployment_until_end_state(state[:azure_resource_group_name], post_deployment_name)
           end
-        rescue ::MsRestAzure::AzureOperationError => operation_error
+        rescue ::MsRestAzure2::AzureOperationError => operation_error
           rest_error = operation_error.body["error"]
           deployment_active = rest_error["code"] == "DeploymentActive"
           if deployment_active
@@ -345,7 +345,7 @@ module Kitchen
           end
         end
 
-        @network_management_client = ::Azure::Network::Profiles::Latest::Mgmt::Client.new(options)
+        @network_management_client = ::Azure::Network2::Profiles::Latest::Mgmt::Client.new(options)
 
         if config[:vnet_id] == "" || config[:public_ip]
           # Retrieve the public IP from the resource group:
@@ -464,9 +464,9 @@ module Kitchen
 
       def pre_deployment(pre_deployment_template_filename, pre_deployment_parameters)
         pre_deployment_template = ::File.read(pre_deployment_template_filename)
-        pre_deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
-        pre_deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
-        pre_deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental
+        pre_deployment = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment.new
+        pre_deployment.properties = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
+        pre_deployment.properties.mode = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental
         pre_deployment.properties.template = JSON.parse(pre_deployment_template)
         pre_deployment.properties.parameters = parameters_in_values_format(pre_deployment_parameters)
         debug(pre_deployment.properties.template)
@@ -475,9 +475,9 @@ module Kitchen
 
       def deployment(parameters)
         template = template_for_transport_name
-        deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
-        deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
-        deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental
+        deployment = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment.new
+        deployment.properties = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
+        deployment.properties.mode = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental
         deployment.properties.template = JSON.parse(template)
         deployment.properties.parameters = parameters_in_values_format(parameters)
         debug(JSON.pretty_generate(deployment.properties.template))
@@ -486,9 +486,9 @@ module Kitchen
 
       def post_deployment(post_deployment_template_filename, post_deployment_parameters)
         post_deployment_template = ::File.read(post_deployment_template_filename)
-        post_deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
-        post_deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
-        post_deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental
+        post_deployment = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment.new
+        post_deployment.properties = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
+        post_deployment.properties.mode = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental
         post_deployment.properties.template = JSON.parse(post_deployment_template)
         post_deployment.properties.parameters = parameters_in_values_format(post_deployment_parameters)
         debug(post_deployment.properties.template)
@@ -497,9 +497,9 @@ module Kitchen
 
       def empty_deployment
         template = virtual_machine_deployment_template_file("empty.erb", nil)
-        empty_deployment = ::Azure::Resources::Profiles::Latest::Mgmt::Models::Deployment.new
-        empty_deployment.properties = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
-        empty_deployment.properties.mode = ::Azure::Resources::Profiles::Latest::Mgmt::Models::DeploymentMode::Complete
+        empty_deployment = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment.new
+        empty_deployment.properties = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
+        empty_deployment.properties.mode = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentMode::Complete
         empty_deployment.properties.template = JSON.parse(template)
         debug(JSON.pretty_generate(empty_deployment.properties.template))
         empty_deployment
@@ -570,7 +570,7 @@ module Kitchen
         # Setup our authentication components for the SDK
         options = Kitchen::Driver::AzureCredentials.new(subscription_id: state[:subscription_id],
           environment: state[:azure_environment]).azure_options
-        @resource_management_client = ::Azure::Resources::Profiles::Latest::Mgmt::Client.new(options)
+        @resource_management_client = ::Azure::Resources2::Profiles::Latest::Mgmt::Client.new(options)
 
         # If we don't have any instances, let's check to see if the user wants to delete a resource group and if so let's delete!
         if state[:server_id].nil? && state[:azure_resource_group_name].nil? && !config[:explicit_resource_group_name].nil? && config[:destroy_explicit_resource_group]
@@ -581,7 +581,7 @@ module Kitchen
               delete_resource_group_async(config[:explicit_resource_group_name])
               info "Destroy operation accepted and will continue in the background."
               return
-            rescue ::MsRestAzure::AzureOperationError => operation_error
+            rescue ::MsRestAzure2::AzureOperationError => operation_error
               error operation_error.body
               raise operation_error
             end
@@ -614,12 +614,12 @@ module Kitchen
               resource_group.tags = {}
               create_resource_group(state[:azure_resource_group_name], resource_group) unless config[:destroy_explicit_resource_group_tags] == false
               warn 'The "destroy_explicit_resource_group_tags" setting value is set to "true". The tags on the resource group will be removed.' unless config[:destroy_explicit_resource_group_tags] == false
-            rescue ::MsRestAzure::AzureOperationError => operation_error
+            rescue ::MsRestAzure2::AzureOperationError => operation_error
               error operation_error.body
               raise operation_error
             end
 
-          rescue ::MsRestAzure::AzureOperationError => operation_error
+          rescue ::MsRestAzure2::AzureOperationError => operation_error
             error operation_error.body
             raise operation_error
           end
@@ -639,7 +639,7 @@ module Kitchen
           info "Destroy operation accepted and will continue in the background."
           # Remove resource group name from driver state
           state.delete(:azure_resource_group_name)
-        rescue ::MsRestAzure::AzureOperationError => operation_error
+        rescue ::MsRestAzure2::AzureOperationError => operation_error
           error operation_error.body
           raise operation_error
         end
@@ -769,13 +769,13 @@ module Kitchen
       def resource_manager_endpoint_url(azure_environment)
         case azure_environment.downcase
         when "azureusgovernment"
-          MsRestAzure::AzureEnvironments::AzureUSGovernment.resource_manager_endpoint_url
+          MsRestAzure2::AzureEnvironments::AzureUSGovernment.resource_manager_endpoint_url
         when "azurechina"
-          MsRestAzure::AzureEnvironments::AzureChinaCloud.resource_manager_endpoint_url
+          MsRestAzure2::AzureEnvironments::AzureChinaCloud.resource_manager_endpoint_url
         when "azuregermancloud"
-          MsRestAzure::AzureEnvironments::AzureGermanCloud.resource_manager_endpoint_url
+          MsRestAzure2::AzureEnvironments::AzureGermanCloud.resource_manager_endpoint_url
         when "azure"
-          MsRestAzure::AzureEnvironments::AzureCloud.resource_manager_endpoint_url
+          MsRestAzure2::AzureEnvironments::AzureCloud.resource_manager_endpoint_url
         end
       end
 
@@ -798,9 +798,9 @@ module Kitchen
 
       # Create a new resource group object and set the location and tags attributes then return it.
       #
-      # @return [::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup] A new resource group object.
+      # @return [::Azure::Resources2::Profiles::Latest::Mgmt::Models::ResourceGroup] A new resource group object.
       def get_resource_group
-        resource_group = ::Azure::Resources::Profiles::Latest::Mgmt::Models::ResourceGroup.new
+        resource_group = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::ResourceGroup.new
         resource_group.location = config[:location]
         resource_group.tags = config[:resource_group_tags]
         resource_group
@@ -868,7 +868,7 @@ module Kitchen
       def get_network_interface(resource_group_name, network_interface_name)
         retries = config[:azure_api_retries]
         begin
-          network_interfaces = ::Azure::Network::Profiles::Latest::Mgmt::NetworkInterfaces.new(network_management_client)
+          network_interfaces = ::Azure::Network2::Profiles::Latest::Mgmt::NetworkInterfaces.new(network_management_client)
           network_interfaces.get(resource_group_name, network_interface_name)
         rescue Faraday::TimeoutError, Faraday::ClientError => exception
           send_exception_message(exception, "while fetching network interface '#{network_interface_name}' for resource group '#{resource_group_name}'. #{retries} retries left.")

@@ -1,6 +1,8 @@
 require "inifile"
+
 require "kitchen/logging"
-autoload :MsRest, "ms_rest"
+autoload :MsRest2, "ms_rest2"
+autoload :MsRestAzure2, "ms_rest_azure2"
 
 module Kitchen
   module Driver
@@ -38,7 +40,7 @@ module Kitchen
       def azure_options
         options = { tenant_id: tenant_id!,
                     subscription_id: subscription_id,
-                    credentials: ::MsRest::TokenCredentials.new(token_provider),
+                    credentials: ::MsRest2::TokenCredentials.new(token_provider),
                     active_directory_settings: ad_settings,
                     base_url: endpoint_settings.resource_manager_endpoint_url }
         options[:client_id] = client_id if client_id
@@ -87,7 +89,7 @@ module Kitchen
 
       # Retrieve a token based upon the preferred authentication method.
       #
-      # @return [::MsRest::TokenProvider] A new token provider object.
+      # @return [::MsRest2::TokenProvider] A new token provider object.
       def token_provider
         # Login with a credentials file or setting the environment variables
         #
@@ -95,63 +97,63 @@ module Kitchen
         #
         # SPN with client_id, client_secret and tenant_id
         if client_id && client_secret && tenant_id
-          ::MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, ad_settings)
+          ::MsRestAzure2::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, ad_settings)
         # Login with a Managed Service Identity.
         #
         # Typically used with a Managed Service Identity when you have a particular object registered in a tenant.
         #
         # MSI with client_id and tenant_id (aka User Assigned Identity).
         elsif client_id && tenant_id
-          ::MsRestAzure::MSITokenProvider.new(50342, ad_settings, { client_id: client_id })
+          ::MsRestAzure2::MSITokenProvider.new(50342, ad_settings, { client_id: client_id })
         # Default approach to inheriting existing object permissions (application or device this code is running on).
         #
         # Typically used when you want to inherit the permissions of the system you're running on that are in a tenant.
         #
         # MSI with just tenant_id (aka System Assigned Identity).
         elsif tenant_id
-          ::MsRestAzure::MSITokenProvider.new(50342, ad_settings)
+          ::MsRestAzure2::MSITokenProvider.new(50342, ad_settings)
         # Login using the Azure CLI
         #
         # Typically used when you want to rely upon `az login` as your preferred authentication method.
         else
           warn("Using tenant id set through `az login`.")
-          ::MsRestAzure::AzureCliTokenProvider.new(ad_settings)
+          ::MsRestAzure2::AzureCliTokenProvider.new(ad_settings)
         end
       end
 
       #
-      # Retrieves a [MsRestAzure::ActiveDirectoryServiceSettings] object representing the AD settings for the given cloud.
+      # Retrieves a [MsRestAzure2::ActiveDirectoryServiceSettings] object representing the AD settings for the given cloud.
       #
-      # @return [MsRestAzure::ActiveDirectoryServiceSettings] Settings to be used for subsequent requests
+      # @return [MsRestAzure2::ActiveDirectoryServiceSettings] Settings to be used for subsequent requests
       #
       def ad_settings
         case environment.downcase
         when "azureusgovernment"
-          ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_us_government_settings
+          ::MsRestAzure2::ActiveDirectoryServiceSettings.get_azure_us_government_settings
         when "azurechina"
-          ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_china_settings
+          ::MsRestAzure2::ActiveDirectoryServiceSettings.get_azure_china_settings
         when "azuregermancloud"
-          ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_german_settings
+          ::MsRestAzure2::ActiveDirectoryServiceSettings.get_azure_german_settings
         when "azure"
-          ::MsRestAzure::ActiveDirectoryServiceSettings.get_azure_settings
+          ::MsRestAzure2::ActiveDirectoryServiceSettings.get_azure_settings
         end
       end
 
       #
-      # Retrieves a [MsRestAzure::AzureEnvironment] object representing endpoint settings for the given cloud.
+      # Retrieves a [MsRestAzure2::AzureEnvironment] object representing endpoint settings for the given cloud.
       #
-      # @return [MsRestAzure::AzureEnvironment] Settings to be used for subsequent requests
+      # @return [MsRestAzure2::AzureEnvironment] Settings to be used for subsequent requests
       #
       def endpoint_settings
         case environment.downcase
         when "azureusgovernment"
-          ::MsRestAzure::AzureEnvironments::AzureUSGovernment
+          ::MsRestAzure2::AzureEnvironments::AzureUSGovernment
         when "azurechina"
-          ::MsRestAzure::AzureEnvironments::AzureChinaCloud
+          ::MsRestAzure2::AzureEnvironments::AzureChinaCloud
         when "azuregermancloud"
-          ::MsRestAzure::AzureEnvironments::AzureGermanCloud
+          ::MsRestAzure2::AzureEnvironments::AzureGermanCloud
         when "azure"
-          ::MsRestAzure::AzureEnvironments::AzureCloud
+          ::MsRestAzure2::AzureEnvironments::AzureCloud
         end
       end
     end

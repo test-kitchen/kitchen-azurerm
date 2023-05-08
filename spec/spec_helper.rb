@@ -12,7 +12,7 @@
 # limitations under the License.
 
 require "rspec/its"
-require "ms_rest"
-require "ms_rest_azure"
-require "azure_mgmt_resources"
+require "ms_rest2"
+require "ms_rest_azure2"
+require "azure_mgmt_resources2"
 require_relative "../lib/kitchen/driver/azurerm"

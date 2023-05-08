@@ -1,5 +1,5 @@
 require "spec_helper"
-require "ms_rest_azure"
+require "ms_rest_azure2"
 
 describe Kitchen::Driver::AzureCredentials do
   CLIENT_ID_AND_SECRET_SUB = 0
@@ -198,7 +198,7 @@ describe Kitchen::Driver::AzureCredentials do
       it { is_expected.to be_instance_of(Hash) }
       its([:tenant_id]) { is_expected.to eq(tenant_id) }
       its([:subscription_id]) { is_expected.to eq(subscription_id) }
-      its([:credentials]) { is_expected.to be_instance_of(MsRest::TokenCredentials) }
+      its([:credentials]) { is_expected.to be_instance_of(MsRest2::TokenCredentials) }
       its([:client_id]) { is_expected.to eq(client_id) }
       its([:client_secret]) { is_expected.to eq(client_secret) }
       its([:base_url]) { is_expected.to eq("https://management.azure.com/") }
@@ -209,8 +209,8 @@ describe Kitchen::Driver::AzureCredentials do
 
       include_examples "common option specs"
 
-      it "uses token provider: MsRestAzure::ApplicationTokenProvider" do
-        expect(token_provider).to be_instance_of(MsRestAzure::ApplicationTokenProvider)
+      it "uses token provider: MsRestAzure2::ApplicationTokenProvider" do
+        expect(token_provider).to be_instance_of(MsRestAzure2::ApplicationTokenProvider)
       end
 
       it "sets the client_id" do
@@ -229,8 +229,8 @@ describe Kitchen::Driver::AzureCredentials do
 
       include_examples "common option specs"
 
-      it "uses token provider: MsRestAzure::MSITokenProvider" do
-        expect(token_provider).to be_instance_of(MsRestAzure::MSITokenProvider)
+      it "uses token provider: MsRestAzure2::MSITokenProvider" do
+        expect(token_provider).to be_instance_of(MsRestAzure2::MSITokenProvider)
       end
 
       it "sets the client_id" do
@@ -248,8 +248,8 @@ describe Kitchen::Driver::AzureCredentials do
 
       include_examples "common option specs"
 
-      it "uses token provider: MsRestAzure::MSITokenProvider" do
-        expect(token_provider).to be_instance_of(MsRestAzure::MSITokenProvider)
+      it "uses token provider: MsRestAzure2::MSITokenProvider" do
+        expect(token_provider).to be_instance_of(MsRestAzure2::MSITokenProvider)
       end
 
       it "does not set the client_id" do
