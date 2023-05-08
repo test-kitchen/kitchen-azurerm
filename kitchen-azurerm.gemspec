@@ -18,8 +18,8 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = ">= 2.6"
 
-  spec.add_dependency "azure_mgmt_network2", "~> 1.0"
-  spec.add_dependency "azure_mgmt_resources2", "~> 1.0"
+  spec.add_dependency "azure_mgmt_network2", "~> 1.0.1", ">= 1.0.1"
+  spec.add_dependency "azure_mgmt_resources2", "~> 1.0.1", ">= 1.0.1"
   spec.add_dependency "inifile", "~> 3.0", ">= 3.0.0"
   spec.add_dependency "sshkey", ">= 1.0.0", "< 3"
   spec.add_dependency "test-kitchen", ">= 1.20", "< 4.0"
