@@ -1,6 +1,5 @@
 require "inifile"
 
-
 require "kitchen/logging"
 autoload :MsRest2, "ms_rest2"
 autoload :MsRestAzure2, "ms_rest_azure2"
