@@ -84,6 +84,11 @@ module Kitchen
         SecureRandom.base64(25)
       end
 
+      # This prefix MUST be no longer than 3 characters
+      default_config(:vm_prefix) do |_config|
+        "tk-"
+      end
+
       default_config :vm_name, nil
 
       default_config :store_deployment_credentials_in_state, true
@@ -379,7 +384,7 @@ module Kitchen
       # @return [Hash] Updated Hash of state values.
       def validate_state(state = {})
         state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
-        state[:vm_name] = config[:vm_name] || "tk-#{state[:uuid][0..11]}" unless existing_state_value?(state, :vm_name)
+        state[:vm_name] = config[:vm_name] || "#{config[:vm_prefix]}#{state[:uuid][0..11]}" unless existing_state_value?(state, :vm_name)
         state[:server_id] = "vm#{state[:uuid]}" unless existing_state_value?(state, :server_id)
         state[:azure_resource_group_name] = azure_resource_group_name unless existing_state_value?(state, :azure_resource_group_name)
         %i{subscription_id azure_environment use_managed_disks}.each do |config_element|

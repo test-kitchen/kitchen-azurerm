@@ -110,6 +110,10 @@ describe Kitchen::Driver::Azurerm do
     it "should set store_deployment_credentials_in_state to true" do
       expect(default_config[:store_deployment_credentials_in_state]).to eq(true)
     end
+
+    it "Should use tk- vm prefix" do
+      expect(default_config[:vm_prefix]).to eq("tk-")
+    end
   end
 
   describe "#validate_state" do
@@ -150,6 +154,7 @@ describe Kitchen::Driver::Azurerm do
         expect(state[:vm_name].length).to eq(15)
         expect(state[:vm_name]).to be_an_instance_of(String)
         expect(state[:vm_name]).not_to eq(vm_name)
+        expect(state[:vm_name]).to start_with("tk-")
       end
 
       it "does not generate vm_name, when one exists in state" do
@@ -157,6 +162,20 @@ describe Kitchen::Driver::Azurerm do
         state[:vm_name] = vm_name_in_state
         driver.validate_state(state)
         expect(state[:vm_name]).to eq(vm_name_in_state)
+      end
+
+      context "when vm_prefix is set in config" do
+        before do
+          config[:vm_prefix] = "ab-"
+        end
+
+        it "generates vm_name with prefix, when one does not exist in state" do
+          driver.validate_state(state)
+          expect(state[:vm_name].length).to eq(15)
+          expect(state[:vm_name]).to be_an_instance_of(String)
+          expect(state[:vm_name]).not_to eq(vm_name)
+          expect(state[:vm_name]).to start_with("ab-")
+        end
       end
     end
   end
