@@ -39,7 +39,7 @@ module Kitchen
       #
       def azure_options
         options = { tenant_id: tenant_id!,
-                    subscription_id: subscription_id,
+                    subscription_id:,
                     credentials: ::MsRest2::TokenCredentials.new(token_provider),
                     active_directory_settings: ad_settings,
                     base_url: endpoint_settings.resource_manager_endpoint_url }
@@ -104,7 +104,7 @@ module Kitchen
         #
         # MSI with client_id and tenant_id (aka User Assigned Identity).
         elsif client_id && tenant_id
-          ::MsRestAzure2::MSITokenProvider.new(50342, ad_settings, { client_id: client_id })
+          ::MsRestAzure2::MSITokenProvider.new(50342, ad_settings, { client_id: })
         # Default approach to inheriting existing object permissions (application or device this code is running on).
         #
         # Typically used when you want to inherit the permissions of the system you're running on that are in a tenant.

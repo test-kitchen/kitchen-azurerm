@@ -15,21 +15,21 @@ jobs:
           release-type: ruby
           package-name: kitchen-azurerm
           version-file: lib/kitchen/driver/azurerm_version.rb
+          token: ${{ secrets.PORTER_GITHUB_TOKEN }}
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         if: ${{ steps.release.outputs.release_created }}
 
-      # - name: Build and publish to GitHub Package
-      #   uses: jstastny/publish-gem-to-github@master
-      #   if: ${{ steps.release.outputs.release_created }}
-      #   with:
-      #     token: ${{ secrets.GITHUB_TOKEN }}
-      #     owner: ${{ secrets.OWNER }}
+      - name: Build and publish to GitHub Package
+        uses: actionshub/publish-gem-to-github@main
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ secrets.OWNER }}
 
-      # - name: Build and publish to RubyGems
-      #   uses: actionshub/publish-gem-to-rubygems@main
-      #   if: ${{ steps.release.outputs.release_created }}
-      #   env:
-      #     token: ${{ secrets.RUBYGEMS_TOKEN }}
-      #     owner: ${{ secrets.OWNER }}
+      - name: Build and publish to RubyGems
+        uses: actionshub/publish-gem-to-rubygems@main
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          token: ${{ secrets.RUBYGEMS_API_KEY }}

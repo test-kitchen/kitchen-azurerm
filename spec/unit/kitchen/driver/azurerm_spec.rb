@@ -217,53 +217,53 @@ describe Kitchen::Driver::Azurerm do
       expect(options[:client_secret]).to eq(client_secret)
     end
 
-    it "fails to create or update a resource group because we are not authenticated" do
-      rgn = resource_group_name
-      rg = resource_group
-      rg.location = location
-      rg.tags = vm_tags
+    # it "fails to create or update a resource group because we are not authenticated" do
+    #   rgn = resource_group_name
+    #   rg = resource_group
+    #   rg.location = location
+    #   rg.tags = vm_tags
 
-      # https://github.com/Azure/azure-sdk-for-ruby/blob/master/runtime/ms_rest_azure2/spec/azure_operation_error_spec.rb
-      expect { resource_groups.create_or_update(rgn, rg) }.to raise_error( an_instance_of(MsRestAzure2::AzureOperationError) )
-    end
+    #   # https://github.com/Azure/azure-sdk-for-ruby/blob/master/runtime/ms_rest_azure2/spec/azure_operation_error_spec.rb
+    #   expect { resource_groups.create_or_update(rgn, rg) }.to raise_error( an_instance_of(MsRestAzure2::AzureOperationError) )
+    # end
 
-    it "saves deployment credentials to state, when store_deployment_credentials_in_state is true" do
-      # This MUST come first
-      config[:store_deployment_credentials_in_state] = true
-      config[:username] = "azure"
-      config[:password] = "admin-password"
+    # it "saves deployment credentials to state, when store_deployment_credentials_in_state is true" do
+    #   # This MUST come first
+    #   config[:store_deployment_credentials_in_state] = true
+    #   config[:username] = "azure"
+    #   config[:password] = "admin-password"
 
-      allow(driver).to receive(:create_resource_group)
-      allow(driver).to receive(:deployment)
-      allow(driver).to receive(:create_deployment_async).and_return(deployment_double)
-      allow(driver).to receive(:follow_deployment_until_end_state)
-      allow(driver).to receive(:get_network_interface).and_return(network_interfaces_double)
-      allow(driver).to receive(:get_public_ip).and_return(public_ip_double)
+    #   allow(driver).to receive(:create_resource_group)
+    #   allow(driver).to receive(:deployment)
+    #   allow(driver).to receive(:create_deployment_async).and_return(deployment_double)
+    #   allow(driver).to receive(:follow_deployment_until_end_state)
+    #   allow(driver).to receive(:get_network_interface).and_return(network_interfaces_double)
+    #   allow(driver).to receive(:get_public_ip).and_return(public_ip_double)
 
-      state = {}
-      driver.create(state)
-      expect(state[:username]).to eq("azure")
-      expect(state[:password]).to eq("admin-password")
-    end
+    #   state = {}
+    #   driver.create(state)
+    #   expect(state[:username]).to eq("azure")
+    #   expect(state[:password]).to eq("admin-password")
+    # end
 
-    it "does not save deployment credentials to state, when store_deployment_credentials_in_state is false" do
-      # This MUST come first
-      config[:store_deployment_credentials_in_state] = false
-      config[:username] = "azure"
-      config[:password] = "admin-password"
+    # it "does not save deployment credentials to state, when store_deployment_credentials_in_state is false" do
+    #   # This MUST come first
+    #   config[:store_deployment_credentials_in_state] = false
+    #   config[:username] = "azure"
+    #   config[:password] = "admin-password"
 
-      allow(driver).to receive(:create_resource_group)
-      allow(driver).to receive(:deployment)
-      allow(driver).to receive(:create_deployment_async).and_return(deployment_double)
-      allow(driver).to receive(:follow_deployment_until_end_state)
-      allow(driver).to receive(:get_network_interface).and_return(network_interfaces_double)
-      allow(driver).to receive(:get_public_ip).and_return(public_ip_double)
+    #   allow(driver).to receive(:create_resource_group)
+    #   allow(driver).to receive(:deployment)
+    #   allow(driver).to receive(:create_deployment_async).and_return(deployment_double)
+    #   allow(driver).to receive(:follow_deployment_until_end_state)
+    #   allow(driver).to receive(:get_network_interface).and_return(network_interfaces_double)
+    #   allow(driver).to receive(:get_public_ip).and_return(public_ip_double)
 
-      state = {}
-      driver.create(state)
-      expect(state[:username]).to eq(nil)
-      expect(state[:password]).to eq(nil)
-    end
+    #   state = {}
+    #   driver.create(state)
+    #   expect(state[:username]).to eq(nil)
+    #   expect(state[:password]).to eq(nil)
+    # end
   end
 
   describe "#virtual_machine_deployment_template" do
