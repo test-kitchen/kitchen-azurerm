@@ -4,6 +4,14 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [1.13.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.12.0...v1.13.0) (2023-11-27)
+
+
+### Features
+
+* add configurable vm prefix ([#264](https://github.com/test-kitchen/kitchen-azurerm/issues/264)) ([4b09973](https://github.com/test-kitchen/kitchen-azurerm/commit/4b099731f1132739aaaf203cc417d254feb6862e))
+* Update workflows and run Chefstyle over the code base ([#267](https://github.com/test-kitchen/kitchen-azurerm/issues/267)) ([869ee8c](https://github.com/test-kitchen/kitchen-azurerm/commit/869ee8c5af9cf9c77786090c6b3dc1733b50b90d))
+
 ### [1.12.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.11.0...v1.11.1) (2023-05-08)
 
 ### Features
