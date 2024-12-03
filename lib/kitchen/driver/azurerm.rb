@@ -300,7 +300,7 @@ module Kitchen
         end
 
         options = Kitchen::Driver::AzureCredentials.new(subscription_id: config[:subscription_id],
-                                                        environment: config[:azure_environment]).azure_options
+          environment: config[:azure_environment]).azure_options
 
         debug "Azure environment: #{config[:azure_environment]}"
         @resource_management_client = ::Azure::Resources2::Profiles::Latest::Mgmt::Client.new(options)
