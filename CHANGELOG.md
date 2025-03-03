@@ -4,6 +4,13 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [1.13.2](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.1...v1.13.2) (2025-03-03)
+
+
+### Bug Fixes
+
+* Require Ruby 3.1 + lint with cookstyle ([#278](https://github.com/test-kitchen/kitchen-azurerm/issues/278)) ([b9bba1b](https://github.com/test-kitchen/kitchen-azurerm/commit/b9bba1b85c115272456f1d28926bba263aa6ef48))
+
 ## [1.13.1](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.0...v1.13.1) (2024-06-21)
 
 
