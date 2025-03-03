@@ -4,9 +4,9 @@ updates:
   - package-ecosystem: bundler
     directory: "/"
     schedule:
-      interval: daily
-    open-pull-requests-limit: 10
-    ignore:
-      - dependency-name: chefstyle
-        versions:
-          - 1.7.4
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
