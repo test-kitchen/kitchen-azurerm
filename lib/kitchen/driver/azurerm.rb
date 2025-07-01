@@ -547,7 +547,7 @@ module Kitchen
         failed_operations = list_deployment_operations(resource_group, deployment_name)
         failed_operations.each do |val|
           resource_code = val.properties.status_code
-          raise val.properties.status_message.inspect.to_s if resource_code != "OK"
+          raise val.properties.status_message.inspect if resource_code != "OK"
         end
       end
 
