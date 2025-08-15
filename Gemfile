@@ -12,6 +12,6 @@ group :debug do
   gem "pry"
 end
 
-group :linting do
-  gem "cookstyle", "8.4.0"
+group :cookstyle do
+  gem "cookstyle", "~> 8.4"
 end
