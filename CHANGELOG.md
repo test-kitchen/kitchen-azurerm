@@ -4,6 +4,13 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [1.13.3](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.2...v1.13.3) (2025-08-15)
+
+
+### Bug Fixes
+
+* Require Ruby 3.2 ([#294](https://github.com/test-kitchen/kitchen-azurerm/issues/294)) ([a21cdcf](https://github.com/test-kitchen/kitchen-azurerm/commit/a21cdcf373c503bc27c014eaf58090d721a14857))
+
 ## [1.13.2](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.1...v1.13.2) (2025-03-03)
 
 
