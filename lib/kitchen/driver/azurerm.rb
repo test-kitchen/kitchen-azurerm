@@ -225,6 +225,10 @@ module Kitchen
         false
       end
 
+      default_config(:encryption_at_host) do |_config|
+        false
+      end
+
       def create(state)
         state = validate_state(state)
         deployment_parameters = {
@@ -237,6 +241,7 @@ module Kitchen
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           vmName: state[:vm_name],
           systemAssignedIdentity: config[:system_assigned_identity],
+          encryptionAtHost: config[:encryption_at_host],
           userAssignedIdentities: config[:user_assigned_identities].map { |identity| [identity, {}] }.to_h,
           secretUrl: config[:secret_url],
           vaultName: config[:vault_name],
@@ -251,6 +256,14 @@ module Kitchen
 
         if config[:public_ip_sku] == "Standard"
           deployment_parameters[:publicIPAddressType] = "Static"
+        end
+
+        # Validate encryption at host requirements
+        if config[:encryption_at_host]
+          # Check if VM size supports encryption at host
+          unless config[:machine_size].match?(/^Standard_[BDE]/)
+            warn "VM size #{config[:machine_size]} may not support encryption at host. Recommended: Standard_D or Standard_E series VMs."
+          end
         end
 
         if config[:subscription_id].to_s == ""
@@ -746,10 +759,10 @@ module Kitchen
 
       def virtual_machine_deployment_template
         if config[:vnet_id] == ""
-          virtual_machine_deployment_template_file("public.erb", vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], storage_account_type: config[:storage_account_type], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json:, use_ephemeral_osdisk: config[:use_ephemeral_osdisk], ssh_key: instance.transport[:ssh_key], plan_json:)
+          virtual_machine_deployment_template_file("public.erb", vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], storage_account_type: config[:storage_account_type], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json:, use_ephemeral_osdisk: config[:use_ephemeral_osdisk], ssh_key: instance.transport[:ssh_key], encryption_at_host: config[:encryption_at_host], plan_json:)
         else
           info "Using custom vnet: #{config[:vnet_id]}"
-          virtual_machine_deployment_template_file("internal.erb", vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], storage_account_type: config[:storage_account_type], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json:, use_ephemeral_osdisk: config[:use_ephemeral_osdisk], ssh_key: instance.transport[:ssh_key], public_ip_sku: config[:public_ip_sku], plan_json:)
+          virtual_machine_deployment_template_file("internal.erb", vnet_id: config[:vnet_id], subnet_id: config[:subnet_id], public_ip: config[:public_ip], vm_tags: vm_tag_string(config[:vm_tags]), use_managed_disks: config[:use_managed_disks], image_url: config[:image_url], storage_account_type: config[:storage_account_type], existing_storage_account_blob_url: config[:existing_storage_account_blob_url], image_id: config[:image_id], existing_storage_account_container: config[:existing_storage_account_container], custom_data: config[:custom_data], os_disk_size_gb: config[:os_disk_size_gb], data_disks_for_vm_json:, use_ephemeral_osdisk: config[:use_ephemeral_osdisk], ssh_key: instance.transport[:ssh_key], public_ip_sku: config[:public_ip_sku], encryption_at_host: config[:encryption_at_host], plan_json:)
         end
       end
 

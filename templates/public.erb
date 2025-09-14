@@ -191,6 +191,11 @@
                 "description": "Whether to enable system assigned identity for the vm."
             }
         },
+        <% if encryption_at_host %>
+        "encryptionAtHost": {
+            "type": "bool",
+            "defaultValue": false
+        },
         "userAssignedIdentities": {
             "type": "object",
             "defaultValue": {},
@@ -435,6 +440,11 @@
                         }
                     ]
                 },
+                <% if encryption_at_host %>
+                "securityProfile": {
+                "encryptionAtHost": "[parameters('encryptionAtHost')]"
+                },
+                <% end %>
                 "diagnosticsProfile": {
                     <%- unless use_managed_disks -%>
                     "bootDiagnostics": {
