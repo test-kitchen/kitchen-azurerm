@@ -4,6 +4,12 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [1.14.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.3...v1.14.0) (2025-09-14)
+
+### Features
+
+* Add VM encryption at host ([#296](https://github.com/test-kitchen/kitchen-azurerm/issues/296))
+
 ## [1.13.3](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.2...v1.13.3) (2025-08-15)
 
 
