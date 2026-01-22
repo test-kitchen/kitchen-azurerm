@@ -4,6 +4,13 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [1.13.4](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.3...v1.13.4) (2026-01-22)
+
+
+### Bug Fixes
+
+* bump tk dep to allow tk 4 ([#304](https://github.com/test-kitchen/kitchen-azurerm/issues/304)) ([718d030](https://github.com/test-kitchen/kitchen-azurerm/commit/718d03029d30f66dc6ff251c4c7663fa60b58bfb))
+
 ## [1.13.3](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.2...v1.13.3) (2025-08-15)
 
 
