@@ -4,6 +4,13 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [1.13.5](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.4...v1.13.5) (2026-01-23)
+
+
+### Bug Fixes
+
+* azure dep restrictions ([#306](https://github.com/test-kitchen/kitchen-azurerm/issues/306)) ([bd0eb54](https://github.com/test-kitchen/kitchen-azurerm/commit/bd0eb54507d30eae1e9481ca514bd3984259d594))
+
 ## [1.13.4](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.3...v1.13.4) (2026-01-22)
 
 
