@@ -16,7 +16,7 @@ Gem::Specification.new do |spec|
   spec.files         = Dir["LICENSE", "lib/**/*", "templates/**/*"]
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = ">= 3.2"
+  spec.required_ruby_version = ">= 3.1"
 
   spec.add_dependency "azure_mgmt_network2", ">= 1.0.1", "< 2.0"
   spec.add_dependency "azure_mgmt_resources2", ">= 1.0.1", "< 2.0"
