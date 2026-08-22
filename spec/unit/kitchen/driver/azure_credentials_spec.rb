@@ -1,264 +1,270 @@
-require "spec_helper"
-require "ms_rest_azure2"
+RSpec.describe Kitchen::Driver::AzureCredentials do
+  subject(:credentials) { described_class.new(subscription_id:, environment:) }
 
-describe Kitchen::Driver::AzureCredentials do
-  CLIENT_ID_AND_SECRET_SUB = 0
-  CLIENT_ID_SUB = 1
-  NO_CLIENT_SUB = 2
-
-  let(:instance) do
-    opts = {}
-    opts[:subscription_id] = subscription_id
-    opts[:environment] = environment if environment
-    described_class.new(**opts)
-  end
-
+  let(:subscription_id) { CredentialsFileHelper::SUBSCRIPTIONS[:service_principal] }
   let(:environment) { "Azure" }
-  let(:fixtures_path) { File.expand_path("../../../fixtures", __dir__) }
-  let(:subscription_id) { ini_credentials.sections[CLIENT_ID_AND_SECRET_SUB] }
-  let(:client_id) { ini_credentials[subscription_id]["client_id"] }
-  let(:client_secret) { ini_credentials[subscription_id]["client_secret"] }
-  let(:tenant_id) { ini_credentials[subscription_id]["tenant_id"] }
-  let(:default_config_path) { File.expand_path(described_class::CONFIG_PATH) }
-  let(:ini_credentials) { IniFile.load("#{fixtures_path}/azure_credentials") }
 
-  before do
-    allow(ENV).to receive(:[]).and_call_original
-    allow(ENV).to receive(:[]).with("AZURE_CONFIG_FILE").and_return(nil)
-    allow(ENV).to receive(:[]).with("AZURE_TENANT_ID").and_return(nil)
-    allow(ENV).to receive(:[]).with("AZURE_CLIENT_ID").and_return(nil)
-    allow(ENV).to receive(:[]).with("AZURE_CLIENT_SECRET").and_return(nil)
+  describe ".default_config_path" do
+    it "resolves against the current home directory rather than the one present at load time" do
+      first = described_class.default_config_path
 
-    allow(File).to receive(:file?).and_call_original
-    allow(File).to receive(:file?).with(default_config_path).and_return(true)
-
-    allow(IniFile).to receive(:load).with(default_config_path).and_return(ini_credentials)
+      Dir.mktmpdir do |elsewhere|
+        ENV["HOME"] = elsewhere
+        expect(described_class.default_config_path).to eq(File.join(elsewhere, ".azure", "credentials"))
+        expect(described_class.default_config_path).not_to eq(first)
+      end
+    end
   end
 
-  subject { instance }
-
-  it { is_expected.to respond_to(:subscription_id) }
-  it { is_expected.to respond_to(:environment) }
-  it { is_expected.to respond_to(:azure_options) }
-
-  describe "::new" do
-    it "sets subscription_id" do
-      expect(subject.subscription_id).to eq(subscription_id)
+  describe "#initialize" do
+    it "exposes the subscription id" do
+      expect(credentials.subscription_id).to eq(subscription_id)
     end
 
-    context "when an environment is provided" do
-      let(:environment) { "AzureChina" }
-
-      it "sets environment, when one is provided" do
-        expect(subject.environment).to eq(environment)
-      end
+    it "defaults the environment to Azure" do
+      expect(described_class.new(subscription_id:).environment).to eq("Azure")
     end
 
-    context "no environment is provided" do
-      let(:environment) { nil }
+    it "treats an explicit nil environment as Azure" do
+      expect(described_class.new(subscription_id:, environment: nil).environment).to eq("Azure")
+    end
 
-      it "sets Azure as the environment" do
-        expect(subject.environment).to eq("Azure")
-      end
+    it "keeps a supplied environment" do
+      expect(described_class.new(subscription_id:, environment: "AzureChina").environment).to eq("AzureChina")
+    end
+
+    it "rejects an unknown environment with an actionable message" do
+      expect { described_class.new(subscription_id:, environment: "AzureAtlantis") }
+        .to raise_error(Kitchen::UserError, /Unknown azure_environment 'AzureAtlantis'.*azure, azurechina/m)
+    end
+
+    it "accepts a known environment in any case" do
+      expect { described_class.new(subscription_id:, environment: "AZUREUSGOVERNMENT") }.not_to raise_error
+    end
+  end
+
+  describe "#config_path" do
+    it "defaults to ~/.azure/credentials" do
+      expect(credentials.config_path).to eq(described_class.default_config_path)
+    end
+
+    it "honours AZURE_CONFIG_FILE" do
+      path = use_fixture_credentials_file
+      expect(credentials.config_path).to eq(path)
+    end
+
+    it "expands a relative AZURE_CONFIG_FILE" do
+      ENV["AZURE_CONFIG_FILE"] = "creds.ini"
+      expect(credentials.config_path).to eq(File.expand_path("creds.ini"))
     end
   end
 
   describe "#azure_options" do
-    subject { azure_options }
+    subject(:options) { credentials.azure_options }
 
-    let(:azure_options) { instance.azure_options }
-    let(:credentials) { azure_options[:credentials] }
-    let(:token_provider) { credentials.instance_variable_get(:@token_provider) }
-    let(:active_directory_settings) { azure_options[:active_directory_settings] }
-
-    context "when AZURE_CONFIG_FILE is set" do
-      let(:overridden_config_path) { "/tmp/my-config" }
-
-      before do
-        allow(ENV).to receive(:[]).with("AZURE_CONFIG_FILE").and_return(overridden_config_path)
+    context "with no credentials file and no environment variables" do
+      it "logs which path it looked in" do
+        expect(Kitchen.logger).to receive(:debug).with(/#{Regexp.escape(described_class.default_config_path)} was not found/)
+        options
       end
 
-      it "loads credentials from the path specified in environment variable" do
-        allow(File).to receive(:file?).with(overridden_config_path).and_return(true)
-        expect(IniFile).to receive(:load).with(overridden_config_path).and_return(ini_credentials)
-        expect(IniFile).not_to receive(:load).with(default_config_path)
-        azure_options
-      end
-    end
-
-    context "when configuration file does not exist and at least one of the environment variables is not set" do
-      before do
-        allow(File).to receive(:file?).with(default_config_path).and_return(false)
-        allow(ENV).to receive(:[]).with("AZURE_TENANT_ID").and_return(tenant_id)
-        allow(ENV).to receive(:[]).with("AZURE_CLIENT_ID").and_return(client_id)
-        allow(ENV).to receive(:[]).with("AZURE_CLIENT_SECRET").and_return(nil)
+      it "warns that it is falling back to the Azure CLI" do
+        allow(Kitchen.logger).to receive(:warn)
+        options
+        expect(Kitchen.logger).to have_received(:warn).with("Using tenant id set through `az login`.")
       end
 
-      it "logs a warning" do
-        expect(Kitchen.logger).to receive(:debug).with("#{default_config_path} was not found or not accessible.")
-        azure_options
+      it "falls back to the Azure CLI token provider" do
+        expect(token_provider_for(options)).to be_an_instance_of(MsRestAzure2::AzureCliTokenProvider)
+      end
+
+      it "omits client_id and client_secret" do
+        expect(options).not_to have_key(:client_id)
+        expect(options).not_to have_key(:client_secret)
       end
     end
 
-    context "when AZURE_TENANT_ID is set" do
-      let(:tenant_id) { "2d38055e-66a1-435c-be53-TENANT_ID" }
+    context "when reading the credentials file at its default location" do
+      before { use_default_location_credentials_file }
 
-      before do
-        allow(ENV).to receive(:[]).with("AZURE_TENANT_ID").and_return(tenant_id)
+      it "resolves the tenant id from the matching subscription section" do
+        expect(options[:tenant_id]).to eq("19d3ea3e-ea8f-48f3-9f7a-00ae2810991f")
       end
 
-      its([:tenant_id]) { is_expected.to eq(tenant_id) }
-    end
-
-    context "when AZURE_CLIENT_ID is set" do
-      let(:client_id) { "2e201a46-44a8-4508-84aa-CLIENT_ID" }
-
-      before do
-        allow(ENV).to receive(:[]).with("AZURE_CLIENT_ID").and_return(client_id)
+      it "does not read another subscription's section" do
+        other = described_class.new(subscription_id: CredentialsFileHelper::SUBSCRIPTIONS[:user_assigned_identity])
+        expect(other.azure_options[:tenant_id]).to eq("1ba5986d-52e1-49eb-a77e-155b7440695f")
       end
 
-      its([:client_id]) { is_expected.to eq(client_id) }
+      it "warns when the subscription has no section at all" do
+        unknown = described_class.new(subscription_id: "00000000-0000-0000-0000-000000000000")
+        allow(Kitchen.logger).to receive(:warn)
+        unknown.azure_options
+        expect(Kitchen.logger).to have_received(:warn).with(/does not contain tenant_id/)
+      end
     end
 
-    context "when AZURE_CLIENT_SECRET is set" do
-      let(:client_secret) { "2e201a46-44a8-4508-84aa-CLIENT_SECRET" }
+    context "when AZURE_CONFIG_FILE points somewhere else" do
+      it "reads that file instead of the default" do
+        use_default_location_credentials_file
+        use_credentials_file(<<~INI)
+          [#{subscription_id}]
+          tenant_id = "overridden-tenant"
+        INI
 
-      before do
-        allow(ENV).to receive(:[]).with("AZURE_CLIENT_SECRET").and_return(client_secret)
+        expect(options[:tenant_id]).to eq("overridden-tenant")
+      end
+    end
+
+    context "when the credentials file is malformed" do
+      it "surfaces the parse error rather than silently continuing" do
+        use_credentials_file("this is not = valid [ini\n[[[")
+        expect { options }.to raise_error(IniFile::Error)
+      end
+    end
+
+    describe "credential precedence" do
+      before { use_fixture_credentials_file }
+
+      it "prefers environment variables over the credentials file" do
+        set_env("AZURE_TENANT_ID" => "env-tenant", "AZURE_CLIENT_ID" => "env-client", "AZURE_CLIENT_SECRET" => "env-secret")
+
+        expect(options).to include(tenant_id: "env-tenant", client_id: "env-client", client_secret: "env-secret")
       end
 
-      its([:client_secret]) { is_expected.to eq(client_secret) }
+      it "ignores environment variables that are exported but empty" do
+        set_env("AZURE_CLIENT_SECRET" => "")
+
+        expect(options[:client_secret]).to eq(":Qnt[7?:7RXzdMXrXE0ygBROA1hY1iV[")
+      end
+
+      it "mixes environment and file values" do
+        set_env("AZURE_TENANT_ID" => "env-tenant")
+
+        expect(options).to include(tenant_id: "env-tenant", client_id: "b5f3d6df-00bf-4451-a4f2-db3bc7731b58")
+      end
     end
 
-    context "when environment is Azure" do
-      let(:environment) { "Azure" }
+    describe "token provider selection" do
+      before { use_fixture_credentials_file }
 
-      its([:base_url]) { is_expected.to eq("https://management.azure.com/") }
+      context "with client_id, client_secret and tenant_id" do
+        let(:subscription_id) { CredentialsFileHelper::SUBSCRIPTIONS[:service_principal] }
 
-      context "active_directory_settings" do
-        it "sets the authentication_endpoint correctly" do
-          expect(active_directory_settings.authentication_endpoint).to eq("https://login.microsoftonline.com/")
+        it "uses a service principal token provider" do
+          expect(token_provider_for(options)).to be_an_instance_of(MsRestAzure2::ApplicationTokenProvider)
         end
 
-        it "sets the token_audience correctly" do
-          expect(active_directory_settings.token_audience).to eq("https://management.core.windows.net/")
+        it "passes the client id and secret through" do
+          provider = token_provider_for(options)
+          expect(provider.send(:client_id)).to eq("b5f3d6df-00bf-4451-a4f2-db3bc7731b58")
+          expect(provider.send(:client_secret)).to eq(":Qnt[7?:7RXzdMXrXE0ygBROA1hY1iV[")
+        end
+
+        it "includes both in the options hash" do
+          expect(options).to include(:client_id, :client_secret)
+        end
+      end
+
+      context "with client_id and tenant_id but no secret" do
+        let(:subscription_id) { CredentialsFileHelper::SUBSCRIPTIONS[:user_assigned_identity] }
+
+        it "uses a managed identity token provider" do
+          expect(token_provider_for(options)).to be_an_instance_of(MsRestAzure2::MSITokenProvider)
+        end
+
+        it "binds the identity's client id" do
+          expect(token_provider_for(options).instance_variable_get(:@client_id))
+            .to eq("2801f9e6-c4c2-4667-a6e1-479f8827b0af")
+        end
+
+        it "omits client_secret from the options hash" do
+          expect(options).to include(:client_id)
+          expect(options).not_to have_key(:client_secret)
+        end
+      end
+
+      context "with only a tenant_id" do
+        let(:subscription_id) { CredentialsFileHelper::SUBSCRIPTIONS[:system_assigned_identity] }
+
+        it "uses a managed identity token provider" do
+          expect(token_provider_for(options)).to be_an_instance_of(MsRestAzure2::MSITokenProvider)
+        end
+
+        it "binds no client id" do
+          expect(token_provider_for(options).instance_variable_get(:@client_id)).to be_nil
+        end
+
+        it "omits both client_id and client_secret" do
+          expect(options).not_to have_key(:client_id)
+          expect(options).not_to have_key(:client_secret)
+        end
+      end
+
+      context "with an empty section" do
+        let(:subscription_id) { CredentialsFileHelper::SUBSCRIPTIONS[:azure_cli] }
+
+        it "falls back to the Azure CLI" do
+          expect(token_provider_for(options)).to be_an_instance_of(MsRestAzure2::AzureCliTokenProvider)
         end
       end
     end
 
-    context "when environment is AzureUSGovernment" do
-      let(:environment) { "AzureUSGovernment" }
+    describe "cloud endpoints" do
+      {
+        "Azure" => { base_url: "https://management.azure.com/",
+                     authentication_endpoint: "https://login.microsoftonline.com/",
+                     token_audience: "https://management.core.windows.net/" },
+        "AzureUSGovernment" => { base_url: "https://management.usgovcloudapi.net",
+                                 authentication_endpoint: "https://login.microsoftonline.us/",
+                                 token_audience: "https://management.core.usgovcloudapi.net/" },
+        "AzureChina" => { base_url: "https://management.chinacloudapi.cn",
+                          authentication_endpoint: "https://login.chinacloudapi.cn/",
+                          token_audience: "https://management.core.chinacloudapi.cn/" },
+        "AzureGermanCloud" => { base_url: "https://management.microsoftazure.de",
+                                authentication_endpoint: "https://login.microsoftonline.de/",
+                                token_audience: "https://management.core.cloudapi.de/" },
+      }.each do |cloud, expected|
+        context "for #{cloud}" do
+          let(:environment) { cloud }
 
-      its([:base_url]) { is_expected.to eq("https://management.usgovcloudapi.net") }
+          it "sets the resource manager base url" do
+            expect(options[:base_url]).to eq(expected[:base_url])
+          end
 
-      context "active_directory_settings" do
-        it "sets the authentication_endpoint correctly" do
-          expect(active_directory_settings.authentication_endpoint).to eq("https://login.microsoftonline.us/")
+          it "sets the authentication endpoint" do
+            expect(options[:active_directory_settings].authentication_endpoint).to eq(expected[:authentication_endpoint])
+          end
+
+          it "sets the token audience" do
+            expect(options[:active_directory_settings].token_audience).to eq(expected[:token_audience])
+          end
         end
 
-        it "sets the token_audience correctly" do
-          expect(active_directory_settings.token_audience).to eq("https://management.core.usgovcloudapi.net/")
-        end
-      end
-    end
+        context "for #{cloud} spelled in a different case" do
+          let(:environment) { cloud.downcase }
 
-    context "when environment is AzureChina" do
-      let(:environment) { "AzureChina" }
-
-      its([:base_url]) { is_expected.to eq("https://management.chinacloudapi.cn") }
-
-      context "active_directory_settings" do
-        it "sets the authentication_endpoint correctly" do
-          expect(active_directory_settings.authentication_endpoint).to eq("https://login.chinacloudapi.cn/")
-        end
-
-        it "sets the token_audience correctly" do
-          expect(active_directory_settings.token_audience).to eq("https://management.core.chinacloudapi.cn/")
-        end
-      end
-    end
-
-    context "when environment is AzureGermanCloud" do
-      let(:environment) { "AzureGermanCloud" }
-
-      its([:base_url]) { is_expected.to eq("https://management.microsoftazure.de") }
-
-      context "active_directory_settings" do
-        it "sets the authentication_endpoint correctly" do
-          expect(active_directory_settings.authentication_endpoint).to eq("https://login.microsoftonline.de/")
-        end
-
-        it "sets the token_audience correctly" do
-          expect(active_directory_settings.token_audience).to eq("https://management.core.cloudapi.de/")
+          it "resolves the same endpoints" do
+            expect(options[:base_url]).to eq(expected[:base_url])
+          end
         end
       end
     end
 
-    shared_examples "common option specs" do
-      it { is_expected.to be_instance_of(Hash) }
-      its([:tenant_id]) { is_expected.to eq(tenant_id) }
-      its([:subscription_id]) { is_expected.to eq(subscription_id) }
-      its([:credentials]) { is_expected.to be_instance_of(MsRest2::TokenCredentials) }
-      its([:client_id]) { is_expected.to eq(client_id) }
-      its([:client_secret]) { is_expected.to eq(client_secret) }
-      its([:base_url]) { is_expected.to eq("https://management.azure.com/") }
+    it "wraps the token provider in MsRest2 credentials" do
+      expect(options[:credentials]).to be_an_instance_of(MsRest2::TokenCredentials)
     end
 
-    context "when using client_id and client_secret" do
-      let(:subscription_id) { ini_credentials.sections[CLIENT_ID_AND_SECRET_SUB] }
-
-      include_examples "common option specs"
-
-      it "uses token provider: MsRestAzure2::ApplicationTokenProvider" do
-        expect(token_provider).to be_instance_of(MsRestAzure2::ApplicationTokenProvider)
-      end
-
-      it "sets the client_id" do
-        expect(token_provider.instance_variables).to include(:@client_id)
-        expect(token_provider.send(:client_id)).to eq(client_id)
-      end
-
-      it "sets the client_secret" do
-        expect(token_provider.instance_variables).to include(:@client_secret)
-        expect(token_provider.send(:client_secret)).to eq(client_secret)
-      end
+    it "carries the subscription id" do
+      expect(options[:subscription_id]).to eq(subscription_id)
     end
+  end
 
-    context "when using client_id, without client_secret" do
-      let(:subscription_id) { ini_credentials.sections[CLIENT_ID_SUB] }
-
-      include_examples "common option specs"
-
-      it "uses token provider: MsRestAzure2::MSITokenProvider" do
-        expect(token_provider).to be_instance_of(MsRestAzure2::MSITokenProvider)
-      end
-
-      it "sets the client_id" do
-        expect(token_provider.instance_variables).to include(:@client_id)
-        expect(token_provider.send(:client_id)).to eq(client_id)
-      end
-
-      it "does not set client_secret" do
-        expect(token_provider.instance_variables).not_to include(:@client_secret)
-      end
-    end
-
-    context "when not using client_id or client_secret" do
-      let(:subscription_id) { ini_credentials.sections[NO_CLIENT_SUB] }
-
-      include_examples "common option specs"
-
-      it "uses token provider: MsRestAzure2::MSITokenProvider" do
-        expect(token_provider).to be_instance_of(MsRestAzure2::MSITokenProvider)
-      end
-
-      it "does not set the client_id" do
-        expect(token_provider.instance_variables).not_to include(:@client_id)
-      end
-
-      it "does not set client_secret" do
-        expect(token_provider.instance_variables).not_to include(:@client_secret)
-      end
-    end
+  # Digs the token provider out of the MsRest2 credentials wrapper.
+  #
+  # @param options [Hash] the result of {Kitchen::Driver::AzureCredentials#azure_options}.
+  # @return [Object] the token provider.
+  def token_provider_for(options)
+    options[:credentials].instance_variable_get(:@token_provider)
   end
 end
