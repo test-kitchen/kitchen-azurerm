@@ -1,7 +1,6 @@
 source "https://rubygems.org"
 
-gemspec
-
+gemspec development_group: :test
 group :test do
   gem "rake", ">= 11.0"
   gem "rspec", "~> 3.5"
