@@ -2,13 +2,14 @@ require "inifile"
 
 require "kitchen/errors"
 require "kitchen/logging"
-autoload :MsRest2, "ms_rest2"
-autoload :MsRestAzure2, "ms_rest_azure2"
+
+require_relative "azure/arm_client"
+require_relative "azure/environments"
+require_relative "azure/token_provider"
 
 module Kitchen
   module Driver
-    # Resolves Azure Resource Manager credentials and endpoint settings for a
-    # single subscription.
+    # Resolves Azure Resource Manager credentials for a single subscription.
     #
     # Credentials are sourced, in order of precedence, from environment
     # variables (+AZURE_TENANT_ID+, +AZURE_CLIENT_ID+, +AZURE_CLIENT_SECRET+)
@@ -16,13 +17,13 @@ module Kitchen
     # +~/.azure/credentials+, overridable with +AZURE_CONFIG_FILE+).
     #
     # The combination of values that resolve determines which token provider is
-    # used - see {#azure_options}.
+    # used - see {#token_provider}.
     #
     # @example Service principal supplied by environment
     #   ENV["AZURE_TENANT_ID"]     = "..."
     #   ENV["AZURE_CLIENT_ID"]     = "..."
     #   ENV["AZURE_CLIENT_SECRET"] = "..."
-    #   options = Kitchen::Driver::AzureCredentials.new(subscription_id: "...").azure_options
+    #   client = Kitchen::Driver::AzureCredentials.new(subscription_id: "...").arm_client
     class AzureCredentials
       include Kitchen::Logging
 
@@ -31,23 +32,6 @@ module Kitchen
       #
       # @return [String]
       CONFIG_FILE = File.join(".azure", "credentials").freeze
-
-      # Azure cloud names understood by {#azure_options}, mapped to the
-      # +MsRestAzure2+ constants that describe them. Keys are downcased so
-      # lookups are case-insensitive.
-      #
-      # @return [Hash{String => Symbol}]
-      ENVIRONMENTS = {
-        "azure" => :Azure,
-        "azurechina" => :AzureChina,
-        "azuregermancloud" => :AzureGermanCloud,
-        "azureusgovernment" => :AzureUSGovernment,
-      }.freeze
-
-      # Port the Azure Instance Metadata Service listens on for MSI token requests.
-      #
-      # @return [Integer]
-      MSI_PORT = 50342
 
       # The Azure subscription these credentials authenticate against.
       #
@@ -77,29 +61,23 @@ module Kitchen
         @subscription_id = subscription_id
         @environment = environment || "Azure"
 
-        unless ENVIRONMENTS.key?(@environment.to_s.downcase)
-          raise Kitchen::UserError,
-            "Unknown azure_environment '#{@environment}'. Valid values are: #{ENVIRONMENTS.keys.join(", ")} (case-insensitive)."
-        end
+        # Validate eagerly so a typo surfaces before any Azure call is made.
+        azure_environment
       end
 
-      # Builds the options hash accepted by every +azure_mgmt_*2+ client.
+      # An ARM client authenticated with these credentials.
       #
-      # The +:credentials+ entry wraps whichever token provider matches the
-      # resolved credentials - see {#token_provider}. +:client_id+ and
-      # +:client_secret+ are only included when they resolve to a value.
+      # @return [Azure::ArmClient]
+      def arm_client
+        Azure::ArmClient.new(subscription_id:, environment: azure_environment, token_provider:)
+      end
+
+      # Endpoints for the configured cloud.
       #
-      # @return [Hash] options suitable for
-      #   +Azure::Resources2::Profiles::Latest::Mgmt::Client.new+ and friends.
-      def azure_options
-        options = { tenant_id: tenant_id!,
-                    subscription_id:,
-                    credentials: ::MsRest2::TokenCredentials.new(token_provider),
-                    active_directory_settings: ad_settings,
-                    base_url: endpoint_settings.resource_manager_endpoint_url }
-        options[:client_id] = client_id if client_id
-        options[:client_secret] = client_secret if client_secret
-        options
+      # @return [Azure::Environments::Environment]
+      # @raise [Kitchen::UserError] if the cloud name is not recognised.
+      def azure_environment
+        @azure_environment ||= Azure::Environments.fetch(environment)
       end
 
       # Selects a token provider based on which credentials resolved.
@@ -109,44 +87,9 @@ module Kitchen
       # * +tenant_id+ only - system-assigned managed identity.
       # * none of the above - falls back to the +az login+ token cache.
       #
-      # @return [MsRestAzure2::ApplicationTokenProvider,
-      #   MsRestAzure2::MSITokenProvider, MsRestAzure2::AzureCliTokenProvider]
+      # @return [Azure::TokenProvider]
       def token_provider
-        if client_id && client_secret && tenant_id
-          ::MsRestAzure2::ApplicationTokenProvider.new(tenant_id, client_id, client_secret, ad_settings)
-        elsif client_id && tenant_id
-          ::MsRestAzure2::MSITokenProvider.new(MSI_PORT, ad_settings, { client_id: })
-        elsif tenant_id
-          ::MsRestAzure2::MSITokenProvider.new(MSI_PORT, ad_settings)
-        else
-          warn("Using tenant id set through `az login`.")
-          ::MsRestAzure2::AzureCliTokenProvider.new(ad_settings)
-        end
-      end
-
-      # Active Directory settings for the configured cloud.
-      #
-      # @return [MsRestAzure2::ActiveDirectoryServiceSettings]
-      def ad_settings
-        case environment_key
-        when :AzureUSGovernment then ::MsRestAzure2::ActiveDirectoryServiceSettings.get_azure_us_government_settings
-        when :AzureChina        then ::MsRestAzure2::ActiveDirectoryServiceSettings.get_azure_china_settings
-        when :AzureGermanCloud  then ::MsRestAzure2::ActiveDirectoryServiceSettings.get_azure_german_settings
-        else ::MsRestAzure2::ActiveDirectoryServiceSettings.get_azure_settings
-        end
-      end
-
-      # Endpoint settings (resource manager URL, storage suffixes, ...) for the
-      # configured cloud.
-      #
-      # @return [MsRestAzure2::AzureEnvironment]
-      def endpoint_settings
-        case environment_key
-        when :AzureUSGovernment then ::MsRestAzure2::AzureEnvironments::AzureUSGovernment
-        when :AzureChina        then ::MsRestAzure2::AzureEnvironments::AzureChinaCloud
-        when :AzureGermanCloud  then ::MsRestAzure2::AzureEnvironments::AzureGermanCloud
-        else ::MsRestAzure2::AzureEnvironments::AzureCloud
-        end
+        @token_provider ||= build_token_provider
       end
 
       # Path of the credentials file actually in use.
@@ -159,9 +102,18 @@ module Kitchen
 
       private
 
-      # @return [Symbol] the {ENVIRONMENTS} key for the configured cloud.
-      def environment_key
-        ENVIRONMENTS.fetch(environment.to_s.downcase)
+      # @return [Azure::TokenProvider]
+      def build_token_provider
+        if client_id && client_secret && tenant_id!
+          Azure::ServicePrincipalToken.new(environment: azure_environment, tenant_id:, client_id:, client_secret:)
+        elsif client_id && tenant_id!
+          Azure::ManagedIdentityToken.new(environment: azure_environment, client_id:)
+        elsif tenant_id!
+          Azure::ManagedIdentityToken.new(environment: azure_environment)
+        else
+          warn("Using tenant id set through `az login`.")
+          Azure::AzureCliToken.new(environment: azure_environment)
+        end
       end
 
       # @return [Kitchen::Logger] the shared Test Kitchen logger.
@@ -191,11 +143,16 @@ module Kitchen
         value unless value.to_s.empty?
       end
 
-      # Tenant ID, warning the user when one cannot be resolved.
+      # Tenant ID, warning the user once when one cannot be resolved.
       #
       # @return [String, nil]
       def tenant_id!
-        tenant_id || warn("(#{config_path}) does not contain tenant_id neither is the AZURE_TENANT_ID environment variable set.")
+        return tenant_id if tenant_id
+        return nil if @warned_about_tenant_id
+
+        @warned_about_tenant_id = true
+        warn("(#{config_path}) does not contain tenant_id neither is the AZURE_TENANT_ID environment variable set.")
+        nil
       end
 
       # @return [String, nil] tenant ID from the environment or credentials file.

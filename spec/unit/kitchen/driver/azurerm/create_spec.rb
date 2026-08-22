@@ -4,15 +4,14 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
   let(:config) { {} }
   let(:transport) { transport_double }
   let(:state) { {} }
-  let(:resource_client) { resource_client_double }
-  let(:network_client) { network_client_double }
+  let(:arm_client) { arm_client_double }
 
   # Every deployment the driver submits, in the order it submitted them.
   let(:submitted_deployments) { [] }
 
   before do
-    stub_azure_clients(driver, resource_client:, network_client:)
-    record_deployments(resource_client)
+    stub_arm_client(driver, arm_client:)
+    record_deployments(arm_client)
   end
 
   describe "preconditions" do
@@ -30,27 +29,25 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
   describe "resource group creation" do
     it "creates the resource group before deploying" do
       driver.create(state)
-      expect(resource_client.resource_groups).to have_received(:create_or_update)
+      expect(arm_client).to have_received(:create_or_update_resource_group)
         .with(state[:azure_resource_group_name], anything)
     end
 
     it "tags the resource group" do
       driver = build_driver(resource_group_tags: { owner: "platform-team" }, location: "westus3")
-      stub_azure_clients(driver, resource_client:, network_client:)
-      record_deployments(resource_client)
+      stub_arm_client(driver, arm_client:)
+      record_deployments(arm_client)
       driver.create({})
 
-      expect(resource_client.resource_groups).to have_received(:create_or_update) do |_name, group|
-        expect(group.tags).to eq(owner: "platform-team")
-        expect(group.location).to eq("westus3")
-      end
+      expect(arm_client).to have_received(:create_or_update_resource_group)
+        .with(anything, location: "westus3", tags: { owner: "platform-team" })
     end
 
     it "re-raises an Azure failure after logging the body" do
-      allow(resource_client.resource_groups).to receive(:create_or_update)
+      allow(arm_client).to receive(:create_or_update_resource_group)
         .and_raise(azure_operation_error(code: "AuthorizationFailed"))
 
-      expect { driver.create(state) }.to raise_error(MsRestAzure2::AzureOperationError)
+      expect { driver.create(state) }.to raise_error(Kitchen::Driver::Azure::OperationError)
     end
   end
 
@@ -65,30 +62,30 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
     it "sends a deployment whose template is valid ARM JSON" do
       driver.create(state)
-      expect(JSON.generate(submitted_deployments.first[:deployment].properties.template)).to be_a_valid_arm_template
+      expect(JSON.generate(submitted_deployments.first[:deployment]["properties"]["template"])).to be_a_valid_arm_template
     end
 
     it "passes the configured location and machine size through" do
       driver.create(state)
       expect(deployment_parameters).to include(
-        location: { "value" => "eastus2" },
-        vmSize: { "value" => "Standard_D4_v3" }
+        "location" => { "value" => "eastus2" },
+        "vmSize" => { "value" => "Standard_D4_v3" }
       )
     end
 
     it "derives the public DNS label from the uuid" do
       driver.create(state)
-      expect(deployment_parameters[:dnsNameForPublicIP]).to eq("value" => "kitchen-#{state[:uuid]}")
+      expect(deployment_parameters["dnsNameForPublicIP"]).to eq("value" => "kitchen-#{state[:uuid]}")
     end
 
     it "no longer creates a storage account for the OS disk" do
       driver.create(state)
-      expect(deployment_parameters).not_to include(:newStorageAccountName)
+      expect(deployment_parameters).not_to include("newStorageAccountName")
     end
 
     it "derives the nic name from the vm name" do
       driver.create(state)
-      expect(deployment_parameters[:nicName]).to eq("value" => "nic-#{state[:vm_name]}")
+      expect(deployment_parameters["nicName"]).to eq("value" => "nic-#{state[:vm_name]}")
     end
 
     context "with an explicit nic_name" do
@@ -96,21 +93,21 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
       it "uses it verbatim" do
         driver.create(state)
-        expect(deployment_parameters[:nicName]).to eq("value" => "my-nic")
+        expect(deployment_parameters["nicName"]).to eq("value" => "my-nic")
       end
     end
 
     it "splits the image urn into its four parts" do
       driver = build_driver(image_urn: "RedHat:rhel-byos:rhel-raw76:7.6.20190620")
-      stub_azure_clients(driver, resource_client:, network_client:)
-      record_deployments(resource_client)
+      stub_arm_client(driver, arm_client:)
+      record_deployments(arm_client)
       driver.create({})
 
       expect(deployment_parameters).to include(
-        imagePublisher: { "value" => "RedHat" },
-        imageOffer: { "value" => "rhel-byos" },
-        imageSku: { "value" => "rhel-raw76" },
-        imageVersion: { "value" => "7.6.20190620" }
+        "imagePublisher" => { "value" => "RedHat" },
+        "imageOffer" => { "value" => "rhel-byos" },
+        "imageSku" => { "value" => "rhel-raw76" },
+        "imageVersion" => { "value" => "7.6.20190620" }
       )
     end
 
@@ -119,8 +116,8 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
       it "sends imageId and no marketplace parameters" do
         driver.create(state)
-        expect(deployment_parameters).to include(imageId: { "value" => "/subscriptions/x/images/my-image" })
-        expect(deployment_parameters).not_to include(:imagePublisher)
+        expect(deployment_parameters).to include("imageId" => { "value" => "/subscriptions/x/images/my-image" })
+        expect(deployment_parameters).not_to include("imagePublisher")
       end
     end
 
@@ -129,8 +126,8 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
       it "ignores it and falls back to the marketplace image" do
         driver.create(state)
-        expect(deployment_parameters).to include(:imagePublisher)
-        expect(deployment_parameters).not_to include(:imageUrl)
+        expect(deployment_parameters).to include("imagePublisher")
+        expect(deployment_parameters).not_to include("imageUrl")
       end
     end
 
@@ -138,19 +135,28 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
       # Basic SKU public IPs were retired on 30 September 2025.
       it "defaults to Standard" do
         driver.create(state)
-        expect(deployment_parameters[:publicIPSKU]).to eq("value" => "Standard")
+        expect(deployment_parameters["publicIPSKU"]).to eq("value" => "Standard")
       end
 
       it "forces a static address, which Standard SKUs require" do
         driver.create(state)
-        expect(deployment_parameters[:publicIPAddressType]).to eq("value" => "Static")
+        expect(deployment_parameters["publicIPAddressType"]).to eq("value" => "Static")
+      end
+
+      context "when a non-Standard SKU is forced" do
+        let(:config) { { public_ip_sku: "Basic" } }
+
+        it "leaves the allocation method to the template default" do
+          driver.create(state)
+          expect(deployment_parameters).not_to include("publicIPAddressType")
+        end
       end
     end
 
     describe "network security group" do
       it "sends no nsgId when it creates its own group" do
         driver.create(state)
-        expect(deployment_parameters).not_to include(:nsgId)
+        expect(deployment_parameters).not_to include("nsgId")
       end
 
       context "with an existing nsg_id" do
@@ -158,7 +164,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
         it "passes it through" do
           driver.create(state)
-          expect(deployment_parameters[:nsgId]).to eq("value" => "/subscriptions/x/networkSecurityGroups/mine")
+          expect(deployment_parameters["nsgId"]).to eq("value" => "/subscriptions/x/networkSecurityGroups/mine")
         end
       end
     end
@@ -173,12 +179,12 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
       it "passes the system assigned identity flag" do
         driver.create(state)
-        expect(deployment_parameters[:systemAssignedIdentity]).to eq("value" => true)
+        expect(deployment_parameters["systemAssignedIdentity"]).to eq("value" => true)
       end
 
       it "converts user assigned identities into the ARM map shape" do
         driver.create(state)
-        expect(deployment_parameters[:userAssignedIdentities])
+        expect(deployment_parameters["userAssignedIdentities"])
           .to eq("value" => { "/subscriptions/x/userAssignedIdentities/id-1" => {} })
       end
     end
@@ -186,16 +192,16 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
     describe "boot diagnostics" do
       it "enables managed boot diagnostics by default" do
         driver.create(state)
-        expect(deployment_parameters[:bootDiagnosticsEnabled]).to eq("value" => true)
+        expect(deployment_parameters["bootDiagnosticsEnabled"]).to eq("value" => true)
       end
 
       it "coerces the historical string spelling" do
         driver = build_driver(boot_diagnostics_enabled: "false")
-        stub_azure_clients(driver, resource_client:, network_client:)
-        record_deployments(resource_client)
+        stub_arm_client(driver, arm_client:)
+        record_deployments(arm_client)
         driver.create({})
 
-        expect(deployment_parameters[:bootDiagnosticsEnabled]).to eq("value" => false)
+        expect(deployment_parameters["bootDiagnosticsEnabled"]).to eq("value" => false)
       end
     end
 
@@ -227,8 +233,8 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
       it "says nothing when no retired setting is used" do
         driver = build_driver
-        stub_azure_clients(driver, resource_client:, network_client:)
-        record_deployments(resource_client)
+        stub_arm_client(driver, arm_client:)
+        record_deployments(arm_client)
         allow(Kitchen.logger).to receive(:warn)
         driver.create({})
 
@@ -241,13 +247,13 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
       it "sends it base64 encoded" do
         driver.create(state)
-        expect(Base64.decode64(deployment_parameters[:customData]["value"])).to eq("#!/bin/sh\necho hi\n")
+        expect(Base64.decode64(deployment_parameters["customData"]["value"])).to eq("#!/bin/sh\necho hi\n")
       end
     end
 
     it "omits customData when none is configured" do
       driver.create(state)
-      expect(deployment_parameters).not_to include(:customData)
+      expect(deployment_parameters).not_to include("customData")
     end
 
     describe "key vault settings" do
@@ -256,15 +262,15 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
       it "passes all three through as parameters" do
         driver.create(state)
         expect(deployment_parameters).to include(
-          secretUrl: { "value" => "https://v.vault.azure.net/secrets/c" },
-          vaultName: { "value" => "v" },
-          vaultResourceGroup: { "value" => "vault-rg" }
+          "secretUrl" => { "value" => "https://v.vault.azure.net/secrets/c" },
+          "vaultName" => { "value" => "v" },
+          "vaultResourceGroup" => { "value" => "vault-rg" }
         )
       end
 
       it "renders the matching secrets block into the template" do
         driver.create(state)
-        vm = vm_resource(submitted_deployments.first[:deployment].properties.template)
+        vm = vm_resource(submitted_deployments.first[:deployment]["properties"]["template"])
         expect(vm["properties"]["osProfile"]).to have_key("secrets")
       end
     end
@@ -353,7 +359,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
       it "sends no adminPassword parameter to ARM" do
         driver.create(state)
-        expect(deployment_parameters).not_to include(:adminPassword)
+        expect(deployment_parameters).not_to include("adminPassword")
       end
     end
   end
@@ -375,11 +381,8 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
     context "in a custom vnet with no public IP" do
       let(:config) { { vnet_id: "/vnet", subnet_id: "/subnet" } }
-      let(:network_interfaces) { instance_double(Azure::Network2::Profiles::Latest::Mgmt::NetworkInterfaces, get: network_interface(private_ip: "10.0.0.7")) }
 
-      before do
-        allow(Azure::Network2::Profiles::Latest::Mgmt::NetworkInterfaces).to receive(:new).and_return(network_interfaces)
-      end
+      before { allow(arm_client).to receive(:network_interface).and_return(network_interface_response(private_ip: "10.0.0.7")) }
 
       it "uses the NIC's private address" do
         driver.create(state)
@@ -388,7 +391,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
       it "looks up the NIC by the name it deployed" do
         driver.create(state)
-        expect(network_interfaces).to have_received(:get).with(state[:azure_resource_group_name], "nic-#{state[:vm_name]}")
+        expect(arm_client).to have_received(:network_interface).with(state[:azure_resource_group_name], "nic-#{state[:vm_name]}")
       end
     end
 
@@ -404,7 +407,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
   describe "when a deployment is already running" do
     before do
-      allow(resource_client.deployments).to receive(:begin_create_or_update_async)
+      allow(arm_client).to receive(:create_deployment)
         .and_raise(azure_operation_error(code: "DeploymentActive"))
     end
 
@@ -426,12 +429,12 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
 
   describe "when the deployment fails for any other reason" do
     before do
-      allow(resource_client.deployments).to receive(:begin_create_or_update_async)
+      allow(arm_client).to receive(:create_deployment)
         .and_raise(azure_operation_error(code: "InvalidTemplate", message: "the template is malformed"))
     end
 
     it "re-raises" do
-      expect { driver.create(state) }.to raise_error(MsRestAzure2::AzureOperationError)
+      expect { driver.create(state) }.to raise_error(Kitchen::Driver::Azure::OperationError)
     end
   end
 
@@ -440,9 +443,9 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
   # @param client [Object] the doubled resource management client.
   # @return [void]
   def record_deployments(client)
-    allow(client.deployments).to receive(:begin_create_or_update_async) do |resource_group, name, deployment|
+    allow(client).to receive(:create_deployment) do |resource_group, name, deployment|
       submitted_deployments << { resource_group:, name:, deployment: }
-      accepted_request
+      { "id" => "/deployments/#{name}" }
     end
   end
 
@@ -451,7 +454,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
   # @return [Hash, nil]
   def deployment_parameters
     main = submitted_deployments.find { |entry| entry[:name].start_with?("deploy-") }
-    main && main[:deployment].properties.parameters
+    main && main[:deployment]["properties"]["parameters"]
   end
 
   # Names of every deployment submitted, in order.
