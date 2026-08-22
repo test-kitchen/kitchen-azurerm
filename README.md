@@ -482,7 +482,7 @@ suites:
     attributes:
 ```
 
-Example postdeploy.json to enable MSI extention on VM:
+Example postdeploy.json to enable MSI extension on VM:
 
 ```json
 {
