@@ -4,6 +4,13 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [1.14.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.6...v1.14.0) (2026-08-22)
+
+
+### Features
+
+* rewrite unit test suite and fix bugs it uncovered ([#317](https://github.com/test-kitchen/kitchen-azurerm/issues/317)) ([2461e02](https://github.com/test-kitchen/kitchen-azurerm/commit/2461e029da64dadcba90565d796f3ebd9b6a4ad8))
+
 ## [1.13.6](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.5...v1.13.6) (2026-02-19)
 
 
