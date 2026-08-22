@@ -104,7 +104,7 @@ provisioner:
 platforms:
   - name: ubuntu-14.04
     driver:
-      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+      image_urn: Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest
       vm_name: trusty-vm
 
 suites:
@@ -181,7 +181,7 @@ provisioner:
 platforms:
   - name: ubuntu-1404
     driver:
-      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+      image_urn: Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest
 
 suites:
   - name: default
@@ -251,7 +251,7 @@ provisioner:
 platforms:
   - name: ubuntu-1404
     driver:
-      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+      image_urn: Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
 
@@ -284,7 +284,7 @@ provisioner:
 platforms:
   - name: ubuntu-1404
     driver:
-      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+      image_urn: Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
       public_ip: true
@@ -475,7 +475,7 @@ provisioner:
 platforms:
   - name: ubuntu-1404
     driver:
-      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+      image_urn: Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest
 
 suites:
   - name: default
@@ -555,7 +555,7 @@ provisioner:
 platforms:
   - name: ubuntu-1404
     driver:
-      image_urn: Canonical:UbuntuServer:14.04.4-LTS:latest
+      image_urn: Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest
       system_assigned_identity: true
       user_assigned_identities:
         - /subscriptions/4801fa9d-YOUR-GUID-HERE-b265ff49ce21/resourcegroups/test-kitchen-user/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-kitchen-user
@@ -621,7 +621,7 @@ verifier:
 platforms:
 - name: ubuntu1604
   driver:
-    image_urn: Canonical:UbuntuServer:16.04-LTS:latest
+    image_urn: Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest
   transport:
     ssh_key: ~/.ssh/id_kitchen-azurerm
 

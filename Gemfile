@@ -1,10 +1,16 @@
 source "https://rubygems.org"
 
 gemspec development_group: :test
+
 group :test do
   gem "rake", ">= 11.0"
-  gem "rspec", "~> 3.5"
-  gem "rspec-its", "~> 2.0.0"
+  gem "rspec", "~> 3.13"
+  gem "simplecov", "~> 0.22"
+  gem "webmock", "~> 3.19"
+end
+
+group :docs do
+  gem "yard", "~> 0.9"
 end
 
 group :debug do

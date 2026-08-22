@@ -1,0 +1,503 @@
+RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
+  subject(:driver) { build_driver(transport:, platform_name:, **config) }
+
+  let(:config) { {} }
+  let(:transport) { transport_double }
+  let(:platform_name) { "ubuntu-22.04" }
+
+  describe "#virtual_machine_deployment_template" do
+    it "renders valid JSON for the default configuration" do
+      expect(driver.virtual_machine_deployment_template).to be_a_valid_arm_template
+    end
+
+    it "uses the public template when no vnet is configured" do
+      expect(driver).to receive(:virtual_machine_deployment_template_file).with("public.erb", any_args)
+      driver.virtual_machine_deployment_template
+    end
+
+    context "when a vnet_id is configured" do
+      let(:config) { { vnet_id: "/subscriptions/x/resourceGroups/y/providers/Microsoft.Network/virtualNetworks/vnet", subnet_id: "subnet-1" } }
+
+      it "renders valid JSON" do
+        expect(driver.virtual_machine_deployment_template).to be_a_valid_arm_template
+      end
+
+      it "uses the internal template" do
+        expect(driver).to receive(:virtual_machine_deployment_template_file).with("internal.erb", any_args)
+        driver.virtual_machine_deployment_template
+      end
+
+      it "logs which vnet is in use" do
+        allow(Kitchen.logger).to receive(:info)
+        driver.virtual_machine_deployment_template
+        expect(Kitchen.logger).to have_received(:info).with(%r{Using custom vnet: .*virtualNetworks/vnet})
+      end
+
+      it "references the configured subnet" do
+        expect(driver.virtual_machine_deployment_template).to include("subnet-1")
+      end
+
+      it "creates no public IP resource by default" do
+        expect(resource_types(rendered_template(driver))).not_to include("Microsoft.Network/publicIPAddresses")
+      end
+
+      context "with public_ip enabled" do
+        let(:config) { super().merge(public_ip: true) }
+
+        it "creates a public IP resource" do
+          expect(resource_types(rendered_template(driver))).to include("Microsoft.Network/publicIPAddresses")
+        end
+      end
+    end
+
+    describe "marketplace plan" do
+      context "when a plan is configured" do
+        let(:config) do
+          {
+            plan: { name: "plan-abc", product: "my-product", publisher: "captain-america", promotion_code: "50-percent-off" },
+          }
+        end
+
+        it "puts the plan on the virtual machine resource" do
+          expect(vm_resource(rendered_template(driver))["plan"]).to eq(
+            "name" => "plan-abc",
+            "product" => "my-product",
+            "publisher" => "captain-america",
+            "promotionCode" => "50-percent-off"
+          )
+        end
+      end
+
+      context "when no plan is configured" do
+        it "omits the plan" do
+          expect(vm_resource(rendered_template(driver))).not_to have_key("plan")
+        end
+      end
+
+      context "when a partial plan is configured" do
+        let(:config) { { plan: { name: "plan-abc", publisher: "captain-america" } } }
+
+        it "emits only the keys that were given" do
+          expect(vm_resource(rendered_template(driver))["plan"].keys).to contain_exactly("name", "publisher")
+        end
+      end
+
+      context "when the plan omits the name and publisher" do
+        let(:config) { { plan: { product: "my-product", promotion_code: "code" } } }
+
+        it "emits only the keys that were given" do
+          expect(vm_resource(rendered_template(driver))["plan"])
+            .to eq("product" => "my-product", "promotionCode" => "code")
+        end
+      end
+    end
+
+    describe "key vault certificates" do
+      # These three settings had never reached the template - the renderer did
+      # not pass them into the ERB binding, so OpenStruct returned nil and the
+      # block was always skipped.
+      context "when secret_url, vault_name and vault_resource_group are set" do
+        let(:config) do
+          {
+            secret_url: "https://my-vault.vault.azure.net/secrets/winrm/abc123",
+            vault_name: "my-vault",
+            vault_resource_group: "vault-rg",
+          }
+        end
+
+        it "still renders valid JSON" do
+          expect(driver.virtual_machine_deployment_template).to be_a_valid_arm_template
+        end
+
+        it "adds a secrets block to the osProfile" do
+          os_profile = vm_resource(rendered_template(driver))["properties"]["osProfile"]
+          expect(os_profile["secrets"]).to eq(
+            [
+              {
+                "sourceVault" => { "id" => "[resourceId(parameters('vaultResourceGroup'), 'Microsoft.KeyVault/vaults', parameters('vaultName'))]" },
+                "vaultCertificates" => [{ "certificateUrl" => "[parameters('secretUrl')]", "certificateStore" => "My" }],
+              },
+            ]
+          )
+        end
+
+        it "uses the correct resource provider namespace" do
+          expect(driver.virtual_machine_deployment_template).to include("Microsoft.KeyVault/vaults")
+          expect(driver.virtual_machine_deployment_template).not_to include("Microsoft,KeyVault")
+        end
+
+        it "renders for the internal template too" do
+          driver = build_driver(**config, vnet_id: "/vnet", subnet_id: "/subnet")
+          expect(vm_resource(rendered_template(driver))["properties"]["osProfile"]).to have_key("secrets")
+        end
+      end
+
+      context "when only some of the key vault settings are given" do
+        let(:config) { { vault_name: "my-vault" } }
+
+        it "still emits the secrets block, so ARM reports the missing pieces" do
+          expect(vm_resource(rendered_template(driver))["properties"]["osProfile"]).to have_key("secrets")
+        end
+      end
+
+      context "when none are set" do
+        it "omits the secrets block" do
+          expect(vm_resource(rendered_template(driver))["properties"]["osProfile"]).not_to have_key("secrets")
+        end
+      end
+    end
+
+    describe "vm tags" do
+      let(:config) { { vm_tags: { os_type: "linux", distro: "redhat" } } }
+
+      it "applies the tags to the virtual machine" do
+        expect(vm_resource(rendered_template(driver))["tags"]).to eq("os_type" => "linux", "distro" => "redhat")
+      end
+
+      it "applies the tags to every taggable resource" do
+        tagged = rendered_template(driver)["resources"].select { |r| r["tags"]&.any? }
+        expect(tagged.length).to be > 1
+      end
+
+      context "when a tag value contains a double quote" do
+        let(:config) { { vm_tags: { note: 'he said "hello"' } } }
+
+        it "does not produce an unparseable template" do
+          expect(driver.virtual_machine_deployment_template).to be_a_valid_arm_template
+        end
+
+        it "round-trips the value intact" do
+          expect(vm_resource(rendered_template(driver))["tags"]["note"]).to eq('he said "hello"')
+        end
+      end
+
+      context "when a tag value contains a backslash" do
+        let(:config) { { vm_tags: { path: 'C:\\Windows' } } }
+
+        it "round-trips the value intact" do
+          expect(vm_resource(rendered_template(driver))["tags"]["path"]).to eq('C:\\Windows')
+        end
+      end
+    end
+
+    describe "image selection" do
+      it "defaults to a marketplace image reference" do
+        image = vm_resource(rendered_template(driver))["properties"]["storageProfile"]["imageReference"]
+        expect(image).to include("publisher", "offer", "sku", "version")
+      end
+
+      context "with an image_id" do
+        let(:config) { { image_id: "/subscriptions/x/resourceGroups/y/providers/Microsoft.Compute/images/my-image" } }
+
+        it "references the managed image by id" do
+          image = vm_resource(rendered_template(driver))["properties"]["storageProfile"]["imageReference"]
+          expect(image).to eq("id" => "[parameters('imageId')]")
+        end
+      end
+
+      context "with an image_url" do
+        let(:config) { { image_url: "https://sa.blob.core.windows.net/vhds/my.vhd", use_managed_disks: false } }
+
+        it "renders valid JSON" do
+          expect(driver.virtual_machine_deployment_template).to be_a_valid_arm_template
+        end
+
+        it "does not reference a marketplace image" do
+          expect(vm_resource(rendered_template(driver))["properties"]["storageProfile"]).not_to have_key("imageReference")
+        end
+      end
+    end
+
+    describe "os disk options" do
+      context "with use_ephemeral_osdisk" do
+        let(:config) { { use_ephemeral_osdisk: true } }
+
+        it "sets the ephemeral disk placement" do
+          os_disk = vm_resource(rendered_template(driver))["properties"]["storageProfile"]["osDisk"]
+          expect(os_disk["diffDiskSettings"]).to eq("option" => "Local")
+        end
+      end
+
+      context "with os_disk_size_gb" do
+        let(:config) { { os_disk_size_gb: 128 } }
+
+        it "sets the disk size from the parameter" do
+          os_disk = vm_resource(rendered_template(driver))["properties"]["storageProfile"]["osDisk"]
+          expect(os_disk["diskSizeGB"]).to eq("[parameters('osDiskSizeGb')]")
+        end
+      end
+
+      context "with no os_disk_size_gb" do
+        it "omits the disk size" do
+          os_disk = vm_resource(rendered_template(driver))["properties"]["storageProfile"]["osDisk"]
+          expect(os_disk).not_to have_key("diskSizeGB")
+        end
+      end
+    end
+
+    describe "data disks" do
+      context "with managed disks" do
+        let(:config) { { data_disks: [{ lun: 0, disk_size_gb: 128 }, { lun: 1, disk_size_gb: 256 }] } }
+
+        it "adds one entry per configured disk" do
+          disks = vm_resource(rendered_template(driver))["properties"]["storageProfile"]["dataDisks"]
+          expect(disks).to eq(
+            [
+              { "name" => "datadisk0", "lun" => 0, "diskSizeGB" => 128, "createOption" => "Empty" },
+              { "name" => "datadisk1", "lun" => 1, "diskSizeGB" => 256, "createOption" => "Empty" },
+            ]
+          )
+        end
+      end
+
+      context "without data_disks" do
+        it "omits the dataDisks key entirely" do
+          expect(vm_resource(rendered_template(driver))["properties"]["storageProfile"]).not_to have_key("dataDisks")
+        end
+      end
+    end
+  end
+
+  describe "#data_disks_for_vm_json" do
+    it "is nil when no data disks are configured" do
+      expect(driver.data_disks_for_vm_json).to be_nil
+    end
+
+    context "with unmanaged disks" do
+      let(:config) { { use_managed_disks: false, data_disks: [{ lun: 0, disk_size_gb: 128 }] } }
+
+      it "warns that data disks need managed disks" do
+        allow(Kitchen.logger).to receive(:warn)
+        driver.data_disks_for_vm_json
+        expect(Kitchen.logger).to have_received(:warn).with(/only supported when used with the "use_managed_disks" option/)
+      end
+
+      it "returns an empty JSON array" do
+        expect(driver.data_disks_for_vm_json).to eq("[]")
+      end
+    end
+  end
+
+  describe "#vm_tag_string" do
+    it "is empty for no tags" do
+      expect(driver.vm_tag_string({})).to eq("")
+    end
+
+    it "is empty for nil" do
+      expect(driver.vm_tag_string(nil)).to eq("")
+    end
+
+    it "renders a single tag with no trailing comma" do
+      expect(driver.vm_tag_string(env: "prod")).to eq('"env": "prod"')
+    end
+
+    it "separates multiple tags with a comma and newline" do
+      expect(driver.vm_tag_string(a: "1", b: "2")).to eq(%{"a": "1",\n"b": "2"})
+    end
+
+    it "escapes characters that would break the surrounding JSON" do
+      expect(driver.vm_tag_string(note: 'a "quoted" value')).to eq('"note": "a \"quoted\" value"')
+    end
+
+    it "stringifies non-string values" do
+      expect(driver.vm_tag_string(count: 3)).to eq('"count": "3"')
+    end
+  end
+
+  describe "#plan_json" do
+    it "is nil when no plan is configured" do
+      expect(driver.plan_json).to be_nil
+    end
+
+    context "when plan is explicitly nil" do
+      let(:config) { { plan: nil } }
+
+      it "is nil rather than raising" do
+        expect(driver.plan_json).to be_nil
+      end
+    end
+
+    context "with a full plan" do
+      let(:config) { { plan: { name: "n", product: "p", publisher: "pub", promotion_code: "code" } } }
+
+      it "maps promotion_code to the ARM promotionCode key" do
+        expect(JSON.parse(driver.plan_json)).to eq("name" => "n", "product" => "p", "promotionCode" => "code", "publisher" => "pub")
+      end
+    end
+  end
+
+  describe "#template_for_transport_name" do
+    context "with an SSH transport carrying a key" do
+      let(:transport) { transport_double(name: "Ssh", ssh_key: ssh_key_path) }
+      let(:ssh_key_path) { File.join(ENV.fetch("HOME"), "id_rsa") }
+
+      it "generates a key pair when the private key does not exist" do
+        driver.template_for_transport_name
+        expect(File).to exist(ssh_key_path)
+        expect(File).to exist("#{ssh_key_path}.pub")
+      end
+
+      it "creates the private key with 0600 permissions" do
+        driver.template_for_transport_name
+        expect(File.stat(ssh_key_path).mode & 0777).to eq(0600)
+      end
+
+      it "injects the public key into the linux configuration" do
+        template = JSON.parse(driver.template_for_transport_name)
+        linux = vm_resource(template)["properties"]["osProfile"]["linuxConfiguration"]
+        expect(linux["disablePasswordAuthentication"]).to eq("true")
+        expect(linux["ssh"]["publicKeys"].first["keyData"]).to start_with("ssh-rsa ")
+      end
+
+      it "omits adminPassword from the template" do
+        expect(driver.template_for_transport_name).not_to include("adminPassword")
+      end
+
+      context "when the private key already exists" do
+        before do
+          File.write(ssh_key_path, "an existing private key")
+          File.write("#{ssh_key_path}.pub", "ssh-rsa AAAAEXISTING existing@key\n")
+        end
+
+        it "reads the adjacent .pub file rather than generating a new key" do
+          template = JSON.parse(driver.template_for_transport_name)
+          key_data = vm_resource(template)["properties"]["osProfile"]["linuxConfiguration"]["ssh"]["publicKeys"].first["keyData"]
+          expect(key_data).to eq("ssh-rsa AAAAEXISTING existing@key")
+        end
+
+        it "does not overwrite the existing private key" do
+          driver.template_for_transport_name
+          expect(File.read(ssh_key_path)).to eq("an existing private key")
+        end
+
+        context "and ssh_public_key names a different file" do
+          let(:transport) { transport_double(name: "Ssh", ssh_key: ssh_key_path, ssh_public_key: explicit_public_key) }
+          let(:explicit_public_key) { File.join(ENV.fetch("HOME"), "elsewhere.pub") }
+
+          before { File.write(explicit_public_key, "ssh-rsa AAAAEXPLICIT explicit@key\n") }
+
+          it "uses the explicitly configured public key" do
+            template = JSON.parse(driver.template_for_transport_name)
+            key_data = vm_resource(template)["properties"]["osProfile"]["linuxConfiguration"]["ssh"]["publicKeys"].first["keyData"]
+            expect(key_data).to eq("ssh-rsa AAAAEXPLICIT explicit@key")
+          end
+        end
+      end
+    end
+
+    context "with a WinRM transport" do
+      let(:transport) { transport_double(name: "Winrm") }
+      let(:platform_name) { "windows-2022" }
+      let(:os_profile) { vm_resource(JSON.parse(driver.template_for_transport_name))["properties"]["osProfile"] }
+
+      it "adds base64 custom data that configures WinRM" do
+        expect(Base64.decode64(os_profile["customData"])).to include("winrm create winrm/config/listener")
+      end
+
+      it "adds the unattend content that runs the script on first logon" do
+        content = os_profile["windowsConfiguration"]["additionalUnattendContent"]
+        expect(content.map { |entry| entry["settingName"] }).to contain_exactly("FirstLogonCommands", "AutoLogon")
+      end
+
+      it "still renders valid JSON" do
+        expect(driver.template_for_transport_name).to be_a_valid_arm_template
+      end
+
+      context "on Nano Server, which has no WinRM bootstrap" do
+        let(:platform_name) { "windows-nano" }
+
+        it "adds no custom data" do
+          expect(os_profile).not_to have_key("customData")
+        end
+      end
+
+      context "with format_data_disks enabled" do
+        let(:config) { { format_data_disks: true, data_disks: [{ lun: 0, disk_size_gb: 128 }] } }
+
+        it "includes the disk formatting script in custom data" do
+          expect(Base64.decode64(os_profile["customData"])).to include("Initializing and formatting raw disks")
+        end
+
+        it "announces that the disks will be formatted" do
+          allow(Kitchen.logger).to receive(:info)
+          os_profile
+          expect(Kitchen.logger).to have_received(:info).with(/Data disks will be initialized and formatted NTFS/)
+        end
+      end
+
+      context "with format_data_disks enabled but no data disks" do
+        let(:config) { { format_data_disks: true } }
+
+        it "still emits the formatting script, harmlessly" do
+          expect(Base64.decode64(os_profile["customData"])).to include("Initializing and formatting raw disks")
+        end
+
+        it "does not claim any disks will be formatted" do
+          allow(Kitchen.logger).to receive(:info)
+          os_profile
+          expect(Kitchen.logger).not_to have_received(:info).with(/Data disks will be initialized/)
+        end
+      end
+
+      context "with a custom winrm_powershell_script" do
+        let(:config) { { winrm_powershell_script: "Write-Host 'my own bootstrap'" } }
+
+        it "uses the supplied script instead of the default" do
+          decoded = Base64.decode64(os_profile["customData"])
+          expect(decoded).to include("my own bootstrap")
+          expect(decoded).not_to include("New-SelfSignedCertificate")
+        end
+      end
+    end
+
+    context "with a transport that is neither SSH-keyed nor WinRM" do
+      it "leaves the template untouched" do
+        expect(JSON.parse(driver.template_for_transport_name)).to eq(rendered_template(driver))
+      end
+    end
+  end
+
+  describe "#prepared_custom_data" do
+    it "is nil when custom_data is not configured" do
+      expect(build_driver(custom_data: nil).prepared_custom_data).to be_nil
+    end
+
+    context "with inline content" do
+      let(:config) { { custom_data: "#!/bin/sh\necho hello\n" } }
+
+      it "base64 encodes it" do
+        expect(Base64.decode64(driver.prepared_custom_data)).to eq("#!/bin/sh\necho hello\n")
+      end
+
+      it "memoizes the result" do
+        expect(driver.prepared_custom_data).to equal(driver.prepared_custom_data)
+      end
+    end
+
+    context "with a path to a file" do
+      let(:path) { File.join(ENV.fetch("HOME"), "cloud-init.yml") }
+      let(:config) { { custom_data: path } }
+
+      before { File.write(path, "#cloud-config\npackages:\n  - htop\n") }
+
+      it "base64 encodes the file's contents" do
+        expect(Base64.decode64(driver.prepared_custom_data)).to eq("#cloud-config\npackages:\n  - htop\n")
+      end
+    end
+
+    context "with a multi-line document that resembles nothing on disk" do
+      let(:config) { { custom_data: "#cloud-config\n#{"x" * 5000}\n" } }
+
+      it "encodes it inline without touching the filesystem" do
+        expect(File).not_to receive(:file?)
+        expect(Base64.decode64(driver.prepared_custom_data)).to start_with("#cloud-config")
+      end
+    end
+  end
+
+  # @param template [Hash] a parsed ARM template.
+  # @return [Array<String>] the type of every resource in the template.
+  def resource_types(template)
+    template["resources"].map { |resource| resource["type"] }
+  end
+end
