@@ -371,8 +371,8 @@ module Kitchen
 
       # Return a True of False if the state is already stored for a particular property.
       #
-      # @param [Hash] Hash of existing state values.
-      # @param [String] A property to check
+      # @param state [Hash] Hash of existing state values.
+      # @param property [String] A property to check
       # @return [Boolean]
       def existing_state_value?(state, property)
         state.key?(property) && !state[property].nil?
@@ -380,7 +380,7 @@ module Kitchen
 
       # Leverage existing state values or bring state into existence from a configuration file.
       #
-      # @param [Hash] Existing Hash of state values.
+      # @param state [Hash] Existing Hash of state values.
       # @return [Hash] Updated Hash of state values.
       def validate_state(state = {})
         state[:uuid] = SecureRandom.hex(8) unless existing_state_value?(state, :uuid)
