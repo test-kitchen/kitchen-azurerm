@@ -9,20 +9,26 @@ RSpec.describe "ARM deployment templates" do
   # independently against the default configuration.
   TEMPLATE_VARIATIONS = {
     "defaults" => {},
-    "unmanaged disks" => { use_managed_disks: false },
     "ephemeral os disk" => { use_ephemeral_osdisk: true },
     "sized os disk" => { os_disk_size_gb: 128 },
+    "premium os disk" => { storage_account_type: "Premium_LRS" },
     "custom data" => { custom_data: "#cloud-config\npackages:\n  - htop\n" },
     "data disks" => { data_disks: [{ lun: 0, disk_size_gb: 128 }] },
-    "data disks, unmanaged" => { data_disks: [{ lun: 0, disk_size_gb: 128 }], use_managed_disks: false },
-    "vhd image" => { image_url: "https://sa.blob.core.windows.net/vhds/my.vhd", use_managed_disks: false },
     "managed image" => { image_id: "/subscriptions/x/images/my-image" },
-    "shared storage account" => { existing_storage_account_blob_url: "https://shared.blob.core.windows.net", use_managed_disks: false },
-    "shared storage account, no container" => { existing_storage_account_blob_url: "https://shared.blob.core.windows.net", existing_storage_account_container: "", use_managed_disks: false },
+    "gallery image" => { image_id: "/subscriptions/x/galleries/g/images/i/versions/1.0.0" },
     "marketplace plan" => { plan: { name: "n", product: "p", publisher: "pub" } },
     "vm tags" => { vm_tags: { owner: "platform", env: "ci" } },
     "key vault certificate" => { secret_url: "https://v.vault.azure.net/secrets/c", vault_name: "v", vault_resource_group: "rg" },
-    "standard public ip" => { public_ip_sku: "Standard" },
+    "extra open ports" => { open_ports: [443, 8080] },
+    "supplied security group" => { nsg_id: "/subscriptions/x/networkSecurityGroups/mine" },
+    "boot diagnostics off" => { boot_diagnostics_enabled: false },
+    "retired settings still present" => {
+      use_managed_disks: false,
+      image_url: "https://sa.blob.core.windows.net/vhds/my.vhd",
+      existing_storage_account_blob_url: "https://shared.blob.core.windows.net",
+      existing_storage_account_container: "",
+      os_type: "windows",
+    },
     "everything at once" => {
       os_disk_size_gb: 256,
       custom_data: "#cloud-config\n",
@@ -32,7 +38,7 @@ RSpec.describe "ARM deployment templates" do
       secret_url: "https://v.vault.azure.net/secrets/c",
       vault_name: "v",
       vault_resource_group: "rg",
-      public_ip_sku: "Standard",
+      open_ports: [443],
     },
   }.freeze
 
@@ -91,6 +97,23 @@ RSpec.describe "ARM deployment templates" do
           template["resources"].each do |resource|
             expect(resource).to include("type", "name", "apiVersion")
           end
+        end
+
+        # Every API version below was current as of this release; the previous
+        # ones dated back to 2015 and 2018.
+        it "pins every resource to a modern API version" do
+          template["resources"].each do |resource|
+            expect(resource["apiVersion"]).to be >= "2025-04-01"
+          end
+        end
+
+        it "creates no storage account, now that unmanaged disks are retired" do
+          expect(template["resources"].map { |r| r["type"] }).not_to include("Microsoft.Storage/storageAccounts")
+        end
+
+        it "boots every VM from a managed disk" do
+          os_disk = vm_resource(template)["properties"]["storageProfile"]["osDisk"]
+          expect(os_disk).not_to have_key("vhd")
         end
 
         it "references only parameters it declares" do

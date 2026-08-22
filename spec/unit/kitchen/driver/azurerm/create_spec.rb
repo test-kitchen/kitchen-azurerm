@@ -76,12 +76,14 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
       )
     end
 
-    it "derives the storage account and DNS names from the uuid" do
+    it "derives the public DNS label from the uuid" do
       driver.create(state)
-      expect(deployment_parameters).to include(
-        newStorageAccountName: { "value" => "storage#{state[:uuid]}" },
-        dnsNameForPublicIP: { "value" => "kitchen-#{state[:uuid]}" }
-      )
+      expect(deployment_parameters[:dnsNameForPublicIP]).to eq("value" => "kitchen-#{state[:uuid]}")
+    end
+
+    it "no longer creates a storage account for the OS disk" do
+      driver.create(state)
+      expect(deployment_parameters).not_to include(:newStorageAccountName)
     end
 
     it "derives the nic name from the vm name" do
@@ -122,31 +124,41 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
       end
     end
 
-    context "with an image_url" do
-      let(:config) { { image_url: "https://sa.blob.core.windows.net/vhds/my.vhd", os_type: "windows", use_managed_disks: false } }
+    context "with a retired image_url" do
+      let(:config) { { image_url: "https://sa.blob.core.windows.net/vhds/my.vhd" } }
 
-      it "sends imageUrl and the os type" do
+      it "ignores it and falls back to the marketplace image" do
         driver.create(state)
-        expect(deployment_parameters).to include(
-          imageUrl: { "value" => "https://sa.blob.core.windows.net/vhds/my.vhd" },
-          osType: { "value" => "windows" }
-        )
+        expect(deployment_parameters).to include(:imagePublisher)
+        expect(deployment_parameters).not_to include(:imageUrl)
       end
     end
 
     describe "public IP SKU" do
-      it "defaults to Basic with no address type override" do
+      # Basic SKU public IPs were retired on 30 September 2025.
+      it "defaults to Standard" do
         driver.create(state)
-        expect(deployment_parameters[:publicIPSKU]).to eq("value" => "Basic")
-        expect(deployment_parameters).not_to include(:publicIPAddressType)
+        expect(deployment_parameters[:publicIPSKU]).to eq("value" => "Standard")
       end
 
-      context "with a Standard SKU" do
-        let(:config) { { public_ip_sku: "Standard" } }
+      it "forces a static address, which Standard SKUs require" do
+        driver.create(state)
+        expect(deployment_parameters[:publicIPAddressType]).to eq("value" => "Static")
+      end
+    end
 
-        it "forces a static address, which Standard SKUs require" do
+    describe "network security group" do
+      it "sends no nsgId when it creates its own group" do
+        driver.create(state)
+        expect(deployment_parameters).not_to include(:nsgId)
+      end
+
+      context "with an existing nsg_id" do
+        let(:config) { { nsg_id: "/subscriptions/x/networkSecurityGroups/mine" } }
+
+        it "passes it through" do
           driver.create(state)
-          expect(deployment_parameters[:publicIPAddressType]).to eq("value" => "Static")
+          expect(deployment_parameters[:nsgId]).to eq("value" => "/subscriptions/x/networkSecurityGroups/mine")
         end
       end
     end
@@ -171,24 +183,57 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
       end
     end
 
-    describe "shared storage accounts" do
-      let(:config) { { existing_storage_account_blob_url: "https://shared.blob.core.windows.net" } }
-
-      it "adds a per-resource-group suffix so instances do not collide on disk names" do
+    describe "boot diagnostics" do
+      it "enables managed boot diagnostics by default" do
         driver.create(state)
-        expect(deployment_parameters[:osDiskNameSuffix]).to eq("value" => "-#{state[:azure_resource_group_name]}")
+        expect(deployment_parameters[:bootDiagnosticsEnabled]).to eq("value" => true)
       end
 
-      it "passes the blob url through" do
-        driver.create(state)
-        expect(deployment_parameters[:existingStorageAccountBlobURL])
-          .to eq("value" => "https://shared.blob.core.windows.net")
+      it "coerces the historical string spelling" do
+        driver = build_driver(boot_diagnostics_enabled: "false")
+        stub_azure_clients(driver, resource_client:, network_client:)
+        record_deployments(resource_client)
+        driver.create({})
+
+        expect(deployment_parameters[:bootDiagnosticsEnabled]).to eq("value" => false)
       end
     end
 
-    it "does not send an osDiskNameSuffix without a shared storage account" do
-      driver.create(state)
-      expect(deployment_parameters).not_to include(:osDiskNameSuffix)
+    describe "retired settings" do
+      let(:config) { { use_managed_disks: false, existing_storage_account_blob_url: "https://shared.blob.core.windows.net" } }
+
+      it "warns once per retired setting rather than failing" do
+        allow(Kitchen.logger).to receive(:warn)
+        driver.create(state)
+
+        expect(Kitchen.logger).to have_received(:warn).with(/'use_managed_disks' setting is no longer supported/)
+        expect(Kitchen.logger).to have_received(:warn).with(/'existing_storage_account_blob_url' setting is no longer supported/)
+      end
+
+      it "explains why" do
+        allow(Kitchen.logger).to receive(:warn)
+        driver.create(state)
+        expect(Kitchen.logger).to have_received(:warn).with(/retired unmanaged disks on 31 March 2026/).at_least(:once)
+      end
+
+      it "sends none of them to ARM" do
+        driver.create(state)
+        expect(deployment_parameters.keys.map(&:to_s)).not_to include("existingStorageAccountBlobURL", "osDiskNameSuffix")
+      end
+
+      it "still deploys" do
+        expect { driver.create(state) }.not_to raise_error
+      end
+
+      it "says nothing when no retired setting is used" do
+        driver = build_driver
+        stub_azure_clients(driver, resource_client:, network_client:)
+        record_deployments(resource_client)
+        allow(Kitchen.logger).to receive(:warn)
+        driver.create({})
+
+        expect(Kitchen.logger).not_to have_received(:warn).with(/no longer supported/)
+      end
     end
 
     describe "custom data" do

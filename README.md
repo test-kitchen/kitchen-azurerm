@@ -95,14 +95,12 @@ All options below are set under the `driver:` key in `kitchen.yml`, or per platf
 
 #### Image
 
-Set exactly one of `image_urn`, `image_url`, or `image_id`.
+Set one of `image_urn` or `image_id`.
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `image_urn` | `Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest` | Marketplace image, as `Publisher:Offer:Sku:Version`. See [How to retrieve the image_urn](#how-to-retrieve-the-image_urn). |
-| `image_url` | `""` | URL of a private classic (unmanaged) OS image VHD. |
-| `image_id` | `""` | Resource ID of a private managed image. |
-| `os_type` | `"linux"` | `linux` or `windows`. Must match the image. |
+| `image_id` | `""` | Resource ID of a private managed image or an Azure Compute Gallery image version. |
 | `plan` | *unset* | Purchase plan for a Marketplace image that requires one. A hash accepting `name`, `product`, `publisher`, and `promotion_code`. |
 
 #### Virtual machine
@@ -122,15 +120,14 @@ Set exactly one of `image_urn`, `image_url`, or `image_id`.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `use_managed_disks` | `true` | Use managed disks. Disable only for classic unmanaged storage. |
 | `use_ephemeral_osdisk` | `false` | Use an ephemeral OS disk, which is faster and cheaper but lost on deallocation. |
 | `os_disk_size_gb` | *image default* | Size of the OS disk in GB. Must be at least the image's own size. |
-| `storage_account_type` | `"Standard_LRS"` | Storage account type, e.g. `Standard_LRS`, `Premium_LRS`. |
+| `storage_account_type` | `"StandardSSD_LRS"` | Managed disk type, e.g. `StandardSSD_LRS`, `Premium_LRS`. |
 | `data_disks` | `nil` | Array of data disks to attach, each a hash with `lun` and `disk_size_gb`. |
 | `format_data_disks` | `false` | Format and mount attached data disks. Windows only. |
 | `format_data_disks_powershell_script` | `false` | Custom PowerShell script used to format the data disks. |
-| `existing_storage_account_blob_url` | `""` | Blob URL of an existing storage account, for unmanaged disks. |
-| `existing_storage_account_container` | `"vhds"` | Container within that storage account. |
+
+All deployments use managed disks. Azure retired unmanaged disks on 31 March 2026.
 
 #### Networking
 
@@ -140,7 +137,31 @@ Set exactly one of `image_urn`, `image_url`, or `image_id`.
 | `subnet_id` | `""` | Name of the subnet within `vnet_id`. |
 | `nic_name` | `""` | Name of an existing network interface to attach. |
 | `public_ip` | `false` | Assign a public IP address. Required unless you reach the VM over ExpressRoute or a VPN. |
-| `public_ip_sku` | `"Basic"` | Public IP SKU, `Basic` or `Standard`. |
+| `public_ip_sku` | `"Standard"` | Public IP SKU. Azure retired the `Basic` SKU on 30 September 2025. |
+| `nsg_id` | `""` | Resource ID of an existing network security group to attach to the network interface. When unset, one is created for you. |
+| `open_ports` | `[]` | Extra inbound TCP ports to open, on top of the transport's own port. |
+
+Standard SKU public IPs are closed to inbound traffic unless a network security
+group allows it. When the driver creates a public IP and you have not supplied
+`nsg_id`, it also creates a security group allowing inbound TCP on the port your
+transport uses - 22 for SSH, 5985 and 5986 for WinRM - plus anything in
+`open_ports`. Those rules allow any source address, matching the connectivity a
+Basic SKU public IP used to provide. To restrict the source, create your own
+security group and pass it as `nsg_id`.
+
+#### Retired settings
+
+These settings are still accepted so that an existing `kitchen.yml` keeps
+loading, but Azure retirements have made them inoperable. The driver logs a
+warning and ignores them.
+
+| Option | Retired because |
+| --- | --- |
+| `use_managed_disks` | Azure retired unmanaged disks on 31 March 2026. Every deployment now uses managed disks. |
+| `image_url` | Deploying from a VHD URL required unmanaged disks. Use `image_id` with a managed image or an Azure Compute Gallery image instead. |
+| `os_type` | Only ever applied to `image_url` deployments. |
+| `existing_storage_account_blob_url` | OS disks are no longer placed in a storage account you supply. |
+| `existing_storage_account_container` | As above. |
 
 #### Resource group
 
@@ -184,7 +205,7 @@ Set exactly one of `image_urn`, `image_url`, or `image_id`.
 | Option | Default | Description |
 | --- | --- | --- |
 | `azure_environment` | `"Azure"` | Cloud to target: `Azure`, `AzureUSGovernment`, `AzureChina`, `AzureGermanCloud`. See [Support for Government and Sovereign Clouds](#support-for-government-and-sovereign-clouds-china-and-germany). |
-| `boot_diagnostics_enabled` | `"true"` | Enable boot diagnostics on the VM. |
+| `boot_diagnostics_enabled` | `true` | Enable managed boot diagnostics on the VM. |
 | `winrm_powershell_script` | `false` | Custom PowerShell script used to configure WinRM. Windows only. |
 | `deployment_sleep` | `10` | Seconds to wait between polls of the deployment status. |
 | `azure_api_retries` | `5` | Number of times to retry a failed Azure API call. |
@@ -427,14 +448,13 @@ platforms:
       image_id: /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/RESGROUP/providers/Microsoft.Compute/images/IMAGENAME
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
-      use_managed_disk: true
 
 suites:
   - name: default
     attributes:
 ```
 
-### kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image
+### kitchen.yml example 7 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with a private managed image
 
 This example a classic Custom VM Image (aka a VHD file) is used. As the Image VHD must be in the same storage account then the disk of the instance, the os disk is created in an existing image account.
 
@@ -463,10 +483,7 @@ provisioner:
 platforms:
   - name: ubuntu-1404
     driver:
-      image_url: https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd
-      existing_storage_account_blob_url: https://yourstorageaccount.blob.core.windows.net
-      os_type: linux
-      use_managed_disk: false
+      image_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Compute/images/Cent7_P4
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
 
@@ -475,7 +492,7 @@ suites:
     attributes:
 ```
 
-### kitchen.yml example 8 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with Private Classic OS Image and providing custom data and extra large os disk
+### kitchen.yml example 8 - deploy VM to existing virtual network/subnet (use for ExpressRoute/VPN scenarios) with a private managed image, custom data and an extra large os disk
 
 This is the same as above, but uses custom data to customize the instance.
 
@@ -498,10 +515,7 @@ provisioner:
 platforms:
   - name: ubuntu-1404
     driver:
-      image_url: https://yourstorageaccount.blob.core.windows.net/system/Microsoft.Compute/Images/images/Cent7_P4-osDisk.170dd1b7-7dc3-4496-b248-f47c49f63965.vhd
-      existing_storage_account_blob_url: https://yourstorageaccount.blob.core.windows.net
-      os_type: linux
-      use_managed_disk: false
+      image_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Compute/images/Cent7_P4
       vnet_id: /subscriptions/b6e7eee9-YOUR-GUID-HERE-03ab624df016/resourceGroups/pendrica-infrastructure/providers/Microsoft.Network/virtualNetworks/pendrica-arm-vnet
       subnet_id: subnet-10.1.0
       os_disk_size_gb: 100
@@ -704,8 +718,6 @@ suites:
 
 Starting with v0.9.0 this driver has support for Azure Government and Sovereign Clouds via the use of the ```azure_environment``` setting. Valid Azure environments are ```Azure```, ```AzureUSGovernment```, ```AzureChina``` and ```AzureGermanCloud```
 
-Note that the ```use_managed_disks``` option should be set to false until supported by AzureUSGovernment.
-
 ### Example kitchen.yml for Azure US Government cloud
 
 ```yaml
@@ -716,7 +728,6 @@ driver:
   azure_environment: 'AzureUSGovernment'
   location: 'US Gov Iowa'
   machine_size: 'Standard_D2_v2_Promo'
-  use_managed_disks: false
 
 provisioner:
   name: chef_zero
