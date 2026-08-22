@@ -11,9 +11,11 @@ This version has been tested on Windows, macOS, and Ubuntu. If you encounter a p
 
 ### Installation
 
-This plugin ships in Chef Workstation out of the box so there is no need to install it when using [Chef Workstation](https://downloads.chef.io/products/workstation).
+This plugin ships in [Cinc Workstation](https://cinc.sh/start/workstation/) out of the box, so there is no need to
+install it if you are using Cinc Workstation. The examples below use the `cinc` commands; everything works identically
+with Chef Workstation, which also bundles this plugin — see [Using with Chef](#using-with-chef).
 
-If you're not using Chef Workstation and need to install the plugin as a gem run:
+If you're not using a Workstation build and need to install the plugin as a gem, run:
 
 ```shell
 gem install kitchen-azurerm
@@ -81,7 +83,111 @@ wsus-windows-2016   Azurerm  ChefZero     Inspec    Winrm      <Not Created>  <N
 
 ### Driver Properties
 
-See the [kitchen.ci kitchen-azurem docs](https://kitchen.ci/docs/drivers/azurerm/) for a complete list of configuration options.
+All options below are set under the `driver:` key in `kitchen.yml`, or per platform under `platforms[].driver:`.
+
+#### Required
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `subscription_id` | from credentials file / `AZURE_SUBSCRIPTION_ID` | Azure subscription to deploy into. |
+| `location` | *none* | Azure region, e.g. `westeurope`. Required. |
+| `machine_size` | *none* | VM size, e.g. `Standard_D2s_v3`. Required. |
+
+#### Image
+
+Set exactly one of `image_urn`, `image_url`, or `image_id`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `image_urn` | `Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest` | Marketplace image, as `Publisher:Offer:Sku:Version`. See [How to retrieve the image_urn](#how-to-retrieve-the-image_urn). |
+| `image_url` | `""` | URL of a private classic (unmanaged) OS image VHD. |
+| `image_id` | `""` | Resource ID of a private managed image. |
+| `os_type` | `"linux"` | `linux` or `windows`. Must match the image. |
+| `plan` | *unset* | Purchase plan for a Marketplace image that requires one. A hash accepting `name`, `product`, `publisher`, and `promotion_code`. |
+
+#### Virtual machine
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `vm_name` | `nil` | Explicit VM name. Generated from `vm_prefix` if unset. |
+| `vm_prefix` | `"tk-"` | Prefix for the generated VM name. |
+| `vm_tags` | `{}` | Tags applied to the VM. |
+| `username` | `"azure"` | Admin username created on the VM. |
+| `password` | *generated* | Admin password. A random one is generated if unset. |
+| `custom_data` | `""` | Custom data passed to the VM, as a string or a path to a file. |
+| `use_fqdn_hostname` | `false` | Connect using the FQDN rather than the IP address. |
+| `store_deployment_credentials_in_state` | `true` | Persist the generated credentials in the Test Kitchen state file. |
+
+#### Disks
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `use_managed_disks` | `true` | Use managed disks. Disable only for classic unmanaged storage. |
+| `use_ephemeral_osdisk` | `false` | Use an ephemeral OS disk, which is faster and cheaper but lost on deallocation. |
+| `os_disk_size_gb` | *image default* | Size of the OS disk in GB. Must be at least the image's own size. |
+| `storage_account_type` | `"Standard_LRS"` | Storage account type, e.g. `Standard_LRS`, `Premium_LRS`. |
+| `data_disks` | `nil` | Array of data disks to attach, each a hash with `lun` and `disk_size_gb`. |
+| `format_data_disks` | `false` | Format and mount attached data disks. Windows only. |
+| `format_data_disks_powershell_script` | `false` | Custom PowerShell script used to format the data disks. |
+| `existing_storage_account_blob_url` | `""` | Blob URL of an existing storage account, for unmanaged disks. |
+| `existing_storage_account_container` | `"vhds"` | Container within that storage account. |
+
+#### Networking
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `vnet_id` | `""` | Resource ID of an existing virtual network. Leave unset to create one. |
+| `subnet_id` | `""` | Name of the subnet within `vnet_id`. |
+| `nic_name` | `""` | Name of an existing network interface to attach. |
+| `public_ip` | `false` | Assign a public IP address. Required unless you reach the VM over ExpressRoute or a VPN. |
+| `public_ip_sku` | `"Basic"` | Public IP SKU, `Basic` or `Standard`. |
+
+#### Resource group
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `azure_resource_group_name` | derived | Name of the resource group created for the run. |
+| `azure_resource_group_prefix` | `"kitchen-"` | Prefix for the generated resource group name. |
+| `azure_resource_group_suffix` | `""` | Suffix for the generated resource group name. |
+| `explicit_resource_group_name` | `nil` | Deploy into an existing resource group instead of creating one. |
+| `resource_group_tags` | `{}` | Tags applied to a resource group the driver creates. |
+| `destroy_explicit_resource_group` | `true` | Delete the explicit resource group on destroy. Set to `false` when deploying into a shared group. |
+| `destroy_explicit_resource_group_tags` | `true` | Remove the tags the driver added to an explicit resource group on destroy. |
+| `destroy_resource_group_contents` | `false` | Delete the resource group's contents rather than the group itself. |
+
+#### Identity
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `system_assigned_identity` | `false` | Enable a system-assigned managed identity on the VM. |
+| `user_assigned_identities` | `[]` | Array of user-assigned managed identity resource IDs. |
+
+#### Key Vault
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `secret_url` | `""` | URL of a Key Vault certificate to install on the VM. |
+| `vault_name` | `""` | Name of the Key Vault holding it. |
+| `vault_resource_group` | `""` | Resource group containing the vault. |
+
+#### ARM templates
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `pre_deployment_template` | `""` | Path to an ARM template deployed before the VM. |
+| `pre_deployment_parameters` | `{}` | Parameters for the pre-deployment template. |
+| `post_deployment_template` | `""` | Path to an ARM template deployed after the VM. |
+| `post_deployment_parameters` | `{}` | Parameters for the post-deployment template. |
+
+#### Environment and behaviour
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `azure_environment` | `"Azure"` | Cloud to target: `Azure`, `AzureUSGovernment`, `AzureChina`, `AzureGermanCloud`. See [Support for Government and Sovereign Clouds](#support-for-government-and-sovereign-clouds-china-and-germany). |
+| `boot_diagnostics_enabled` | `"true"` | Enable boot diagnostics on the VM. |
+| `winrm_powershell_script` | `false` | Custom PowerShell script used to configure WinRM. Windows only. |
+| `deployment_sleep` | `10` | Seconds to wait between polls of the deployment status. |
+| `azure_api_retries` | `5` | Number of times to retry a failed Azure API call. |
 
 ### kitchen.yml example 1 - Linux/Ubuntu
 
@@ -664,15 +770,29 @@ data:    Canonical  UbuntuServer  15.10-DAILY        15.10.201509220  westeurope
 info:    vm image list command OK
 ```
 
+## Using with Chef
+
+This driver is not tied to Cinc. It provisions Azure resources and does not
+itself install either distribution — that is the provisioner's job. The examples
+above use Cinc Workstation and the `cinc_infra` provisioner; with
+[Chef Workstation](https://www.chef.io/downloads/tools/workstation) run `kitchen`
+instead of `cinc kitchen` and use `chef_infra` instead of `cinc_infra`:
+
+```yaml
+provisioner:
+  name: chef_infra
+
+verifier:
+  name: inspec
+```
+
+No driver configuration changes are needed.
+
 ## Contributing
 
-Contributions to the project are welcome via submitting Pull Requests.
-
-1. Fork it ( <https://github.com/test-kitchen/kitchen-azurerm/fork> )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
+Contributions to the project are welcome via submitting Pull Requests. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for development setup, how to run the tests,
+and the release process.
 
 ## Author
 
