@@ -26,11 +26,8 @@ RSpec.describe Kitchen::Driver::Azurerm do
       azure_resource_group_suffix: "",
       explicit_resource_group_name: nil,
       resource_group_tags: {},
-      image_url: "",
-      image_id: "",
       use_ephemeral_osdisk: false,
       os_disk_size_gb: "",
-      os_type: "linux",
       custom_data: "",
       username: "azure",
       vm_prefix: "tk-",
@@ -39,10 +36,9 @@ RSpec.describe Kitchen::Driver::Azurerm do
       nic_name: "",
       vnet_id: "",
       subnet_id: "",
-      storage_account_type: "Standard_LRS",
-      existing_storage_account_blob_url: "",
-      existing_storage_account_container: "vhds",
-      boot_diagnostics_enabled: "true",
+      image_id: "",
+      storage_account_type: "StandardSSD_LRS",
+      boot_diagnostics_enabled: true,
       winrm_powershell_script: false,
       azure_environment: "Azure",
       pre_deployment_template: "",
@@ -52,7 +48,6 @@ RSpec.describe Kitchen::Driver::Azurerm do
       plan: {},
       vm_tags: {},
       public_ip: false,
-      use_managed_disks: true,
       data_disks: nil,
       format_data_disks: false,
       format_data_disks_powershell_script: false,
@@ -65,9 +60,11 @@ RSpec.describe Kitchen::Driver::Azurerm do
       secret_url: "",
       vault_name: "",
       vault_resource_group: "",
-      public_ip_sku: "Basic",
+      public_ip_sku: "Standard",
       azure_api_retries: 5,
       use_fqdn_hostname: false,
+      nsg_id: "",
+      open_ports: [],
     }.each do |key, expected|
       it "defaults #{key} to #{expected.inspect}" do
         # deployment_sleep is overridden by the test helper so the poller does
@@ -109,6 +106,14 @@ RSpec.describe Kitchen::Driver::Azurerm do
     it "lets kitchen.yml override subscription_id" do
       ENV["AZURE_SUBSCRIPTION_ID"] = "from-the-environment"
       expect(driver_config(build_driver(subscription_id: "explicit"))[:subscription_id]).to eq("explicit")
+    end
+  end
+
+  describe "retired settings" do
+    Kitchen::Driver::Azurerm::DEPRECATED_CONFIG.each_key do |option|
+      it "no longer ships a default for #{option}" do
+        expect(driver_config(described_class.new({}))).not_to have_key(option)
+      end
     end
   end
 

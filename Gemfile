@@ -9,7 +9,7 @@ group :test do
   gem "webmock", "~> 3.19"
 end
 
-group :docs do
+group :development do
   gem "yard", "~> 0.9"
 end
 

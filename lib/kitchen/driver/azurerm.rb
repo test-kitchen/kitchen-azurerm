@@ -44,6 +44,19 @@ module Kitchen
 
       kitchen_driver_api_version 2
 
+      # Settings that Azure retirements have made inoperable. They are still
+      # accepted so that an existing kitchen.yml keeps loading, but they no
+      # longer do anything and {#warn_about_deprecated_config} says so.
+      #
+      # @return [Hash{Symbol => String}]
+      DEPRECATED_CONFIG = {
+        use_managed_disks: "Azure retired unmanaged disks on 31 March 2026; every deployment now uses managed disks.",
+        image_url: "Deploying from a VHD URL required unmanaged disks, which Azure retired on 31 March 2026. Use image_id with a managed image or an Azure Compute Gallery image instead.",
+        os_type: "os_type only ever applied to VHD (image_url) deployments, which Azure retired on 31 March 2026.",
+        existing_storage_account_blob_url: "Azure retired unmanaged disks on 31 March 2026, so OS disks are no longer placed in a storage account you supply.",
+        existing_storage_account_container: "Azure retired unmanaged disks on 31 March 2026, so OS disks are no longer placed in a storage account you supply.",
+      }.freeze
+
       default_config(:azure_resource_group_prefix) do |_config|
         "kitchen-"
       end
@@ -70,10 +83,6 @@ module Kitchen
         "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
       end
 
-      default_config(:image_url) do |_config|
-        ""
-      end
-
       default_config(:image_id) do |_config|
         ""
       end
@@ -84,10 +93,6 @@ module Kitchen
 
       default_config(:os_disk_size_gb) do |_config|
         ""
-      end
-
-      default_config(:os_type) do |_config|
-        "linux"
       end
 
       default_config(:custom_data) do |_config|
@@ -123,20 +128,14 @@ module Kitchen
         ""
       end
 
+      # Standard HDD OS disks are retired in September 2028, and Standard SSD is
+      # the current baseline for a short-lived test instance.
       default_config(:storage_account_type) do |_config|
-        "Standard_LRS"
-      end
-
-      default_config(:existing_storage_account_blob_url) do |_config|
-        ""
-      end
-
-      default_config(:existing_storage_account_container) do |_config|
-        "vhds"
+        "StandardSSD_LRS"
       end
 
       default_config(:boot_diagnostics_enabled) do |_config|
-        "true"
+        true
       end
 
       default_config(:winrm_powershell_script) do |_config|
@@ -173,10 +172,6 @@ module Kitchen
 
       default_config(:public_ip) do |_config|
         false
-      end
-
-      default_config(:use_managed_disks) do |_config|
-        true
       end
 
       default_config(:data_disks) do |_config|
@@ -231,8 +226,10 @@ module Kitchen
         ENV["AZURE_SUBSCRIPTION_ID"]
       end
 
+      # Basic SKU public IPs were retired on 30 September 2025 and can no longer
+      # be created, so Standard is the only usable value.
       default_config(:public_ip_sku) do |_config|
-        "Basic"
+        "Standard"
       end
 
       default_config(:azure_api_retries) do |_config|
@@ -241,6 +238,18 @@ module Kitchen
 
       default_config(:use_fqdn_hostname) do |_config|
         false
+      end
+
+      # Resource id of an existing network security group to attach to the NIC.
+      # When empty, and a public IP is being created, one is generated with rules
+      # for the transport in use.
+      default_config(:nsg_id) do |_config|
+        ""
+      end
+
+      # Extra inbound TCP ports to open, on top of the transport's own port.
+      default_config(:open_ports) do |_config|
+        []
       end
 
       # Provisions the Azure resource group and ARM deployment backing this
@@ -256,6 +265,7 @@ module Kitchen
       # @raise [MsRestAzure2::AzureOperationError] if an Azure API call fails
       #   for any reason other than an already-running deployment.
       def create(state)
+        warn_about_deprecated_config
         state = validate_state(state)
         deployment_parameters = build_deployment_parameters(state)
 
@@ -309,8 +319,7 @@ module Kitchen
           location: config[:location],
           vmSize: config[:machine_size],
           storageAccountType: config[:storage_account_type],
-          bootDiagnosticsEnabled: config[:boot_diagnostics_enabled],
-          newStorageAccountName: "storage#{state[:uuid]}",
+          bootDiagnosticsEnabled: boot_diagnostics_enabled?,
           adminUsername: config[:username],
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           vmName: state[:vm_name],
@@ -328,35 +337,35 @@ module Kitchen
 
         parameters["nicName"] = nic_name(state)
         parameters["customData"] = prepared_custom_data unless config[:custom_data].to_s.empty?
-
-        # When deploying into a shared storage account we need a unique suffix
-        # so that multiple kitchen instances do not collide on OS disk names.
-        unless config[:existing_storage_account_blob_url].to_s.empty?
-          parameters["osDiskNameSuffix"] = "-#{state[:azure_resource_group_name]}"
-          parameters["existingStorageAccountBlobURL"] = config[:existing_storage_account_blob_url]
-        end
-
-        parameters["existingStorageAccountBlobContainer"] = config[:existing_storage_account_container] unless config[:existing_storage_account_container].to_s.empty?
         parameters["osDiskSizeGb"] = config[:os_disk_size_gb] unless config[:os_disk_size_gb].to_s.empty?
+        parameters["nsgId"] = config[:nsg_id] unless config[:nsg_id].to_s.empty?
 
         parameters.merge(image_parameters)
       end
 
-      # ARM parameters describing which image the VM boots from.
-      #
-      # Exactly one of three modes applies, in precedence order: a managed image
-      # by resource id, a VHD URL, or a Marketplace image URN.
+      # ARM parameters describing which image the VM boots from: either a managed
+      # image (or Azure Compute Gallery image) by resource id, or a Marketplace
+      # image URN.
       #
       # @return [Hash]
       def image_parameters
-        if config[:image_id].to_s != ""
-          { "imageId" => config[:image_id] }
-        elsif config[:image_url].to_s != ""
-          { "imageUrl" => config[:image_url], "osType" => config[:os_type] }
-        else
-          publisher, offer, sku, version = config[:image_urn].split(":", 4)
-          { "imagePublisher" => publisher, "imageOffer" => offer, "imageSku" => sku, "imageVersion" => version }
-        end
+        return { "imageId" => config[:image_id] } if config[:image_id].to_s != ""
+
+        publisher, offer, sku, version = config[:image_urn].split(":", 4)
+        { "imagePublisher" => publisher, "imageOffer" => offer, "imageSku" => sku, "imageVersion" => version }
+      end
+
+      # Whether managed boot diagnostics should be switched on.
+      #
+      # Historically this setting defaulted to the *string* +"true"+, and plenty
+      # of kitchen.yml files still say +"false"+, so both spellings are honoured.
+      #
+      # @return [Boolean]
+      def boot_diagnostics_enabled?
+        value = config[:boot_diagnostics_enabled]
+        return false if value.to_s.casecmp("false") == 0
+
+        !!value
       end
 
       # Name of the network interface the VM is attached to.
@@ -410,7 +419,7 @@ module Kitchen
       # @param vmnic [String] name of the network interface.
       # @return [String] IP address or fully-qualified domain name.
       def resolve_hostname(state, vmnic)
-        if config[:vnet_id] == "" || config[:public_ip]
+        if public_ip?
           result = get_public_ip(state[:azure_resource_group_name], "publicip")
           info "IP Address is: #{result.ip_address} [#{result.dns_settings.fqdn}]"
           if config[:use_fqdn_hostname]
@@ -492,15 +501,9 @@ module Kitchen
       # JSON fragment describing the data disks to attach to the VM.
       #
       # @return [String, nil] a JSON array, or nil when no +data_disks+ are
-      #   configured. Unmanaged disk deployments always get an empty array and
-      #   a warning, as data disks require managed disks.
+      #   configured.
       def data_disks_for_vm_json
         return nil if config[:data_disks].nil?
-
-        unless config[:use_managed_disks]
-          warn 'Data disks are only supported when used with the "use_managed_disks" option. No additional disks were added to the configuration.'
-          return [].to_json
-        end
 
         disks = config[:data_disks].map do |data_disk|
           { name: "datadisk#{data_disk[:lun]}", lun: data_disk[:lun], diskSizeGB: data_disk[:disk_size_gb], createOption: "Empty" }
@@ -904,12 +907,8 @@ module Kitchen
       def virtual_machine_deployment_template
         data = {
           vm_tags: vm_tag_string(config[:vm_tags]),
-          use_managed_disks: config[:use_managed_disks],
-          image_url: config[:image_url],
           storage_account_type: config[:storage_account_type],
-          existing_storage_account_blob_url: config[:existing_storage_account_blob_url],
           image_id: config[:image_id],
-          existing_storage_account_container: config[:existing_storage_account_container],
           custom_data: config[:custom_data],
           os_disk_size_gb: config[:os_disk_size_gb],
           data_disks_for_vm_json:,
@@ -919,6 +918,10 @@ module Kitchen
           secret_url: config[:secret_url],
           vault_name: config[:vault_name],
           vault_resource_group: config[:vault_resource_group],
+          create_nsg: create_nsg?,
+          attach_nsg: attach_nsg?,
+          nsg_id: config[:nsg_id],
+          nsg_rules_json: nsg_rules.to_json,
         }
 
         if config[:vnet_id].to_s.empty?
@@ -931,6 +934,83 @@ module Kitchen
             public_ip: config[:public_ip],
             public_ip_sku: config[:public_ip_sku]
           ))
+        end
+      end
+
+      # Warns about settings that Azure retirements have made inoperable.
+      #
+      # @return [void]
+      def warn_about_deprecated_config
+        DEPRECATED_CONFIG.each do |option, reason|
+          next unless config.key?(option)
+
+          warn "The '#{option}' setting is no longer supported and is being ignored. #{reason}"
+        end
+      end
+
+      # Whether this deployment gets a public IP address.
+      #
+      # @return [Boolean]
+      def public_ip?
+        config[:vnet_id].to_s.empty? || !!config[:public_ip]
+      end
+
+      # Whether the deployment should create its own network security group.
+      #
+      # Standard SKU public IPs are closed to inbound traffic unless a security
+      # group opens it, so one is generated whenever a public IP is created and
+      # the user has not supplied their own group. Instances that live purely
+      # inside a caller-supplied vnet are left alone - their subnet may already
+      # carry the rules the user wants.
+      #
+      # @return [Boolean]
+      def create_nsg?
+        config[:nsg_id].to_s.empty? && public_ip?
+      end
+
+      # Whether the network interface references a security group at all.
+      #
+      # @return [Boolean]
+      def attach_nsg?
+        create_nsg? || !config[:nsg_id].to_s.empty?
+      end
+
+      # Inbound TCP ports the generated security group opens.
+      #
+      # @return [Array<Integer>] the transport's own port(s) plus +open_ports+.
+      def nsg_ports
+        (transport_ports + Array(config[:open_ports]).map(&:to_i)).uniq
+      end
+
+      # The port(s) the configured transport connects on.
+      #
+      # @return [Array<Integer>] 5985 and 5986 for WinRM, otherwise 22.
+      def transport_ports
+        instance.transport.name.to_s.casecmp("winrm") == 0 ? [5985, 5986] : [22]
+      end
+
+      # ARM security rules for the generated network security group.
+      #
+      # The source prefix is left wide open, which matches the connectivity a
+      # Basic SKU public IP used to give with no security group at all. Narrow
+      # it by supplying your own group through +nsg_id+.
+      #
+      # @return [Array<Hash>]
+      def nsg_rules
+        nsg_ports.each_with_index.map do |port, index|
+          {
+            "name" => "allow-tcp-#{port}",
+            "properties" => {
+              "protocol" => "Tcp",
+              "sourcePortRange" => "*",
+              "destinationPortRange" => port.to_s,
+              "sourceAddressPrefix" => "*",
+              "destinationAddressPrefix" => "*",
+              "access" => "Allow",
+              "priority" => 1000 + index,
+              "direction" => "Inbound",
+            },
+          }
         end
       end
 

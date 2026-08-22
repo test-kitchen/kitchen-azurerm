@@ -195,15 +195,16 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
         end
       end
 
-      context "with an image_url" do
-        let(:config) { { image_url: "https://sa.blob.core.windows.net/vhds/my.vhd", use_managed_disks: false } }
+      context "with an Azure Compute Gallery image id" do
+        let(:config) { { image_id: "/subscriptions/x/resourceGroups/y/providers/Microsoft.Compute/galleries/g/images/i/versions/1.0.0" } }
 
         it "renders valid JSON" do
           expect(driver.virtual_machine_deployment_template).to be_a_valid_arm_template
         end
 
-        it "does not reference a marketplace image" do
-          expect(vm_resource(rendered_template(driver))["properties"]["storageProfile"]).not_to have_key("imageReference")
+        it "references it by id" do
+          image = vm_resource(rendered_template(driver))["properties"]["storageProfile"]["imageReference"]
+          expect(image).to eq("id" => "[parameters('imageId')]")
         end
       end
     end
@@ -258,22 +259,140 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
     end
   end
 
+  describe "network security group" do
+    let(:nsg) { rendered_template(driver)["resources"].find { |r| r["type"] == "Microsoft.Network/networkSecurityGroups" } }
+    let(:nic) { rendered_template(driver)["resources"].find { |r| r["type"] == "Microsoft.Network/networkInterfaces" } }
+
+    # Standard SKU public IPs are closed to inbound traffic unless a security
+    # group opens it, so a public instance without one is unreachable.
+    it "is created alongside a public IP" do
+      expect(nsg).not_to be_nil
+    end
+
+    it "is attached to the network interface" do
+      expect(nic["properties"]["networkSecurityGroup"]["id"])
+        .to eq("[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]")
+    end
+
+    it "is created before the interface that references it" do
+      expect(nic["dependsOn"]).to include("[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgName'))]")
+    end
+
+    it "opens SSH for an SSH transport" do
+      expect(rule_ports(nsg)).to eq(["22"])
+    end
+
+    it "gives each rule a distinct priority" do
+      priorities = nsg["properties"]["securityRules"].map { |r| r["properties"]["priority"] }
+      expect(priorities).to eq(priorities.uniq)
+    end
+
+    it "allows inbound TCP" do
+      properties = nsg["properties"]["securityRules"].first["properties"]
+      expect(properties).to include("protocol" => "Tcp", "access" => "Allow", "direction" => "Inbound")
+    end
+
+    context "with a WinRM transport" do
+      let(:transport) { transport_double(name: "Winrm") }
+      let(:platform_name) { "windows-2022" }
+
+      it "opens both WinRM ports" do
+        expect(rule_ports(nsg)).to contain_exactly("5985", "5986")
+      end
+    end
+
+    context "with extra open_ports" do
+      let(:config) { { open_ports: [443, 8080] } }
+
+      it "opens them alongside the transport's own port" do
+        expect(rule_ports(nsg)).to contain_exactly("22", "443", "8080")
+      end
+
+      it "does not duplicate a port the transport already opened" do
+        driver = build_driver(open_ports: [22, 443])
+        nsg = rendered_template(driver)["resources"].find { |r| r["type"] == "Microsoft.Network/networkSecurityGroups" }
+        expect(rule_ports(nsg)).to contain_exactly("22", "443")
+      end
+    end
+
+    context "when an existing nsg_id is supplied" do
+      let(:config) { { nsg_id: "/subscriptions/x/resourceGroups/y/providers/Microsoft.Network/networkSecurityGroups/mine" } }
+
+      it "creates no security group of its own" do
+        expect(nsg).to be_nil
+      end
+
+      it "attaches the supplied one instead" do
+        expect(nic["properties"]["networkSecurityGroup"]["id"]).to eq("[parameters('nsgId')]")
+      end
+    end
+
+    context "in a caller-supplied vnet with no public IP" do
+      let(:config) { { vnet_id: "/vnet", subnet_id: "/subnet" } }
+
+      it "creates no security group, leaving the subnet's rules alone" do
+        expect(nsg).to be_nil
+      end
+
+      it "attaches nothing to the interface" do
+        expect(nic["properties"]).not_to have_key("networkSecurityGroup")
+      end
+
+      context "but with a public IP" do
+        let(:config) { super().merge(public_ip: true) }
+
+        it "creates one, because the public IP needs it" do
+          expect(nsg).not_to be_nil
+        end
+      end
+    end
+  end
+
+  describe "boot diagnostics" do
+    let(:boot_diagnostics) { vm_resource(rendered_template(driver))["properties"]["diagnosticsProfile"]["bootDiagnostics"] }
+
+    # This block used to be emitted only for unmanaged-disk deployments, so on
+    # the default path boot diagnostics silently did nothing.
+    it "is present on the default managed-disk path" do
+      expect(boot_diagnostics).to eq("enabled" => "[parameters('bootDiagnosticsEnabled')]")
+    end
+
+    it "needs no storage account" do
+      expect(boot_diagnostics).not_to have_key("storageUri")
+    end
+  end
+
+  describe "#boot_diagnostics_enabled?" do
+    it "defaults to enabled" do
+      expect(driver.boot_diagnostics_enabled?).to be true
+    end
+
+    it "accepts a boolean false" do
+      expect(build_driver(boot_diagnostics_enabled: false).boot_diagnostics_enabled?).to be false
+    end
+
+    # The setting used to default to the string "true", so kitchen.yml files in
+    # the wild carry both spellings.
+    it "accepts the string \"false\"" do
+      expect(build_driver(boot_diagnostics_enabled: "false").boot_diagnostics_enabled?).to be false
+    end
+
+    it "accepts the string \"true\"" do
+      expect(build_driver(boot_diagnostics_enabled: "true").boot_diagnostics_enabled?).to be true
+    end
+  end
+
   describe "#data_disks_for_vm_json" do
     it "is nil when no data disks are configured" do
       expect(driver.data_disks_for_vm_json).to be_nil
     end
 
-    context "with unmanaged disks" do
-      let(:config) { { use_managed_disks: false, data_disks: [{ lun: 0, disk_size_gb: 128 }] } }
+    context "with data disks" do
+      let(:config) { { data_disks: [{ lun: 3, disk_size_gb: 64 }] } }
 
-      it "warns that data disks need managed disks" do
-        allow(Kitchen.logger).to receive(:warn)
-        driver.data_disks_for_vm_json
-        expect(Kitchen.logger).to have_received(:warn).with(/only supported when used with the "use_managed_disks" option/)
-      end
-
-      it "returns an empty JSON array" do
-        expect(driver.data_disks_for_vm_json).to eq("[]")
+      it "describes each disk for the template" do
+        expect(JSON.parse(driver.data_disks_for_vm_json))
+          .to eq([{ "name" => "datadisk3", "lun" => 3, "diskSizeGB" => 64, "createOption" => "Empty" }])
       end
     end
   end
@@ -493,6 +612,12 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
         expect(Base64.decode64(driver.prepared_custom_data)).to start_with("#cloud-config")
       end
     end
+  end
+
+  # @param nsg [Hash] a parsed network security group resource.
+  # @return [Array<String>] the destination port of every rule.
+  def rule_ports(nsg)
+    nsg["properties"]["securityRules"].map { |rule| rule["properties"]["destinationPortRange"] }
   end
 
   # @param template [Hash] a parsed ARM template.
