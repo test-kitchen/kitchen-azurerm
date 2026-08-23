@@ -5,6 +5,17 @@ This CHANGELOG is maintained by the [release-please-action](google-github-action
 
 ## Unreleased
 
+## [2.1.1](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.0...v2.1.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* accept a full resource id for subnet_id ([#330](https://github.com/test-kitchen/kitchen-azurerm/issues/330)) ([2ff0e75](https://github.com/test-kitchen/kitchen-azurerm/commit/2ff0e75875fd889558f3d517bc6dd57f2414fed8))
+* fail the run when a deployment does not succeed ([#332](https://github.com/test-kitchen/kitchen-azurerm/issues/332)) ([292cdee](https://github.com/test-kitchen/kitchen-azurerm/commit/292cdee9be646ead84ea6cd23deec0a57bb60d24))
+* keep a generated vm_name from ending on its prefix separator ([#333](https://github.com/test-kitchen/kitchen-azurerm/issues/333)) ([e0e880b](https://github.com/test-kitchen/kitchen-azurerm/commit/e0e880b1a755b405350137f3447c44409acee0a6))
+* only warn about Azure credentials when something is actually wrong ([#329](https://github.com/test-kitchen/kitchen-azurerm/issues/329)) ([98bca8d](https://github.com/test-kitchen/kitchen-azurerm/commit/98bca8d855acefc8db3565e36a08e6dd537ffd1b))
+* wait for an in-flight deployment instead of abandoning create ([#331](https://github.com/test-kitchen/kitchen-azurerm/issues/331)) ([eb690b3](https://github.com/test-kitchen/kitchen-azurerm/commit/eb690b3f0e199c843401069b7eb938fd885cd419))
+
 ## [2.1.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.0.0...v2.1.0) (2026-08-23)
 
 ### Features
