@@ -854,6 +854,12 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
     it "treats a nil open_ports as unset" do
       expect(build_driver(open_ports: nil).send(:nsg_ports)).to eq([22])
     end
+
+    it "treats a nil image_urn as unset, falling back to the default image" do
+      parameters = build_driver(image_urn: nil).image_parameters
+      expect(parameters["imagePublisher"]).to eq("Canonical")
+      expect(parameters["imageOffer"]).to eq("0001-com-ubuntu-server-jammy")
+    end
   end
 
   # `user_assigned_identities` takes a list, but a single identity written as

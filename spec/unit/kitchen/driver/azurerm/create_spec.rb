@@ -316,6 +316,17 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
         )
       end
     end
+
+    # Written with no value these are nil, not "", and File.file? raises
+    # TypeError on nil rather than answering false.
+    context "when either is written with no value" do
+      let(:config) { { pre_deployment_template: nil, post_deployment_template: nil } }
+
+      it "treats them as unset" do
+        driver.create(state)
+        expect(deployment_names_submitted).to eq(["deploy-#{state[:uuid]}"])
+      end
+    end
   end
 
   describe "credentials in state" do
