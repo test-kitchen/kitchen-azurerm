@@ -67,10 +67,18 @@ module Kitchen
         # Requests deletion of a resource group, returning as soon as ARM
         # accepts the request rather than waiting for it to finish.
         #
+        # A group that is already gone counts as deleted: that is the outcome
+        # the caller asked for, and ARM answers 404. Treating that as an error
+        # wedged +kitchen destroy+ permanently for any instance whose resource
+        # group had been removed out of band - deleted in the portal to save
+        # money, or never created because +kitchen create+ failed early. Every
+        # subsequent destroy failed the same way, so the instance could only be
+        # cleared by hand-deleting its state file.
+        #
         # @param name [String] resource group name.
         # @return [void]
         def delete_resource_group(name)
-          call(:delete, resource_group_path(name), api_version: RESOURCES_API_VERSION)
+          call(:delete, resource_group_path(name), api_version: RESOURCES_API_VERSION, allow: [404])
           nil
         end
 

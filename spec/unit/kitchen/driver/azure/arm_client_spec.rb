@@ -89,6 +89,16 @@ RSpec.describe Kitchen::Driver::Azure::ArmClient do
       expect(client.delete_resource_group("rg")).to be_nil
       expect(stub).to have_been_requested
     end
+
+    # Deleting a group that is already gone is the outcome the caller wanted.
+    # Raising here wedged `kitchen destroy` permanently for any instance whose
+    # resource group had been removed out of band.
+    it "treats a group that is already gone as deleted" do
+      stub_request(:delete, "#{base}/resourcegroups/rg").with(query: hash_including({}))
+        .to_return(status: 404, body: '{"error":{"code":"ResourceGroupNotFound","message":"could not be found."}}')
+
+      expect(client.delete_resource_group("rg")).to be_nil
+    end
   end
 
   describe "#create_deployment" do
