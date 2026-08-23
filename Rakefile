@@ -36,6 +36,25 @@ rescue LoadError
   puts "yard is not available. (sudo) gem install yard to generate documentation."
 end
 
+namespace :integration do
+  # Deliberately not part of any default task: these deploy real virtual
+  # machines into a real subscription, and cost real money.
+  desc "Run the integration suites against Azure (requires a subscription)"
+  task :test do
+    Dir.chdir("integration") { sh "bundle exec kitchen test --concurrency 4" }
+  end
+
+  desc "Destroy anything the integration suites left behind"
+  task :destroy do
+    Dir.chdir("integration") { sh "bundle exec kitchen destroy --concurrency 4" }
+  end
+
+  desc "List the integration suites"
+  task :list do
+    Dir.chdir("integration") { sh "bundle exec kitchen list" }
+  end
+end
+
 # Documentation is deliberately not part of the default task: missing YARD tags
 # should never fail a build.
 task default: %i{test style}

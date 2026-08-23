@@ -1,0 +1,3 @@
+#cloud-config
+runcmd:
+  - echo "custom_data ran at $(date -u)" > /etc/kitchen-custom-data
