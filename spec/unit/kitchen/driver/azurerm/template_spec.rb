@@ -263,6 +263,29 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
         end
       end
 
+      # YAML makes `os_disk_size_gb: 64` an Integer and `os_disk_size_gb: "64"`
+      # a String. The ARM parameter is typed `int`, and Azure rejects the
+      # String outright rather than coercing it.
+      describe "os_disk_size_gb as a deployment parameter" do
+        it "sends a quoted size as a number" do
+          driver = build_driver(os_disk_size_gb: "64")
+          parameters = driver.build_deployment_parameters(uuid: "a" * 16, vm_name: "tk-a")
+          expect(parameters["osDiskSizeGb"]).to eq(64)
+        end
+
+        it "still sends an unquoted size as a number" do
+          driver = build_driver(os_disk_size_gb: 64)
+          parameters = driver.build_deployment_parameters(uuid: "a" * 16, vm_name: "tk-a")
+          expect(parameters["osDiskSizeGb"]).to eq(64)
+        end
+
+        it "says so when the size is not a number at all" do
+          driver = build_driver(os_disk_size_gb: "sixty four")
+          expect { driver.build_deployment_parameters(uuid: "a" * 16, vm_name: "tk-a") }
+            .to raise_error(Kitchen::UserError, /os_disk_size_gb/)
+        end
+      end
+
       context "with no os_disk_size_gb" do
         it "omits the disk size" do
           os_disk = vm_resource(rendered_template(driver))["properties"]["storageProfile"]["osDisk"]
