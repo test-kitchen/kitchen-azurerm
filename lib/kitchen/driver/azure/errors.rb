@@ -40,6 +40,17 @@ module Kitchen
         def code
           body.is_a?(Hash) ? body.dig("error", "code") : nil
         end
+
+        # Azure's own explanation, when ARM supplied one.
+        #
+        # +message+ is this class's summary of the request that failed; this
+        # is what Azure said about it, which is usually the part worth showing
+        # somebody.
+        #
+        # @return [String, nil]
+        def detail
+          body.is_a?(Hash) ? body.dig("error", "message") : nil
+        end
       end
 
       # Raised when a request could not be completed and is worth retrying:

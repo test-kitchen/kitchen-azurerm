@@ -145,6 +145,17 @@ RSpec.describe Kitchen::Driver::Azure::ArmClient do
     end
   end
 
+  describe "#subscription" do
+    it "GETs the subscription itself" do
+      stub = stub_request(:get, "https://management.azure.com/subscriptions/#{subscription_id}")
+        .with(query: { "api-version" => described_class::SUBSCRIPTION_API_VERSION })
+        .to_return(status: 200, body: %({"subscriptionId":"#{subscription_id}","displayName":"Testing"}))
+
+      expect(client.subscription["displayName"]).to eq("Testing")
+      expect(stub).to have_been_requested
+    end
+  end
+
   describe "network resources" do
     it "reads a public IP with the network API version" do
       stub = stub_request(:get, "#{base}/resourcegroups/rg/providers/Microsoft.Network/publicIPAddresses/publicip")

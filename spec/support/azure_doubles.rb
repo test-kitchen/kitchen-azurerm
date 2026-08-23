@@ -12,6 +12,7 @@ module AzureDoubles
   def arm_client_double(**overrides)
     defaults = {
       resource_group_exists?: true,
+      subscription: { "subscriptionId" => "115b12cb-b0d3-4ed9-94db-f73733be6f3c" },
       create_or_update_resource_group: { "id" => "/subscriptions/s/resourcegroups/rg" },
       delete_resource_group: nil,
       create_deployment: { "id" => "/deployments/d" },
