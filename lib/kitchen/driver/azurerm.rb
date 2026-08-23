@@ -668,10 +668,18 @@ module Kitchen
         end
 
         info "Resource Template deployment reached end state of '#{deployment_provisioning_state}'."
-        show_failed_operations(resource_group, deployment_name) if deployment_provisioning_state == "Failed"
+        return if deployment_provisioning_state == "Succeeded"
+
+        show_failed_operations(resource_group, deployment_name)
+        raise "Deployment '#{deployment_name}' in resource group '#{resource_group}' " \
+              "ended in state '#{deployment_provisioning_state}'."
       end
 
       # Raises with the status messages of every failed operation in a deployment.
+      #
+      # Returns quietly when no single operation reported a failure, leaving
+      # the caller to raise: a deployment can fail without one, and its own
+      # provisioning state is the authority on whether it worked.
       #
       # @param resource_group [String] the resource group name.
       # @param deployment_name [String] the deployment name.
