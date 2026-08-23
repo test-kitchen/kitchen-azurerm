@@ -463,20 +463,23 @@ module Kitchen
       # The VM name to use, either the configured one or one generated from
       # +vm_prefix+ plus part of the instance uuid.
       #
-      # The generated name is truncated to {MAX_VM_NAME_LENGTH} so that a
-      # +vm_prefix+ longer than the documented three characters still yields a
-      # name Azure will accept.
+      # The prefix is capped one character short of {MAX_VM_NAME_LENGTH} so
+      # that a +vm_prefix+ longer than the documented three characters still
+      # yields a name Azure will accept. Leaving room for at least one uuid
+      # character does two things: it keeps some entropy in every generated
+      # name, and it guarantees the name ends with one, because a prefix that
+      # filled the whole budget could end on the separator it was written
+      # with. Azure rejects that outright - both for the VM and for the
+      # network interface named after it, which must end with a word
+      # character.
       #
       # @param state [Hash] instance state, must already have a +:uuid+.
       # @return [String]
       def generated_vm_name(state)
         return config[:vm_name] if config[:vm_name]
 
-        prefix = config[:vm_prefix].to_s
-        remaining = MAX_VM_NAME_LENGTH - prefix.length
-        return prefix[0, MAX_VM_NAME_LENGTH] if remaining <= 0
-
-        "#{prefix}#{state[:uuid][0, remaining]}"
+        prefix = config[:vm_prefix].to_s[0, MAX_VM_NAME_LENGTH - 1]
+        "#{prefix}#{state[:uuid][0, MAX_VM_NAME_LENGTH - prefix.length]}"
       end
 
       # Name of the resource group this instance deploys into.
