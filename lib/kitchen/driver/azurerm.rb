@@ -561,26 +561,47 @@ module Kitchen
         template["resources"].select { |resource| resource["type"] == "Microsoft.Compute/virtualMachines" }
       end
 
+      # Serializes the generate-and-write below.
+      #
+      # Test Kitchen runs instances as threads inside one process, so
+      # +kitchen create -c+ had every thread reach the "does the key exist?"
+      # check before any of them had written one. Each generated its own pair
+      # and wrote it over the last, so only the instance whose key happened to
+      # land on disk last was reachable - the rest were deployed with a public
+      # key nobody held the private half of, and failed at converge with
+      # +Permission denied (publickey)+.
+      #
+      # @return [Mutex]
+      KEY_GENERATION_MUTEX = Mutex.new
+
       # Returns the public key to inject into the deployment, generating a new
       # key pair on disk when the configured private key does not yet exist.
       #
       # @param private_key_filename [String] path to the transport's private key.
       # @return [String] the OpenSSH-format public key, stripped of whitespace.
       def public_key_for_deployment(private_key_filename)
-        unless File.file?(private_key_filename)
-          key = SSHKey.generate
+        KEY_GENERATION_MUTEX.synchronize do
+          generate_key_pair(private_key_filename) unless File.file?(private_key_filename)
 
-          ::FileUtils.mkdir_p(File.dirname(private_key_filename))
-          File.write(private_key_filename, key.private_key)
-          File.chmod(0600, private_key_filename)
-          File.write("#{private_key_filename}.pub", key.ssh_public_key)
-          File.chmod(0600, "#{private_key_filename}.pub")
-
-          return key.ssh_public_key.strip
+          public_key_filename = instance.transport[:ssh_public_key] || "#{private_key_filename}.pub"
+          File.read(public_key_filename).strip
         end
+      end
 
-        public_key_filename = instance.transport[:ssh_public_key] || "#{private_key_filename}.pub"
-        File.read(public_key_filename).strip
+      # Writes a fresh SSH key pair to disk.
+      #
+      # Always called with {KEY_GENERATION_MUTEX} held.
+      #
+      # @param private_key_filename [String] path to write the private key to.
+      # @return [void]
+      def generate_key_pair(private_key_filename)
+        key = SSHKey.generate
+
+        ::FileUtils.mkdir_p(File.dirname(private_key_filename))
+        File.write(private_key_filename, key.private_key)
+        File.chmod(0600, private_key_filename)
+        File.write("#{private_key_filename}.pub", key.ssh_public_key)
+        File.chmod(0600, "#{private_key_filename}.pub")
       end
 
       # Builds the pre-deployment from a caller-supplied ARM template file.

@@ -531,6 +531,16 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
         expect(File.stat(ssh_key_path).mode & 0777).to eq(0600)
       end
 
+      # `kitchen create -c` runs instances as threads in one process, so every
+      # thread used to find the key missing at the same moment and generate its
+      # own. Only the last one written survived, and every other instance was
+      # deployed with a public key nobody held the private half of.
+      it "hands every concurrent caller the key that ends up on disk" do
+        keys = Array.new(8) { Thread.new { driver.public_key_for_deployment(ssh_key_path) } }.map(&:value)
+
+        expect(keys.uniq).to contain_exactly(File.read("#{ssh_key_path}.pub").strip)
+      end
+
       it "injects the public key into the linux configuration" do
         template = JSON.parse(driver.template_for_transport_name)
         linux = vm_resource(template)["properties"]["osProfile"]["linuxConfiguration"]
