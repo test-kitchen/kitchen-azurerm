@@ -8,6 +8,7 @@ RSpec.describe Kitchen::Driver::Azure::ArmClient do
   let(:base) { "https://management.azure.com/subscriptions/#{subscription_id}" }
   let(:resources_version) { described_class::RESOURCES_API_VERSION }
   let(:network_version) { described_class::NETWORK_API_VERSION }
+  let(:compute_version) { described_class::COMPUTE_API_VERSION }
 
   def token_provider_double
     instance_double(Kitchen::Driver::Azure::TokenProvider, authorization_header: "Bearer a-token")
@@ -130,6 +131,17 @@ RSpec.describe Kitchen::Driver::Azure::ArmClient do
     it "is an empty array when ARM returns something that is not an object" do
       stub_request(:get, %r{/operations}).to_return(status: 200, body: "[]")
       expect(client.deployment_operations("rg", "d")).to eq([])
+    end
+  end
+
+  describe "#virtual_machine_instance_view" do
+    it "GETs the instance view with the compute API version" do
+      stub = stub_request(:get, "#{base}/resourcegroups/rg/providers/Microsoft.Compute/virtualMachines/vm/instanceView")
+        .with(query: { "api-version" => compute_version })
+        .to_return(status: 200, body: '{"statuses":[{"code":"PowerState/running"}]}')
+
+      expect(client.virtual_machine_instance_view("rg", "vm")).to eq("statuses" => [{ "code" => "PowerState/running" }])
+      expect(stub).to have_been_requested
     end
   end
 

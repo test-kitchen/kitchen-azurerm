@@ -19,6 +19,7 @@ module AzureDoubles
       deployment_operations: [],
       public_ip: public_ip_response,
       network_interface: network_interface_response,
+      virtual_machine_instance_view: instance_view_response,
     }
     instance_double(Kitchen::Driver::Azure::ArmClient, **defaults.merge(overrides))
   end
@@ -66,6 +67,20 @@ module AzureDoubles
         "ipAddress" => ip_address,
         "dnsSettings" => { "fqdn" => fqdn },
       },
+    }
+  end
+
+  # A virtual machine instance view.
+  #
+  # @param code [String] a status code, e.g. +"PowerState/running"+.
+  # @param display_status [String] Azure's human-readable wording.
+  # @return [Hash]
+  def instance_view_response(code = "PowerState/running", display_status = "VM running")
+    {
+      "statuses" => [
+        { "code" => "ProvisioningState/succeeded", "displayStatus" => "Provisioning succeeded" },
+        { "code" => code, "displayStatus" => display_status },
+      ],
     }
   end
 
