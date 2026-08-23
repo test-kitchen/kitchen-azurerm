@@ -5,6 +5,18 @@ This CHANGELOG is maintained by the [release-please-action](google-github-action
 
 ## Unreleased
 
+## [2.2.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.4...v2.2.0) (2026-08-23)
+
+
+### Features
+
+* report whether the instance is running to `kitchen list --live` ([#350](https://github.com/test-kitchen/kitchen-azurerm/issues/350)) ([d059f3d](https://github.com/test-kitchen/kitchen-azurerm/commit/d059f3d2eb4e773bb66955604aba94c29752aa06))
+
+
+### Bug Fixes
+
+* accept an os_disk_size_gb that YAML made a string ([#348](https://github.com/test-kitchen/kitchen-azurerm/issues/348)) ([e7254bc](https://github.com/test-kitchen/kitchen-azurerm/commit/e7254bc55348ab3d11c549b5c95197b4f3ba09ad))
+
 ## [2.1.4](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.3...v2.1.4) (2026-08-23)
 
 
