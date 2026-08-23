@@ -63,13 +63,60 @@ RSpec.describe Kitchen::Driver::Azure::Http do
       described_class.request(method: :get, url:)
     end
 
+    # The nil is not incidental: Net::HTTP's default p_addr is :ENV, which
+    # makes it consult the proxy environment again for itself. Deciding not to
+    # proxy has to be stated, not merely left unsaid.
     it "connects directly when the host is excluded from proxying" do
       ENV["https_proxy"] = "http://proxy.invalid:8080"
       ENV["no_proxy"] = "example.invalid"
-      expect(Net::HTTP).to receive(:new).with("example.invalid", 443).and_call_original
+      expect(Net::HTTP).to receive(:new).with("example.invalid", 443, nil).and_call_original
 
       stub_request(:get, url).to_return(status: 200)
       described_class.request(method: :get, url:)
+    end
+
+    # Azure's instance metadata service answers on a link-local address that
+    # exists only on the local link. A proxy cannot route to it, so sending
+    # IMDS through one breaks managed identity authentication outright - on a
+    # real VM it hangs until the connect timeout and then surfaces as a
+    # TransientError, which the driver dutifully retries.
+    describe "the instance metadata service" do
+      let(:imds) do
+        "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01"
+      end
+
+      before { stub_request(:get, imds).to_return(status: 200, body: "{}") }
+
+      it "is never sent through a proxy" do
+        ENV["http_proxy"] = "http://proxy.invalid:8080"
+        expect(Net::HTTP).to receive(:new).with("169.254.169.254", 80, nil).and_call_original
+
+        described_class.request(method: :get, url: imds)
+      end
+
+      it "is not proxied even when no_proxy names something else" do
+        ENV["http_proxy"] = "http://proxy.invalid:8080"
+        ENV["no_proxy"] = "example.invalid"
+        expect(Net::HTTP).to receive(:new).with("169.254.169.254", 80, nil).and_call_original
+
+        described_class.request(method: :get, url: imds)
+      end
+
+      it "still reaches it when no proxy is configured at all" do
+        expect(described_class.request(method: :get, url: imds).status).to eq(200)
+      end
+    end
+
+    # Everything else must keep honouring the proxy: this is not a licence to
+    # ignore it, only a carve-out for an address a proxy cannot reach.
+    it "keeps proxying an ordinary host that happens to be plain HTTP" do
+      ENV["http_proxy"] = "http://proxy.invalid:8080"
+      plain = "http://example.invalid/x"
+      stub_request(:get, plain).to_return(status: 200)
+      expect(Net::HTTP).to receive(:new)
+        .with("example.invalid", 80, "proxy.invalid", 8080, nil, nil).and_call_original
+
+      described_class.request(method: :get, url: plain)
     end
 
     it "does not treat an HTTP error status as transient" do

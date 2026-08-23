@@ -1,3 +1,4 @@
+require "ipaddr" unless defined?(IPAddr)
 require "json" unless defined?(JSON)
 require "net/http" unless defined?(Net::HTTP)
 require "openssl" unless defined?(OpenSSL)
@@ -28,6 +29,11 @@ module Kitchen
           SocketError,
           OpenSSL::SSL::SSLError,
         ].freeze
+
+        # The link-local range, which holds Azure's instance metadata service.
+        #
+        # @return [IPAddr]
+        LINK_LOCAL = IPAddr.new("169.254.0.0/16").freeze
 
         # Seconds to wait for a connection and for a response.
         #
@@ -87,17 +93,48 @@ module Kitchen
         # @return [Net::HTTPResponse]
         # @api private
         def self.perform(uri, request)
-          proxy = uri.find_proxy
+          proxy = proxy_for(uri)
           http = if proxy
                    Net::HTTP.new(uri.host, uri.port, proxy.host, proxy.port, proxy.user, proxy.password)
                  else
-                   Net::HTTP.new(uri.host, uri.port)
+                   # Explicitly nil rather than Net::HTTP's default of :ENV,
+                   # which would send it back to the environment to pick a
+                   # proxy we have just decided against.
+                   Net::HTTP.new(uri.host, uri.port, nil)
                  end
 
           http.use_ssl = uri.scheme == "https"
           http.open_timeout = OPEN_TIMEOUT
           http.read_timeout = READ_TIMEOUT
           http.start { |connection| connection.request(request) }
+        end
+
+        # The proxy to reach a URL through, if any.
+        #
+        # Azure's instance metadata service answers on a link-local address,
+        # which exists only on the local link and which no proxy can route to.
+        # Sending it through one breaks managed identity authentication
+        # outright: the connection hangs until the open timeout, surfaces as a
+        # {TransientError}, and is then retried. Every Azure SDK carves the
+        # same exception out.
+        #
+        # @param uri [URI]
+        # @return [URI, nil]
+        # @api private
+        def self.proxy_for(uri)
+          return nil if link_local?(uri.host)
+
+          uri.find_proxy
+        end
+
+        # @param host [String]
+        # @return [Boolean] whether the host is a link-local address.
+        # @api private
+        def self.link_local?(host)
+          LINK_LOCAL.include?(IPAddr.new(host.to_s))
+        rescue IPAddr::Error
+          # Not an IP address at all, so not the metadata service.
+          false
         end
 
         # @param method [Symbol]
