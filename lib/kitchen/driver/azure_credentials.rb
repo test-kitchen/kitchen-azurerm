@@ -74,16 +74,24 @@ module Kitchen
 
       # Endpoints for the configured cloud.
       #
+      # +AZURE_AUTHORITY_HOST+ overrides the Entra ID endpoint, which is how
+      # platforms that issue federated tokens point at their own authority.
+      #
       # @return [Azure::Environments::Environment]
       # @raise [Kitchen::UserError] if the cloud name is not recognised.
       def azure_environment
-        @azure_environment ||= Azure::Environments.fetch(environment)
+        @azure_environment ||= Azure::Environments.fetch(environment).with_authority(ENV["AZURE_AUTHORITY_HOST"])
       end
 
       # Selects a token provider based on which credentials resolved.
       #
+      # In precedence order:
+      #
+      # * +AZURE_FEDERATED_TOKEN_FILE+ + +client_id+ + +tenant_id+ - workload
+      #   identity federation, the secretless option for CI.
       # * +client_id+ + +client_secret+ + +tenant_id+ - service principal.
-      # * +client_id+ + +tenant_id+ - user-assigned managed identity.
+      # * +AZURE_USE_MSI+ - managed identity, explicitly.
+      # * +client_id+ without a secret - user-assigned managed identity.
       # * +tenant_id+ only - system-assigned managed identity.
       # * none of the above - falls back to the +az login+ token cache.
       #
@@ -104,16 +112,42 @@ module Kitchen
 
       # @return [Azure::TokenProvider]
       def build_token_provider
-        if client_id && client_secret && tenant_id!
+        if federated_token_file && client_id && tenant_id!
+          debug "Authenticating with workload identity federation (#{federated_token_file})."
+          Azure::WorkloadIdentityToken.new(environment: azure_environment, tenant_id:, client_id:,
+            token_file: federated_token_file)
+        elsif client_id && client_secret && tenant_id!
           Azure::ServicePrincipalToken.new(environment: azure_environment, tenant_id:, client_id:, client_secret:)
-        elsif client_id && tenant_id!
+        elsif use_managed_identity?
           Azure::ManagedIdentityToken.new(environment: azure_environment, client_id:)
         elsif tenant_id!
+          # A tenant with no client credentials means a system-assigned identity.
           Azure::ManagedIdentityToken.new(environment: azure_environment)
         else
           warn("Using tenant id set through `az login`.")
           Azure::AzureCliToken.new(environment: azure_environment)
         end
+      end
+
+      # Whether to authenticate as a managed identity.
+      #
+      # A +client_id+ with no accompanying secret means a user-assigned managed
+      # identity, which is how the Azure SDKs read the same combination.
+      # Crucially this does not require a tenant: the instance metadata service
+      # never sees one, so demanding it only prevented the identity from being
+      # used at all.
+      #
+      # @return [Boolean]
+      def use_managed_identity?
+        return true unless ENV["AZURE_USE_MSI"].to_s.empty?
+
+        !client_id.nil? && client_secret.nil?
+      end
+
+      # @return [String, nil] path to a federated token file, if one is configured.
+      def federated_token_file
+        value = ENV["AZURE_FEDERATED_TOKEN_FILE"]
+        value unless value.to_s.empty?
       end
 
       # @return [Kitchen::Logger] the shared Test Kitchen logger.

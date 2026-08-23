@@ -72,6 +72,59 @@ AZURE_TENANT_ID="your-azure-tenant-id-here"
 
 Note that the environment variables, if set, take preference over the values in a configuration file.
 
+### Authentication methods
+
+The driver picks an authentication method from whatever resolves, in this order:
+
+| Method | Configure with | Use when |
+| --- | --- | --- |
+| Workload identity federation | `AZURE_FEDERATED_TOKEN_FILE` + `AZURE_CLIENT_ID` + `AZURE_TENANT_ID` | CI — GitHub Actions, GitLab, Azure DevOps, AKS. No secret to store. |
+| Service principal | `AZURE_CLIENT_ID` + `AZURE_CLIENT_SECRET` + `AZURE_TENANT_ID`, or the credentials file | A long-lived secret you manage yourself. |
+| Managed identity | `AZURE_CLIENT_ID` for a user-assigned identity, `AZURE_USE_MSI=1` for a system-assigned one | Running on an Azure VM or in AKS. |
+| Azure CLI | `az login` | Local development. |
+
+Values come from the environment first, then the matching subscription section
+of the credentials file.
+
+#### Workload identity federation
+
+This is the method to prefer in CI. Rather than storing a secret, your CI
+platform issues a short-lived signed assertion which Azure exchanges for an
+access token, so there is no credential in your repository or your CI settings
+to leak, rotate, or accidentally print.
+
+Set up a [federated credential](https://learn.microsoft.com/entra/workload-id/workload-identity-federation)
+trusting your repository, then in GitHub Actions:
+
+```yaml
+permissions:
+  id-token: write
+  contents: read
+
+steps:
+  - uses: azure/login@v2
+    with:
+      client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  - run: bundle exec kitchen test
+```
+
+`azure/login` writes the assertion to a file and exports
+`AZURE_FEDERATED_TOKEN_FILE`, `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`, which is
+all this driver needs. Nothing in `kitchen.yml` changes.
+
+The assertion is re-read from disk on every token request, so a long
+`kitchen test` run keeps working when the platform rotates it.
+
+`AZURE_AUTHORITY_HOST` is honoured if your platform sets it, as AKS does.
+
+#### Managed identity
+
+On an Azure VM or in AKS, set `AZURE_CLIENT_ID` to the user-assigned identity's
+client ID, or `AZURE_USE_MSI=1` to use the system-assigned identity. Tokens come
+from the instance metadata service; no tenant is required.
+
 After adjusting your ```~/.azure/credentials``` file you will need to adjust your ```kitchen.yml``` file to leverage the azurerm driver. Use the following examples to achieve this, then check your configuration with standard kitchen commands. For example,
 
 ```bash
