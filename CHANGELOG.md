@@ -4,6 +4,13 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [2.1.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.0.0...v2.1.0) (2026-08-23)
+
+
+### Features
+
+* add workload identity federation, and fix managed identity selection ([#325](https://github.com/test-kitchen/kitchen-azurerm/issues/325)) ([5e36643](https://github.com/test-kitchen/kitchen-azurerm/commit/5e36643e4bb5a2509d4a3d790e18202e87954643))
+
 ## [2.0.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.14.0...v2.0.0) (2026-08-23)
 
 
