@@ -1,21 +1,14 @@
 require "kitchen"
 
-autoload :MsRestAzure2, "ms_rest_azure2"
 require_relative "azure_credentials"
+require_relative "azure/errors"
 require "securerandom" unless defined?(SecureRandom)
-# Azure SDK namespaces, autoloaded so that requiring this driver does not pull
-# in the (large) management clients until a deployment actually needs them.
-module Azure
-  autoload :Resources2, "azure_mgmt_resources2"
-  autoload :Network2, "azure_mgmt_network2"
-end
 require "base64" unless defined?(Base64)
 autoload :SSHKey, "sshkey"
 require "fileutils" unless defined?(FileUtils)
 require "erb" unless defined?(Erb)
 require "ostruct" unless defined?(OpenStruct)
 require "json" unless defined?(JSON)
-autoload :Faraday, "faraday"
 
 # Test Kitchen's top-level namespace.
 module Kitchen
@@ -33,14 +26,8 @@ module Kitchen
       # Client for the Azure Resource Manager API, built during {#create} or
       # {#destroy} once credentials have been resolved.
       #
-      # @return [::Azure::Resources2::Profiles::Latest::Mgmt::Client, nil]
-      attr_accessor :resource_management_client
-
-      # Client for the Azure Network API, built during {#create} once the
-      # deployment has completed.
-      #
-      # @return [::Azure::Network2::Profiles::Latest::Mgmt::Client, nil]
-      attr_accessor :network_management_client
+      # @return [Azure::ArmClient, nil]
+      attr_accessor :arm_client
 
       kitchen_driver_api_version 2
 
@@ -262,7 +249,7 @@ module Kitchen
       # @param state [Hash] the instance state, mutated in place.
       # @return [void]
       # @raise [RuntimeError] if no +subscription_id+ can be resolved.
-      # @raise [MsRestAzure2::AzureOperationError] if an Azure API call fails
+      # @raise [Azure::OperationError] if an Azure API call fails
       #   for any reason other than an already-running deployment.
       def create(state)
         warn_about_deprecated_config
@@ -273,16 +260,14 @@ module Kitchen
           raise "A subscription_id config value was not detected and kitchen-azurerm cannot continue. Please check your kitchen.yml configuration. Exiting."
         end
 
-        options = Kitchen::Driver::AzureCredentials.new(subscription_id: config[:subscription_id],
-          environment: config[:azure_environment]).azure_options
-
         debug "Azure environment: #{config[:azure_environment]}"
-        @resource_management_client = ::Azure::Resources2::Profiles::Latest::Mgmt::Client.new(options)
+        @arm_client = Kitchen::Driver::AzureCredentials.new(subscription_id: config[:subscription_id],
+          environment: config[:azure_environment]).arm_client
 
         begin
           info "Creating Resource Group: #{state[:azure_resource_group_name]}"
           create_resource_group(state[:azure_resource_group_name], get_resource_group)
-        rescue ::MsRestAzure2::AzureOperationError => operation_error
+        rescue Azure::OperationError => operation_error
           error operation_error.body
           raise operation_error
         end
@@ -294,9 +279,9 @@ module Kitchen
           store_deployment_credentials(state, deployment_parameters)
 
           run_deployment(state, "post-deploy", post_deployment(config[:post_deployment_template], config[:post_deployment_parameters])) if File.file?(config[:post_deployment_template])
-        rescue ::MsRestAzure2::AzureOperationError => operation_error
+        rescue Azure::OperationError => operation_error
           rest_error = operation_error.body["error"]
-          if rest_error["code"] == "DeploymentActive"
+          if operation_error.code == "DeploymentActive"
             info "Deployment for resource group #{state[:azure_resource_group_name]} is ongoing."
             info "If you need to change the deployment template you'll need to rerun `kitchen create` for this instance."
           else
@@ -305,7 +290,6 @@ module Kitchen
           end
         end
 
-        @network_management_client = ::Azure::Network2::Profiles::Latest::Mgmt::Client.new(options)
         state[:hostname] = resolve_hostname(state, deployment_parameters["nicName"])
       end
 
@@ -380,12 +364,12 @@ module Kitchen
       #
       # @param state [Hash] instance state, used for the resource group and uuid.
       # @param prefix [String] deployment name prefix, e.g. +"pre-deploy"+.
-      # @param deployment [Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment]
+      # @param deployment [Hash] the deployment body
       # @return [void]
       def run_deployment(state, prefix, deployment)
         name = "#{prefix}-#{state[:uuid]}"
         info "Creating deployment: #{name}"
-        create_deployment_async(state[:azure_resource_group_name], name, deployment).value!
+        create_deployment_async(state[:azure_resource_group_name], name, deployment)
         follow_deployment_until_end_state(state[:azure_resource_group_name], name)
       end
 
@@ -421,17 +405,20 @@ module Kitchen
       def resolve_hostname(state, vmnic)
         if public_ip?
           result = get_public_ip(state[:azure_resource_group_name], "publicip")
-          info "IP Address is: #{result.ip_address} [#{result.dns_settings.fqdn}]"
+          ip_address = result.dig("properties", "ipAddress")
+          fqdn = result.dig("properties", "dnsSettings", "fqdn")
+          info "IP Address is: #{ip_address} [#{fqdn}]"
           if config[:use_fqdn_hostname]
             info "Using FQDN to communicate instead of IP"
-            result.dns_settings.fqdn
+            fqdn
           else
-            result.ip_address
+            ip_address
           end
         else
           result = get_network_interface(state[:azure_resource_group_name], vmnic.to_s)
-          info "IP Address is: #{result.ip_configurations[0].private_ipaddress}"
-          result.ip_configurations[0].private_ipaddress
+          private_ip = result.dig("properties", "ipConfigurations", 0, "properties", "privateIPAddress")
+          info "IP Address is: #{private_ip}"
+          private_ip
         end
       end
 
@@ -576,7 +563,7 @@ module Kitchen
       #
       # @param pre_deployment_template_filename [String] path to an ARM template.
       # @param pre_deployment_parameters [Hash] parameter name to value.
-      # @return [Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment]
+      # @return [Hash] the deployment body
       def pre_deployment(pre_deployment_template_filename, pre_deployment_parameters)
         build_deployment(::File.read(pre_deployment_template_filename), pre_deployment_parameters)
       end
@@ -584,10 +571,10 @@ module Kitchen
       # Builds the virtual machine deployment.
       #
       # @param parameters [Hash] parameter name to value.
-      # @return [Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment]
+      # @return [Hash] the deployment body
       def deployment(parameters)
         deployment = build_deployment(template_for_transport_name, parameters)
-        debug(JSON.pretty_generate(deployment.properties.template))
+        debug(JSON.pretty_generate(deployment_template(deployment)))
         deployment
       end
 
@@ -595,7 +582,7 @@ module Kitchen
       #
       # @param post_deployment_template_filename [String] path to an ARM template.
       # @param post_deployment_parameters [Hash] parameter name to value.
-      # @return [Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment]
+      # @return [Hash] the deployment body
       def post_deployment(post_deployment_template_filename, post_deployment_parameters)
         build_deployment(::File.read(post_deployment_template_filename), post_deployment_parameters)
       end
@@ -603,10 +590,10 @@ module Kitchen
       # An empty Complete-mode deployment, used to delete every resource inside
       # a resource group while leaving the group itself in place.
       #
-      # @return [Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment]
+      # @return [Hash] the deployment body
       def empty_deployment
-        deployment = build_deployment(virtual_machine_deployment_template_file("empty.erb", nil), nil, mode: ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentMode::Complete)
-        debug(JSON.pretty_generate(deployment.properties.template))
+        deployment = build_deployment(virtual_machine_deployment_template_file("empty.erb", nil), nil, mode: "Complete")
+        debug(JSON.pretty_generate(deployment_template(deployment)))
         deployment
       end
 
@@ -615,14 +602,21 @@ module Kitchen
       # @param template [String] the ARM template as JSON.
       # @param parameters [Hash, nil] parameter name to value, or nil for none.
       # @param mode [String] the ARM deployment mode.
-      # @return [Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment]
-      def build_deployment(template, parameters, mode: ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentMode::Incremental)
-        deployment = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment.new
-        deployment.properties = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentProperties.new
-        deployment.properties.mode = mode
-        deployment.properties.template = JSON.parse(template)
-        deployment.properties.parameters = parameters_in_values_format(parameters) if parameters
-        deployment
+      # @return [Hash] the deployment body
+      def build_deployment(template, parameters, mode: "Incremental")
+        properties = { "mode" => mode, "template" => JSON.parse(template) }
+        formatted = parameters_in_values_format(parameters)
+        properties["parameters"] = formatted if formatted
+
+        { "properties" => properties }
+      end
+
+      # The parsed ARM template inside a deployment body.
+      #
+      # @param deployment [Hash] as built by {#build_deployment}.
+      # @return [Hash]
+      def deployment_template(deployment)
+        deployment["properties"]["template"]
       end
 
       # Renders resource tags as a JSON object body (no surrounding braces), for
@@ -647,7 +641,7 @@ module Kitchen
         return nil if parameters_in.nil? || parameters_in.empty?
 
         parameters_in.each_with_object({}) do |(key, value), acc|
-          acc[key.to_sym] = { "value" => value }
+          acc[key.to_s] = { "value" => value }
         end
       end
 
@@ -680,11 +674,11 @@ module Kitchen
       # @raise [RuntimeError] if any operation reported a non-OK status code.
       def show_failed_operations(resource_group, deployment_name)
         failures = list_deployment_operations(resource_group, deployment_name).reject do |operation|
-          operation.properties.status_code == "OK"
+          operation.dig("properties", "statusCode") == "OK"
         end
         return if failures.empty?
 
-        raise failures.map { |operation| operation.properties.status_message.inspect }.join("\n")
+        raise failures.map { |operation| operation.dig("properties", "statusMessage").inspect }.join("\n")
       end
 
       # Logs every deployment operation that has not yet reached a terminal state.
@@ -695,11 +689,11 @@ module Kitchen
       def list_outstanding_deployment_operations(resource_group, deployment_name)
         end_operation_states = %w{Failed Succeeded}
         list_deployment_operations(resource_group, deployment_name).each do |operation|
-          resource_provisioning_state = operation.properties.provisioning_state
+          resource_provisioning_state = operation.dig("properties", "provisioningState")
           next if end_operation_states.include?(resource_provisioning_state)
 
-          target = operation.properties.target_resource
-          info "Resource #{target&.resource_type} '#{target&.resource_name}' provisioning status is #{resource_provisioning_state}"
+          target = operation.dig("properties", "targetResource") || {}
+          info "Resource #{target["resourceType"]} '#{target["resourceName"]}' provisioning status is #{resource_provisioning_state}"
         end
       end
 
@@ -707,15 +701,14 @@ module Kitchen
       #
       # @param state [Hash] the instance state, mutated in place.
       # @return [void]
-      # @raise [MsRestAzure2::AzureOperationError] if an Azure API call fails.
+      # @raise [Azure::OperationError] if an Azure API call fails.
       def destroy(state)
         # TODO: We have some not so fun state issues we need to clean up
         state[:azure_environment] = config[:azure_environment] unless state[:azure_environment]
         state[:subscription_id] = config[:subscription_id] unless state[:subscription_id]
 
-        options = Kitchen::Driver::AzureCredentials.new(subscription_id: state[:subscription_id],
-          environment: state[:azure_environment]).azure_options
-        @resource_management_client = ::Azure::Resources2::Profiles::Latest::Mgmt::Client.new(options)
+        @arm_client = Kitchen::Driver::AzureCredentials.new(subscription_id: state[:subscription_id],
+          environment: state[:azure_environment]).arm_client
 
         return if destroy_orphaned_explicit_resource_group(state)
 
@@ -737,7 +730,7 @@ module Kitchen
           delete_resource_group_async(state[:azure_resource_group_name])
           info "Destroy operation accepted and will continue in the background."
           state.delete(:azure_resource_group_name)
-        rescue ::MsRestAzure2::AzureOperationError => operation_error
+        rescue Azure::OperationError => operation_error
           error operation_error.body
           raise operation_error
         end
@@ -753,7 +746,7 @@ module Kitchen
       #
       # @param state [Hash] the instance state.
       # @return [Boolean] true when the group was deleted and {#destroy} should stop.
-      # @raise [MsRestAzure2::AzureOperationError] if the delete request fails.
+      # @raise [Azure::OperationError] if the delete request fails.
       def destroy_orphaned_explicit_resource_group(state)
         return false unless state[:server_id].nil? && state[:azure_resource_group_name].nil?
         return false if config[:explicit_resource_group_name].nil?
@@ -765,7 +758,7 @@ module Kitchen
         delete_resource_group_async(config[:explicit_resource_group_name])
         info "Destroy operation accepted and will continue in the background."
         true
-      rescue ::MsRestAzure2::AzureOperationError => operation_error
+      rescue Azure::OperationError => operation_error
         error operation_error.body
         raise operation_error
       end
@@ -775,7 +768,7 @@ module Kitchen
       #
       # @param state [Hash] the instance state.
       # @return [void]
-      # @raise [MsRestAzure2::AzureOperationError] if an Azure API call fails.
+      # @raise [Azure::OperationError] if an Azure API call fails.
       def destroy_resource_group_contents(state)
         info "Destroying individual resources within the Resource Group."
         run_deployment(state, "empty-deploy", empty_deployment)
@@ -785,11 +778,9 @@ module Kitchen
           create_resource_group(state[:azure_resource_group_name], get_resource_group)
         else
           warn 'The "destroy_explicit_resource_group_tags" setting value is set to "true". The tags on the resource group will be removed.'
-          resource_group = get_resource_group
-          resource_group.tags = {}
-          create_resource_group(state[:azure_resource_group_name], resource_group)
+          create_resource_group(state[:azure_resource_group_name], get_resource_group.merge(tags: {}))
         end
-      rescue ::MsRestAzure2::AzureOperationError => operation_error
+      rescue Azure::OperationError => operation_error
         error operation_error.body
         raise operation_error
       end
@@ -1078,14 +1069,11 @@ module Kitchen
       # Wrapper methods for the Azure API calls to retry the calls when getting timeouts.
       #
 
-      # A new resource group object carrying the configured location and tags.
+      # The resource group body carrying the configured location and tags.
       #
-      # @return [::Azure::Resources2::Profiles::Latest::Mgmt::Models::ResourceGroup]
+      # @return [Hash]
       def get_resource_group
-        resource_group = ::Azure::Resources2::Profiles::Latest::Mgmt::Models::ResourceGroup.new
-        resource_group.location = config[:location]
-        resource_group.tags = config[:resource_group_tags]
-        resource_group
+        { location: config[:location], tags: config[:resource_group_tags] }
       end
 
       # Runs an Azure API call, retrying on transient connection failures.
@@ -1093,12 +1081,12 @@ module Kitchen
       # @param description [String] describes the call, used in retry logging.
       # @yield the API call to run.
       # @return [Object] whatever the block returns.
-      # @raise [Faraday::Error] once the retry budget is exhausted.
+      # @raise [Azure::TransientError] once the retry budget is exhausted.
       def with_azure_retries(description)
         retries = config[:azure_api_retries]
         begin
           yield
-        rescue Faraday::TimeoutError, Faraday::ClientError => exception
+        rescue Azure::TransientError => exception
           send_exception_message(exception, "#{description} #{retries} retries left.")
           raise if retries <= 0
 
@@ -1113,18 +1101,19 @@ module Kitchen
       # @return [Boolean]
       def resource_group_exists?(resource_group_name)
         with_azure_retries("while checking if resource group '#{resource_group_name}' exists.") do
-          resource_management_client.resource_groups.check_existence(resource_group_name)
+          arm_client.resource_group_exists?(resource_group_name)
         end
       end
 
       # Creates or updates a resource group.
       #
       # @param resource_group_name [String] the resource group name.
-      # @param resource_group [::Azure::Resources2::Profiles::Latest::Mgmt::Models::ResourceGroup]
-      # @return [::Azure::Resources2::Profiles::Latest::Mgmt::Models::ResourceGroup]
+      # @param resource_group [Hash] with +:location+ and +:tags+.
+      # @return [Hash] the resource group as ARM returned it.
       def create_resource_group(resource_group_name, resource_group)
         with_azure_retries("while creating resource group '#{resource_group_name}'.") do
-          resource_management_client.resource_groups.create_or_update(resource_group_name, resource_group)
+          arm_client.create_or_update_resource_group(resource_group_name,
+            location: resource_group[:location], tags: resource_group[:tags])
         end
       end
 
@@ -1132,11 +1121,11 @@ module Kitchen
       #
       # @param resource_group [String] the resource group name.
       # @param deployment_name [String] the deployment name.
-      # @param deployment [::Azure::Resources2::Profiles::Latest::Mgmt::Models::Deployment]
-      # @return [Concurrent::Promise] resolves once the request is accepted.
+      # @param deployment [Hash] as built by {#build_deployment}.
+      # @return [Hash] the deployment as ARM returned it.
       def create_deployment_async(resource_group, deployment_name, deployment)
         with_azure_retries("while sending deployment creation request for deployment '#{deployment_name}'.") do
-          resource_management_client.deployments.begin_create_or_update_async(resource_group, deployment_name, deployment)
+          arm_client.create_deployment(resource_group, deployment_name, deployment)
         end
       end
 
@@ -1144,10 +1133,10 @@ module Kitchen
       #
       # @param resource_group_name [String] the resource group name.
       # @param public_ip_name [String] the public IP resource name.
-      # @return [Object] the public IP address resource.
+      # @return [Hash] the public IP address resource.
       def get_public_ip(resource_group_name, public_ip_name)
         with_azure_retries("while fetching public ip '#{public_ip_name}' for resource group '#{resource_group_name}'.") do
-          network_management_client.public_ipaddresses.get(resource_group_name, public_ip_name)
+          arm_client.public_ip(resource_group_name, public_ip_name)
         end
       end
 
@@ -1155,11 +1144,10 @@ module Kitchen
       #
       # @param resource_group_name [String] the resource group name.
       # @param network_interface_name [String] the NIC name.
-      # @return [Object] the network interface resource.
+      # @return [Hash] the network interface resource.
       def get_network_interface(resource_group_name, network_interface_name)
         with_azure_retries("while fetching network interface '#{network_interface_name}' for resource group '#{resource_group_name}'.") do
-          network_interfaces = ::Azure::Network2::Profiles::Latest::Mgmt::NetworkInterfaces.new(network_management_client)
-          network_interfaces.get(resource_group_name, network_interface_name)
+          arm_client.network_interface(resource_group_name, network_interface_name)
         end
       end
 
@@ -1167,10 +1155,10 @@ module Kitchen
       #
       # @param resource_group [String] the resource group name.
       # @param deployment_name [String] the deployment name.
-      # @return [Array<Object>]
+      # @return [Array<Hash>]
       def list_deployment_operations(resource_group, deployment_name)
         with_azure_retries("while listing deployment operations for deployment '#{deployment_name}'.") do
-          resource_management_client.deployment_operations.list(resource_group, deployment_name)
+          arm_client.deployment_operations(resource_group, deployment_name)
         end
       end
 
@@ -1181,7 +1169,7 @@ module Kitchen
       # @return [String] e.g. +"Running"+, +"Succeeded"+, +"Failed"+.
       def get_deployment_state(resource_group, deployment_name)
         with_azure_retries("while retrieving state for deployment '#{deployment_name}'.") do
-          resource_management_client.deployments.get(resource_group, deployment_name).properties.provisioning_state
+          arm_client.deployment(resource_group, deployment_name).dig("properties", "provisioningState")
         end
       end
 
@@ -1191,7 +1179,7 @@ module Kitchen
       # @return [Object] the operation response.
       def delete_resource_group_async(resource_group_name)
         with_azure_retries("while sending resource group deletion request for '#{resource_group_name}'.") do
-          resource_management_client.resource_groups.begin_delete(resource_group_name)
+          arm_client.delete_resource_group(resource_group_name)
         end
       end
 
@@ -1201,14 +1189,12 @@ module Kitchen
       # @param message [String] context describing what was being attempted.
       # @return [void]
       def send_exception_message(exception, message)
-        header = case exception
-                 when Faraday::TimeoutError then "Timed out"
-                 when Faraday::ClientError then "Connection reset by peer"
-                 else
-                   info "Unrecognized exception type."
-                   return
-                 end
-        info "#{header} #{message}"
+        unless exception.is_a?(Azure::TransientError)
+          info "Unrecognized exception type."
+          return
+        end
+
+        info "Could not reach Azure (#{exception.message}) #{message}"
       end
     end
   end

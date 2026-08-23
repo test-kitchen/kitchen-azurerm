@@ -1,142 +1,112 @@
-# Doubles and real SDK model objects standing in for the Azure Resource Manager
-# and Network management APIs.
+# Doubles and fixtures standing in for Azure Resource Manager responses.
 #
-# Where the SDK ships a plain model class (deployment operations, resource
-# groups) these helpers build the real object, so the driver is exercised
-# against the same attribute names Azure actually returns. Only the operation
-# groups that would perform HTTP are doubled.
+# The driver now talks to ARM over plain HTTP, so responses are ordinary parsed
+# JSON. These helpers build that JSON in ARM's own shape - camelCase, nested
+# under "properties" - so a spec that passes here is asserting against the
+# structure Azure actually returns.
 module AzureDoubles
-  RESOURCES = Azure::Resources2::Profiles::Latest::Mgmt
-  NETWORK = Azure::Network2::Profiles::Latest::Mgmt
-
-  # A doubled resource management client.
+  # A doubled ARM client.
   #
-  # @param resource_groups [Object] stand-in for the resource groups operations.
-  # @param deployments [Object] stand-in for the deployments operations.
-  # @param deployment_operations [Object] stand-in for the deployment operations.
+  # @param overrides [Hash] method name to return value.
   # @return [RSpec::Mocks::InstanceVerifyingDouble]
-  def resource_client_double(resource_groups: resource_groups_double,
-    deployments: deployments_double,
-    deployment_operations: deployment_operations_double)
-    instance_double(RESOURCES::Client, resource_groups:, deployments:, deployment_operations:)
+  def arm_client_double(**overrides)
+    defaults = {
+      resource_group_exists?: true,
+      create_or_update_resource_group: { "id" => "/subscriptions/s/resourcegroups/rg" },
+      delete_resource_group: nil,
+      create_deployment: { "id" => "/deployments/d" },
+      deployment: deployment_response("Succeeded"),
+      deployment_operations: [],
+      public_ip: public_ip_response,
+      network_interface: network_interface_response,
+    }
+    instance_double(Kitchen::Driver::Azure::ArmClient, **defaults.merge(overrides))
   end
 
-  # @param exists [Boolean] what +check_existence+ reports.
-  # @return [RSpec::Mocks::InstanceVerifyingDouble]
-  def resource_groups_double(exists: true)
-    instance_double(RESOURCES::ResourceGroups, check_existence: exists, create_or_update: nil, begin_delete: nil)
-  end
-
-  # @param provisioning_state [String] the state reported by +get+.
-  # @return [RSpec::Mocks::InstanceVerifyingDouble]
-  def deployments_double(provisioning_state: "Succeeded")
-    instance_double(
-      RESOURCES::Deployments,
-      begin_create_or_update_async: accepted_request,
-      get: deployment_extended(provisioning_state)
-    )
-  end
-
-  # @param operations [Array] deployment operations returned by +list+.
-  # @return [RSpec::Mocks::InstanceVerifyingDouble]
-  def deployment_operations_double(operations: [])
-    instance_double(RESOURCES::DeploymentOperations, list: operations)
-  end
-
-  # The value returned by the SDK's +*_async+ methods: something answering
-  # +value!+ once the request has been accepted.
-  #
-  # @return [RSpec::Mocks::Double]
-  def accepted_request
-    double("MsRest::Promise", value!: nil)
-  end
-
-  # A real +DeploymentExtended+ carrying a provisioning state.
-  #
-  # @param provisioning_state [String]
-  # @return [Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentExtended]
-  def deployment_extended(provisioning_state)
-    deployment = RESOURCES::Models::DeploymentExtended.new
-    deployment.properties = RESOURCES::Models::DeploymentPropertiesExtended.new
-    deployment.properties.provisioning_state = provisioning_state
-    deployment
-  end
-
-  # A real +DeploymentOperation+.
+  # An ARM deployment response.
   #
   # @param provisioning_state [String] e.g. +"Running"+ or +"Succeeded"+.
+  # @return [Hash]
+  def deployment_response(provisioning_state)
+    { "properties" => { "provisioningState" => provisioning_state } }
+  end
+
+  # One entry from a deployment's operations list.
+  #
+  # @param provisioning_state [String]
   # @param status_code [String] e.g. +"OK"+ or +"Conflict"+.
   # @param status_message [String, nil] Azure's failure detail.
-  # @param resource_name [String, nil] name of the resource being operated on.
-  # @param resource_type [String, nil] type of the resource being operated on.
-  # @return [Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentOperation]
+  # @param resource_name [String, nil]
+  # @param resource_type [String, nil]
+  # @return [Hash]
   def deployment_operation(provisioning_state: "Succeeded", status_code: "OK", status_message: nil,
     resource_name: nil, resource_type: nil)
-    operation = RESOURCES::Models::DeploymentOperation.new
-    operation.properties = RESOURCES::Models::DeploymentOperationProperties.new
-    operation.properties.provisioning_state = provisioning_state
-    operation.properties.status_code = status_code
-    operation.properties.status_message = status_message
+    properties = {
+      "provisioningState" => provisioning_state,
+      "statusCode" => status_code,
+      "statusMessage" => status_message,
+    }
 
     if resource_name || resource_type
-      operation.properties.target_resource = RESOURCES::Models::TargetResource.new
-      operation.properties.target_resource.resource_name = resource_name
-      operation.properties.target_resource.resource_type = resource_type
+      properties["targetResource"] = { "resourceName" => resource_name, "resourceType" => resource_type }
     end
 
-    operation
+    { "properties" => properties }
   end
 
-  # A doubled network management client.
+  # A public IP address resource.
   #
-  # @param public_ipaddresses [Object] stand-in for the public IP operations.
-  # @return [RSpec::Mocks::InstanceVerifyingDouble]
-  def network_client_double(public_ipaddresses: public_ip_addresses_double)
-    instance_double(NETWORK::Client, public_ipaddresses:)
-  end
-
-  # @param ip_address [String] the address reported by +get+.
-  # @param fqdn [String] the DNS name reported by +get+.
-  # @return [RSpec::Mocks::InstanceVerifyingDouble]
-  def public_ip_addresses_double(ip_address: "40.121.0.1", fqdn: "kitchen-abc.eastus2.cloudapp.azure.com")
-    instance_double(NETWORK::PublicIPAddresses, get: public_ip(ip_address:, fqdn:))
-  end
-
   # @param ip_address [String]
   # @param fqdn [String]
-  # @return [RSpec::Mocks::Double]
-  def public_ip(ip_address: "40.121.0.1", fqdn: "kitchen-abc.eastus2.cloudapp.azure.com")
-    double("PublicIPAddress", ip_address:, dns_settings: double("PublicIPAddressDnsSettings", fqdn:))
+  # @return [Hash]
+  def public_ip_response(ip_address: "40.121.0.1", fqdn: "kitchen-abc.eastus2.cloudapp.azure.com")
+    {
+      "name" => "publicip",
+      "properties" => {
+        "ipAddress" => ip_address,
+        "dnsSettings" => { "fqdn" => fqdn },
+      },
+    }
   end
 
-  # @param private_ip [String] the address of the NIC's first IP configuration.
-  # @return [RSpec::Mocks::Double]
-  def network_interface(private_ip: "10.0.0.4")
-    double("NetworkInterface", ip_configurations: [double("IPConfiguration", private_ipaddress: private_ip)])
+  # A network interface resource.
+  #
+  # @param private_ip [String]
+  # @return [Hash]
+  def network_interface_response(private_ip: "10.0.0.4")
+    {
+      "name" => "nic",
+      "properties" => {
+        "ipConfigurations" => [
+          { "properties" => { "privateIPAddress" => private_ip } },
+        ],
+      },
+    }
   end
 
-  # An +MsRestAzure2::AzureOperationError+ carrying an Azure error body.
+  # An ARM error.
   #
   # @param code [String] the Azure error code, e.g. +"DeploymentActive"+.
-  # @param message [String] the Azure error message.
-  # @return [MsRestAzure2::AzureOperationError]
-  def azure_operation_error(code:, message: "something went wrong")
-    error = MsRestAzure2::AzureOperationError.new("Azure operation failed")
-    error.body = { "error" => { "code" => code, "message" => message } }
-    error
+  # @param message [String]
+  # @param status [Integer] HTTP status.
+  # @return [Kitchen::Driver::Azure::OperationError]
+  def azure_operation_error(code:, message: "something went wrong", status: 409)
+    Kitchen::Driver::Azure::OperationError.new(
+      "Azure returned HTTP #{status}",
+      status:,
+      body: { "error" => { "code" => code, "message" => message } }
+    )
   end
 
-  # Wires a driver up so that every Azure client it constructs is a double.
+  # Wires a driver up so the ARM client it builds is a double.
   #
   # @param driver [Kitchen::Driver::Azurerm]
-  # @param resource_client [Object]
-  # @param network_client [Object]
-  # @return [void]
-  def stub_azure_clients(driver, resource_client: resource_client_double, network_client: network_client_double)
-    allow(RESOURCES::Client).to receive(:new).and_return(resource_client)
-    allow(NETWORK::Client).to receive(:new).and_return(network_client)
+  # @param arm_client [Object]
+  # @return [Object] the client the driver will use.
+  def stub_arm_client(driver, arm_client: arm_client_double)
     allow(Kitchen::Driver::AzureCredentials).to receive(:new).and_return(
-      instance_double(Kitchen::Driver::AzureCredentials, azure_options: { subscription_id: driver_config(driver)[:subscription_id] })
+      instance_double(Kitchen::Driver::AzureCredentials, arm_client:)
     )
+    arm_client
   end
 end

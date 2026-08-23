@@ -2,26 +2,23 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
   subject(:driver) { build_driver(**config) }
 
   let(:config) { {} }
-  let(:models) { Azure::Resources2::Profiles::Latest::Mgmt::Models }
-  let(:incremental) { models::DeploymentMode::Incremental }
-  let(:complete) { models::DeploymentMode::Complete }
 
   describe "#parameters_in_values_format" do
     it "wraps each value in the ARM value envelope" do
       expect(driver.parameters_in_values_format(location: "eastus2", vmSize: "Standard_D2_v3")).to eq(
-        location: { "value" => "eastus2" },
-        vmSize: { "value" => "Standard_D2_v3" }
+        "location" => { "value" => "eastus2" },
+        "vmSize" => { "value" => "Standard_D2_v3" }
       )
     end
 
-    it "symbolizes string keys" do
-      expect(driver.parameters_in_values_format("nicName" => "nic-1")).to eq(nicName: { "value" => "nic-1" })
+    it "stringifies symbol keys, matching ARM's own JSON" do
+      expect(driver.parameters_in_values_format(nicName: "nic-1")).to eq("nicName" => { "value" => "nic-1" })
     end
 
     it "preserves non-string values" do
       expect(driver.parameters_in_values_format(count: 3, enabled: false)).to eq(
-        count: { "value" => 3 },
-        enabled: { "value" => false }
+        "count" => { "value" => 3 },
+        "enabled" => { "value" => false }
       )
     end
 
@@ -38,16 +35,16 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
     subject(:deployment) { driver.deployment(location: "eastus2") }
 
     it "uses Incremental mode" do
-      expect(deployment.properties.mode).to eq(incremental)
+      expect(deployment["properties"]["mode"]).to eq("Incremental")
     end
 
     it "carries the rendered virtual machine template" do
-      expect(deployment.properties.template["resources"].map { |r| r["type"] })
+      expect(deployment["properties"]["template"]["resources"].map { |r| r["type"] })
         .to include("Microsoft.Compute/virtualMachines")
     end
 
     it "carries the parameters in ARM value format" do
-      expect(deployment.properties.parameters).to eq(location: { "value" => "eastus2" })
+      expect(deployment["properties"]["parameters"]).to eq("location" => { "value" => "eastus2" })
     end
   end
 
@@ -65,25 +62,25 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
 
     it "reads and parses the pre-deployment template from disk" do
       deployment = driver.pre_deployment(template_path, {})
-      expect(deployment.properties.template).to eq(template)
+      expect(deployment["properties"]["template"]).to eq(template)
     end
 
     it "reads and parses the post-deployment template from disk" do
       deployment = driver.post_deployment(template_path, {})
-      expect(deployment.properties.template).to eq(template)
+      expect(deployment["properties"]["template"]).to eq(template)
     end
 
     it "uses Incremental mode so existing resources survive" do
-      expect(driver.pre_deployment(template_path, {}).properties.mode).to eq(incremental)
+      expect(driver.pre_deployment(template_path, {})["properties"]["mode"]).to eq("Incremental")
     end
 
     it "formats supplied parameters" do
       deployment = driver.pre_deployment(template_path, storageName: "mystorage")
-      expect(deployment.properties.parameters).to eq(storageName: { "value" => "mystorage" })
+      expect(deployment["properties"]["parameters"]).to eq("storageName" => { "value" => "mystorage" })
     end
 
     it "leaves parameters unset when none are supplied" do
-      expect(driver.pre_deployment(template_path, {}).properties.parameters).to be_nil
+      expect(driver.pre_deployment(template_path, {})["properties"]).not_to have_key("parameters")
     end
 
     it "raises a readable error when the template file is missing" do
@@ -95,25 +92,22 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
     subject(:deployment) { driver.empty_deployment }
 
     it "uses Complete mode, which is what actually deletes the resources" do
-      expect(deployment.properties.mode).to eq(complete)
+      expect(deployment["properties"]["mode"]).to eq("Complete")
     end
 
     it "contains no resources" do
-      expect(deployment.properties.template["resources"]).to eq([])
+      expect(deployment["properties"]["template"]["resources"]).to eq([])
     end
 
     it "sets no parameters" do
-      expect(deployment.properties.parameters).to be_nil
+      expect(deployment["properties"]).not_to have_key("parameters")
     end
   end
 
   describe "#follow_deployment_until_end_state" do
-    before { driver.resource_management_client = resource_client }
+    before { driver.arm_client = arm_client }
 
-    let(:resource_client) do
-      resource_client_double(deployments: deployments, deployment_operations: deployment_operations_double)
-    end
-    let(:deployments) { deployments_double(provisioning_state: "Succeeded") }
+    let(:arm_client) { arm_client_double }
 
     it "returns once the deployment succeeds" do
       expect { driver.follow_deployment_until_end_state("rg", "deploy-1") }.not_to raise_error
@@ -127,34 +121,31 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
 
     it "sleeps between polls for the configured interval" do
       driver = build_driver(deployment_sleep: 42)
-      driver.resource_management_client = resource_client
+      driver.arm_client = arm_client
       driver.follow_deployment_until_end_state("rg", "deploy-1")
       expect(driver).to have_received(:sleep).with(42)
     end
 
     it "keeps polling until a terminal state is reached" do
-      allow(deployments).to receive(:get).and_return(
-        deployment_extended("Running"),
-        deployment_extended("Running"),
-        deployment_extended("Succeeded")
+      allow(arm_client).to receive(:deployment).and_return(
+        deployment_response("Running"),
+        deployment_response("Running"),
+        deployment_response("Succeeded")
       )
 
       driver.follow_deployment_until_end_state("rg", "deploy-1")
-      expect(deployments).to have_received(:get).exactly(3).times
+      expect(arm_client).to have_received(:deployment).exactly(3).times
     end
 
     %w{Canceled Deleted Succeeded}.each do |state|
       it "treats #{state} as terminal" do
-        allow(deployments).to receive(:get).and_return(deployment_extended(state))
+        allow(arm_client).to receive(:deployment).and_return(deployment_response(state))
         expect { driver.follow_deployment_until_end_state("rg", "deploy-1") }.not_to raise_error
       end
     end
 
     context "when the deployment fails" do
-      let(:deployments) { deployments_double(provisioning_state: "Failed") }
-      let(:resource_client) do
-        resource_client_double(deployments:, deployment_operations: deployment_operations_double(operations:))
-      end
+      let(:arm_client) { arm_client_double(deployment: deployment_response("Failed"), deployment_operations: operations) }
       let(:operations) do
         [
           deployment_operation(status_code: "OK"),
@@ -168,7 +159,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
       end
 
       it "reports every failure, not just the first" do
-        allow(resource_client.deployment_operations).to receive(:list).and_return(
+        allow(arm_client).to receive(:deployment_operations).and_return(
           [
             deployment_operation(status_code: "Conflict", status_message: "first problem"),
             deployment_operation(status_code: "BadRequest", status_message: "second problem"),
@@ -180,7 +171,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
       end
 
       it "does not raise when every operation reported OK" do
-        allow(resource_client.deployment_operations).to receive(:list).and_return([deployment_operation(status_code: "OK")])
+        allow(arm_client).to receive(:deployment_operations).and_return([deployment_operation(status_code: "OK")])
         expect { driver.follow_deployment_until_end_state("rg", "deploy-1") }.not_to raise_error
       end
     end
@@ -188,7 +179,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
 
   describe "#list_outstanding_deployment_operations" do
     before do
-      driver.resource_management_client = resource_client_double(deployment_operations: deployment_operations_double(operations:))
+      driver.arm_client = arm_client_double(deployment_operations: operations)
       allow(Kitchen.logger).to receive(:info)
     end
 
@@ -223,13 +214,13 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
 
   describe "#run_deployment" do
     let(:state) { { uuid: "abc123", azure_resource_group_name: "kitchen-rg" } }
-    let(:resource_client) { resource_client_double }
+    let(:arm_client) { arm_client_double }
 
-    before { driver.resource_management_client = resource_client }
+    before { driver.arm_client = arm_client }
 
     it "names the deployment from the prefix and the instance uuid" do
       driver.run_deployment(state, "pre-deploy", driver.empty_deployment)
-      expect(resource_client.deployments).to have_received(:begin_create_or_update_async)
+      expect(arm_client).to have_received(:create_deployment)
         .with("kitchen-rg", "pre-deploy-abc123", anything)
     end
 

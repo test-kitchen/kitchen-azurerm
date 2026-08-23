@@ -2,8 +2,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
   subject(:driver) { build_driver(**config) }
 
   let(:config) { {} }
-  let(:resource_client) { resource_client_double }
-  let(:resource_groups) { resource_client.resource_groups }
+  let(:arm_client) { arm_client_double }
   let(:state) do
     {
       uuid: "abc123",
@@ -18,12 +17,12 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
     }
   end
 
-  before { stub_azure_clients(driver, resource_client:) }
+  before { stub_arm_client(driver, arm_client:) }
 
   describe "the ordinary case" do
     it "deletes the resource group" do
       driver.destroy(state)
-      expect(resource_groups).to have_received(:begin_delete).with("kitchen-default-20260822T134505")
+      expect(arm_client).to have_received(:delete_resource_group).with("kitchen-default-20260822T134505")
     end
 
     it "clears the resource group name from state" do
@@ -38,19 +37,19 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
     it "does not empty the resource group first by default" do
       driver.destroy(state)
-      expect(resource_client.deployments).not_to have_received(:begin_create_or_update_async)
+      expect(arm_client).not_to have_received(:create_deployment)
     end
 
     it "re-raises an Azure failure" do
-      allow(resource_groups).to receive(:begin_delete).and_raise(azure_operation_error(code: "InUseSubnetCannotBeDeleted"))
-      expect { driver.destroy(state) }.to raise_error(MsRestAzure2::AzureOperationError)
+      allow(arm_client).to receive(:delete_resource_group).and_raise(azure_operation_error(code: "InUseSubnetCannotBeDeleted"))
+      expect { driver.destroy(state) }.to raise_error(Kitchen::Driver::Azure::OperationError)
     end
   end
 
   describe "state backfill" do
     it "falls back to config for a missing azure_environment" do
       driver = build_driver(azure_environment: "AzureUSGovernment")
-      stub_azure_clients(driver, resource_client:)
+      stub_arm_client(driver, arm_client:)
       state.delete(:azure_environment)
 
       driver.destroy(state)
@@ -69,7 +68,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
     it "does nothing" do
       driver.destroy(state)
-      expect(resource_groups).not_to have_received(:begin_delete)
+      expect(arm_client).not_to have_received(:delete_resource_group)
     end
 
     context "with an explicit resource group the user asked to destroy" do
@@ -77,7 +76,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
       it "deletes the group anyway" do
         driver.destroy(state)
-        expect(resource_groups).to have_received(:begin_delete).with("my-shared-rg")
+        expect(arm_client).to have_received(:delete_resource_group).with("my-shared-rg")
       end
 
       it "explains why it is doing so" do
@@ -87,14 +86,14 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
       end
 
       it "does nothing when the group does not exist" do
-        allow(resource_groups).to receive(:check_existence).and_return(false)
+        allow(arm_client).to receive(:resource_group_exists?).and_return(false)
         driver.destroy(state)
-        expect(resource_groups).not_to have_received(:begin_delete)
+        expect(arm_client).not_to have_received(:delete_resource_group)
       end
 
       it "re-raises an Azure failure" do
-        allow(resource_groups).to receive(:begin_delete).and_raise(azure_operation_error(code: "AuthorizationFailed"))
-        expect { driver.destroy(state) }.to raise_error(MsRestAzure2::AzureOperationError)
+        allow(arm_client).to receive(:delete_resource_group).and_raise(azure_operation_error(code: "AuthorizationFailed"))
+        expect { driver.destroy(state) }.to raise_error(Kitchen::Driver::Azure::OperationError)
       end
 
       context "but destroy_explicit_resource_group is off" do
@@ -102,7 +101,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
         it "leaves the group alone" do
           driver.destroy(state)
-          expect(resource_groups).not_to have_received(:begin_delete)
+          expect(arm_client).not_to have_received(:delete_resource_group)
         end
       end
     end
@@ -113,7 +112,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
     it "keeps the resource group" do
       driver.destroy(state)
-      expect(resource_groups).not_to have_received(:begin_delete)
+      expect(arm_client).not_to have_received(:delete_resource_group)
     end
 
     it "warns the user that resources are still running" do
@@ -131,7 +130,7 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
       it "empties the group instead of deleting it" do
         driver.destroy(state)
-        expect(resource_client.deployments).to have_received(:begin_create_or_update_async)
+        expect(arm_client).to have_received(:create_deployment)
           .with("kitchen-default-20260822T134505", "empty-deploy-abc123", anything)
       end
 
@@ -148,23 +147,22 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
     it "submits an empty Complete-mode deployment" do
       driver.destroy(state)
-      expect(resource_client.deployments).to have_received(:begin_create_or_update_async) do |_rg, _name, deployment|
-        expect(deployment.properties.mode).to eq(Azure::Resources2::Profiles::Latest::Mgmt::Models::DeploymentMode::Complete)
-        expect(deployment.properties.template["resources"]).to eq([])
+      expect(arm_client).to have_received(:create_deployment) do |_rg, _name, deployment|
+        expect(deployment["properties"]["mode"]).to eq("Complete")
+        expect(deployment["properties"]["template"]["resources"]).to eq([])
       end
     end
 
     it "then deletes the group itself" do
       driver.destroy(state)
-      expect(resource_groups).to have_received(:begin_delete).with("kitchen-default-20260822T134505")
+      expect(arm_client).to have_received(:delete_resource_group).with("kitchen-default-20260822T134505")
     end
 
     describe "tag handling" do
       it "clears the tags by default" do
         driver.destroy(state)
-        expect(resource_groups).to have_received(:create_or_update) do |_name, group|
-          expect(group.tags).to eq({})
-        end
+        expect(arm_client).to have_received(:create_or_update_resource_group)
+          .with(anything, hash_including(tags: {}))
       end
 
       it "says so" do
@@ -178,9 +176,8 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
         it "restores the configured tags instead" do
           driver.destroy(state)
-          expect(resource_groups).to have_received(:create_or_update) do |_name, group|
-            expect(group.tags).to eq(owner: "platform")
-          end
+          expect(arm_client).to have_received(:create_or_update_resource_group)
+            .with(anything, hash_including(tags: { owner: "platform" }))
         end
 
         it "says so" do
@@ -191,16 +188,16 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
         it "does not also clear them" do
           driver.destroy(state)
-          expect(resource_groups).to have_received(:create_or_update).once
+          expect(arm_client).to have_received(:create_or_update_resource_group).once
         end
       end
     end
 
     it "re-raises an Azure failure from the empty deployment" do
-      allow(resource_client.deployments).to receive(:begin_create_or_update_async)
+      allow(arm_client).to receive(:create_deployment)
         .and_raise(azure_operation_error(code: "DeploymentFailed"))
 
-      expect { driver.destroy(state) }.to raise_error(MsRestAzure2::AzureOperationError)
+      expect { driver.destroy(state) }.to raise_error(Kitchen::Driver::Azure::OperationError)
     end
   end
 end

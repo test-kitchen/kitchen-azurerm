@@ -3,7 +3,7 @@
 [![Gem Version](https://badge.fury.io/rb/kitchen-azurerm.svg)](https://badge.fury.io/rb/kitchen-azurerm)
 [![Lint, Unit & Integration Tests](https://github.com/test-kitchen/kitchen-azurerm/actions/workflows/lint.yml/badge.svg)](https://github.com/test-kitchen/kitchen-azurerm/actions/workflows/lint.yml)
 
-**kitchen-azurerm** is a driver for the popular test harness [Test Kitchen](http://kitchen.ci) that allows Microsoft Azure resources to be provisioned before testing. This driver uses the new Microsoft Azure Resource Management REST API via the [azure-sdk-for-ruby](https://github.com/azure/azure-sdk-for-ruby).
+**kitchen-azurerm** is a driver for the popular test harness [Test Kitchen](http://kitchen.ci) that allows Microsoft Azure resources to be provisioned before testing. This driver talks to the Azure Resource Manager REST API directly, and depends only on the Ruby standard library to do so.
 
 This version has been tested on Windows, macOS, and Ubuntu. If you encounter a problem on your platform, please raise an issue.
 

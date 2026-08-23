@@ -43,8 +43,28 @@ Many style offenses can be corrected automatically:
 bundle exec cookstyle -a
 ```
 
-The unit tests stub the Azure SDK, so they neither deploy resources nor require
-a subscription or a service principal.
+The unit tests stub HTTP at the wire with WebMock, so they neither deploy
+resources nor require a subscription or a service principal. WebMock also blocks
+real network access outright, so an accidentally unstubbed request fails loudly
+rather than reaching Azure.
+
+### Talking to Azure
+
+The driver calls the Azure Resource Manager REST API directly, using only the
+Ruby standard library. The pieces live under `lib/kitchen/driver/azure/`:
+
+| File | Responsibility |
+| --- | --- |
+| `environments.rb` | Endpoints for each Azure cloud (public, US Government, China, Germany). |
+| `token_provider.rb` | Acquires and caches access tokens: service principal, managed identity, or `az login`. |
+| `arm_client.rb` | The eight ARM requests the driver makes. |
+| `http.rb` | A small `Net::HTTP` wrapper that separates transient network failures from real API errors. |
+
+One trap worth knowing about: Test Kitchen defines `Kitchen::StandardError`, and
+this code lives inside `module Kitchen`. A bare `StandardError` in that namespace
+resolves to Test Kitchen's class, not `::StandardError`, so `rescue StandardError`
+silently stops catching ordinary errors. Always write `::StandardError`
+explicitly here.
 
 ## Manual testing
 
