@@ -5,6 +5,16 @@ This CHANGELOG is maintained by the [release-please-action](google-github-action
 
 ## Unreleased
 
+## [2.1.2](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.1...v2.1.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* keep generated resource group names within Azure's limit ([#339](https://github.com/test-kitchen/kitchen-azurerm/issues/339)) ([9d55e74](https://github.com/test-kitchen/kitchen-azurerm/commit/9d55e74f0541d441500336a100db6f3c77958744))
+* never send instance metadata requests through a proxy ([#338](https://github.com/test-kitchen/kitchen-azurerm/issues/338)) ([7cad34b](https://github.com/test-kitchen/kitchen-azurerm/commit/7cad34bd6e2ac733616f17de750b96b59c81a0ba))
+* open the port the transport actually connects on ([#337](https://github.com/test-kitchen/kitchen-azurerm/issues/337)) ([52771e0](https://github.com/test-kitchen/kitchen-azurerm/commit/52771e026eeff66c611ca9c66875265a303c4385))
+* stop discarding custom_data on Windows instances ([#336](https://github.com/test-kitchen/kitchen-azurerm/issues/336)) ([96046e7](https://github.com/test-kitchen/kitchen-azurerm/commit/96046e7e528daeca8ad44722b69c588742c7752e))
+
 ## [2.1.1](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.0...v2.1.1) (2026-08-23)
 
 
