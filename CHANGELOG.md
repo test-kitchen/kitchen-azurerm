@@ -4,6 +4,19 @@
 
 This CHANGELOG is maintained by the [release-please-action](google-github-actions/release-please-action)
 
+## [2.0.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.14.0...v2.0.0) (2026-08-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* AzureCredentials#azure_options is replaced by #arm_client and #token_provider, and the driver exposes #arm_client in place of #resource_management_client and #network_management_client. Rescuing MsRestAzure2::AzureOperationError must become Kitchen::Driver::Azure::OperationError.
+* `use_managed_disks`, `image_url`, `os_type`, `existing_storage_account_blob_url` and `existing_storage_account_container` are retired. They still parse, so an existing kitchen.yml keeps loading, but the driver warns and ignores them. Defaults for `public_ip_sku`, `storage_account_type` and `boot_diagnostics_enabled` have changed.
+
+### Features
+
+* modernize for current Azure, replacing retired defaults and features ([#321](https://github.com/test-kitchen/kitchen-azurerm/issues/321)) ([8459942](https://github.com/test-kitchen/kitchen-azurerm/commit/8459942cd573f77a4141947328d98b9e8bdf523c))
+* replace the retired Azure SDK with a direct ARM REST client ([#323](https://github.com/test-kitchen/kitchen-azurerm/issues/323)) ([23b8975](https://github.com/test-kitchen/kitchen-azurerm/commit/23b897563f35d27eb9d53f179ce63d7905ef1412))
+
 ## [1.14.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v1.13.6...v1.14.0) (2026-08-22)
 
 
