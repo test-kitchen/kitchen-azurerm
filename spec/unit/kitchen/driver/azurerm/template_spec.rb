@@ -576,6 +576,57 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
     end
   end
 
+  # A Windows instance carries its WinRM bootstrap in custom data, which is the
+  # same single slot the user's own custom_data has to travel in. The bootstrap
+  # used to be assigned over the top of it, so configuring custom_data on
+  # Windows silently did nothing at all.
+  describe "custom_data on Windows" do
+    subject(:driver) do
+      build_driver(transport: transport_double(name: "Winrm"), platform_name: "windows-2022",
+        custom_data: user_script)
+    end
+
+    let(:user_script) { "New-Item -Path C:\\kitchen-marker.txt -ItemType File\n" }
+
+    # @return [String] the decoded custom data the VM will actually receive.
+    def custom_data_of(driver)
+      template = JSON.parse(driver.template_for_transport_name)
+      resource = template["resources"].find { |r| r["type"] == "Microsoft.Compute/virtualMachines" }
+      Base64.decode64(resource["properties"]["osProfile"]["customData"])
+    end
+
+    it "keeps the user's custom_data" do
+      expect(custom_data_of(driver)).to include("kitchen-marker.txt")
+    end
+
+    it "still installs the WinRM listeners" do
+      expect(custom_data_of(driver)).to include("winrm create")
+    end
+
+    it "runs the user's script after WinRM is configured" do
+      decoded = custom_data_of(driver)
+      expect(decoded.index("winrm create")).to be < decoded.index("kitchen-marker.txt")
+    end
+
+    it "logs off last, so the script has run before the session ends" do
+      expect(custom_data_of(driver).strip).to end_with("logoff")
+    end
+
+    it "reads custom_data from a file when it names one" do
+      path = File.join(ENV.fetch("HOME"), "bootstrap.ps1")
+      File.write(path, "Write-Host 'from a file'\n")
+      from_file = build_driver(transport: transport_double(name: "Winrm"),
+        platform_name: "windows-2022", custom_data: path)
+
+      expect(custom_data_of(from_file)).to include("from a file")
+    end
+
+    it "is unchanged when no custom_data is configured" do
+      without = build_driver(transport: transport_double(name: "Winrm"), platform_name: "windows-2022")
+      expect(custom_data_of(without)).to include("winrm create")
+    end
+  end
+
   describe "#prepared_custom_data" do
     it "is nil when custom_data is not configured" do
       expect(build_driver(custom_data: nil).prepared_custom_data).to be_nil
