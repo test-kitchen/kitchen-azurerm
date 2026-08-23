@@ -5,6 +5,13 @@ This CHANGELOG is maintained by the [release-please-action](google-github-action
 
 ## Unreleased
 
+## [2.1.3](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.2...v2.1.3) (2026-08-23)
+
+
+### Bug Fixes
+
+* accept settings written with no value, and a lone identity ([#340](https://github.com/test-kitchen/kitchen-azurerm/issues/340)) ([b370762](https://github.com/test-kitchen/kitchen-azurerm/commit/b37076234c3132a551221631af4b908b80f47469))
+
 ## [2.1.2](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.1...v2.1.2) (2026-08-23)
 
 
