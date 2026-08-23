@@ -280,14 +280,8 @@ module Kitchen
 
           run_deployment(state, "post-deploy", post_deployment(config[:post_deployment_template], config[:post_deployment_parameters])) if File.file?(config[:post_deployment_template])
         rescue Azure::OperationError => operation_error
-          rest_error = operation_error.body["error"]
-          if operation_error.code == "DeploymentActive"
-            info "Deployment for resource group #{state[:azure_resource_group_name]} is ongoing."
-            info "If you need to change the deployment template you'll need to rerun `kitchen create` for this instance."
-          else
-            info rest_error
-            raise operation_error
-          end
+          info operation_error.body["error"]
+          raise operation_error
         end
 
         state[:hostname] = resolve_hostname(state, deployment_parameters["nicName"])
@@ -369,7 +363,18 @@ module Kitchen
       def run_deployment(state, prefix, deployment)
         name = "#{prefix}-#{state[:uuid]}"
         info "Creating deployment: #{name}"
-        create_deployment_async(state[:azure_resource_group_name], name, deployment)
+        begin
+          create_deployment_async(state[:azure_resource_group_name], name, deployment)
+        rescue Azure::OperationError => operation_error
+          raise unless operation_error.code == "DeploymentActive"
+
+          # An interrupted `kitchen create` leaves its deployment running in
+          # Azure. Wait for that one instead of abandoning the rest of create:
+          # the deployment already in flight is the one we wanted, and the
+          # steps after this still have to run for the instance to be usable.
+          info "Deployment #{name} is already running; waiting for it rather than submitting it again."
+          info "To deploy a changed template, run `kitchen destroy` for this instance first."
+        end
         follow_deployment_until_end_state(state[:azure_resource_group_name], name)
       end
 
