@@ -575,6 +575,36 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
         expect(driver.template_for_transport_name).not_to include("adminPassword")
       end
 
+      # Generation and the public-key lookup run in sequence, so a user with no
+      # private key *and* an ssh_public_key setting walks both halves in one
+      # pass. Neither half's own tests reach that combination.
+      context "when ssh_public_key is set and the private key does not exist" do
+        let(:transport) { transport_double(name: "Ssh", ssh_key: ssh_key_path, ssh_public_key: explicit_public_key) }
+        let(:explicit_public_key) { File.join(ENV.fetch("HOME"), "elsewhere.pub") }
+
+        context "and names an existing file" do
+          before { File.write(explicit_public_key, "ssh-rsa AAAAEXPLICIT explicit@key\n") }
+
+          it "still generates the missing private key" do
+            driver.template_for_transport_name
+            expect(File).to exist(ssh_key_path)
+          end
+
+          it "deploys the configured key rather than the one it just generated" do
+            template = JSON.parse(driver.template_for_transport_name)
+            key_data = vm_resource(template)["properties"]["osProfile"]["linuxConfiguration"]["ssh"]["publicKeys"].first["keyData"]
+            expect(key_data).to eq("ssh-rsa AAAAEXPLICIT explicit@key")
+          end
+        end
+
+        context "and names a file that does not exist" do
+          it "reports the configured path, not the .pub it just generated" do
+            expect { driver.template_for_transport_name }
+              .to raise_error(Kitchen::UserError, /ssh_public_key.*elsewhere\.pub/m)
+          end
+        end
+      end
+
       context "when the private key already exists" do
         before do
           File.write(ssh_key_path, "an existing private key")
@@ -592,6 +622,27 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
           expect(File.read(ssh_key_path)).to eq("an existing private key")
         end
 
+        # ssh_key names the *private* key, so a user who keeps only that has
+        # nothing wrong with their kitchen.yml - but got a raw Errno::ENOENT
+        # for a .pub path they never wrote.
+        context "but has no .pub beside it" do
+          before { File.delete("#{ssh_key_path}.pub") }
+
+          it "explains that ssh_key names the private half" do
+            expect { driver.template_for_transport_name }
+              .to raise_error(Kitchen::UserError, /ssh_key setting names the private key/)
+          end
+
+          # The operands are the whole point: reversed, the suggested command
+          # truncates the private key it was meant to read.
+          it "gives the exact command that derives the missing key" do
+            expect { driver.template_for_transport_name }.to raise_error(
+              Kitchen::UserError,
+              /ssh-keygen -y -f #{Regexp.escape(ssh_key_path)} > #{Regexp.escape(ssh_key_path)}\.pub/
+            )
+          end
+        end
+
         context "and ssh_public_key names a different file" do
           let(:transport) { transport_double(name: "Ssh", ssh_key: ssh_key_path, ssh_public_key: explicit_public_key) }
           let(:explicit_public_key) { File.join(ENV.fetch("HOME"), "elsewhere.pub") }
@@ -602,6 +653,20 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
             template = JSON.parse(driver.template_for_transport_name)
             key_data = vm_resource(template)["properties"]["osProfile"]["linuxConfiguration"]["ssh"]["publicKeys"].first["keyData"]
             expect(key_data).to eq("ssh-rsa AAAAEXPLICIT explicit@key")
+          end
+
+          context "that does not exist" do
+            before { File.delete(explicit_public_key) }
+
+            it "names the setting that pointed at it" do
+              expect { driver.template_for_transport_name }
+                .to raise_error(Kitchen::UserError, /ssh_public_key.*elsewhere\.pub/m)
+            end
+
+            it "offers the adjacent .pub as the way out" do
+              expect { driver.template_for_transport_name }
+                .to raise_error(Kitchen::UserError, /remove the setting to use #{Regexp.escape(ssh_key_path)}\.pub/)
+            end
           end
         end
       end
