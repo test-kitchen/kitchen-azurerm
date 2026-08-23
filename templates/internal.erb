@@ -176,13 +176,12 @@
         "location": "[parameters('location')]",
         "nicName": "[parameters('nicName')]",
         "nsgName": "[concat(parameters('nicName'), '-nsg')]",
-        "subnetName": "<%= subnet_id %>",
         "publicIPAddressName": "publicip",
         "vmName": "[parameters('vmName')]",
         "vmSize": "[parameters('vmSize')]",
         "vmIdentityType": "[if(parameters('systemAssignedIdentity'), if(empty(parameters('userAssignedIdentities')), 'SystemAssigned', 'SystemAssigned, UserAssigned'), if(empty(parameters('userAssignedIdentities')), 'None', 'UserAssigned'))]",
         "vnetID": "<%= vnet_id %>",
-        "subnetRef": "[concat(variables('vnetID'),'/subnets/',variables('subnetName'))]"
+        "subnetRef": "<%= subnet_ref %>"
     },
     "resources": [
         {

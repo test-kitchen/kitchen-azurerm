@@ -921,11 +921,28 @@ module Kitchen
           info "Using custom vnet: #{config[:vnet_id]}"
           virtual_machine_deployment_template_file("internal.erb", data.merge(
             vnet_id: config[:vnet_id],
-            subnet_id: config[:subnet_id],
+            subnet_ref: subnet_reference,
             public_ip: config[:public_ip],
             public_ip_sku: config[:public_ip_sku]
           ))
         end
+      end
+
+      # Resource id of the subnet the network interface attaches to.
+      #
+      # +subnet_id+ has always held the subnet's *name*, resolved against
+      # +vnet_id+. The setting is named like a resource id and sits directly
+      # beside +vnet_id+, which really is one, so supplying a full subnet
+      # resource id is an easy mistake to make - and it used to be appended to
+      # the vnet id, leaving ARM to reject a path that appears nowhere in the
+      # user's kitchen.yml. Both spellings are accepted.
+      #
+      # @return [String]
+      def subnet_reference
+        subnet = config[:subnet_id].to_s
+        return subnet if subnet.start_with?("/subscriptions/")
+
+        "#{config[:vnet_id]}/subnets/#{subnet}"
       end
 
       # Warns about settings that Azure retirements have made inoperable.

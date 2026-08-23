@@ -279,7 +279,7 @@ All deployments use managed disks. Azure retired unmanaged disks on 31 March 202
 | Option | Default | Description |
 | --- | --- | --- |
 | `vnet_id` | `""` | Resource ID of an existing virtual network. Leave unset to create one. |
-| `subnet_id` | `""` | Name of the subnet within `vnet_id`. |
+| `subnet_id` | `""` | Subnet to attach to: either its name within `vnet_id`, or its full resource ID. |
 | `nic_name` | `""` | Name of an existing network interface to attach. |
 | `public_ip` | `false` | Assign a public IP address. Required unless you reach the VM over ExpressRoute or a VPN. |
 | `public_ip_sku` | `"Standard"` | Public IP SKU. Azure retired the `Basic` SKU on 30 September 2025. |
@@ -426,6 +426,13 @@ platforms:
       image_urn: Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest
       vnet_id: /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/my-infrastructure/providers/Microsoft.Network/virtualNetworks/my-vnet
       subnet_id: my-subnet
+```
+
+`subnet_id` also accepts a full subnet resource ID, which is useful when the
+subnet lives somewhere other than `vnet_id`:
+
+```yaml
+      subnet_id: /subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/my-infrastructure/providers/Microsoft.Network/virtualNetworks/my-vnet/subnets/my-subnet
 ```
 
 No public IP address is assigned unless you also set `public_ip: true`. When

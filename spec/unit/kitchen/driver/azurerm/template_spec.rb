@@ -37,6 +37,41 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
         expect(driver.virtual_machine_deployment_template).to include("subnet-1")
       end
 
+      it "resolves a subnet name against the configured vnet" do
+        expect(subnet_ref_of(driver))
+          .to eq("/subscriptions/x/resourceGroups/y/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet-1")
+      end
+
+      # `subnet_id` is named like a resource id and sits next to `vnet_id`,
+      # which is one. Supplying a full subnet resource id used to be appended
+      # to the vnet id, and ARM answered with an opaque
+      # "InvalidJsonReferenceFormat" naming a path that appeared nowhere in
+      # the user's configuration.
+      context "when subnet_id is a full resource id" do
+        let(:subnet_resource_id) do
+          "/subscriptions/x/resourceGroups/y/providers/Microsoft.Network/virtualNetworks/vnet/subnets/subnet-1"
+        end
+        let(:config) { super().merge(subnet_id: subnet_resource_id) }
+
+        it "uses it as-is rather than appending it to the vnet id" do
+          expect(subnet_ref_of(driver)).to eq(subnet_resource_id)
+        end
+
+        it "does not produce a doubled subnets path" do
+          expect(driver.virtual_machine_deployment_template).not_to include("subnets//subscriptions")
+        end
+
+        it "still renders valid JSON" do
+          expect(driver.virtual_machine_deployment_template).to be_a_valid_arm_template
+        end
+
+        it "resolves a subnet in a different resource group than the vnet" do
+          elsewhere = "/subscriptions/x/resourceGroups/other/providers/Microsoft.Network/virtualNetworks/v2/subnets/s2"
+          other = build_driver(transport:, platform_name:, **config.merge(subnet_id: elsewhere))
+          expect(subnet_ref_of(other)).to eq(elsewhere)
+        end
+      end
+
       it "creates no public IP resource by default" do
         expect(resource_types(rendered_template(driver))).not_to include("Microsoft.Network/publicIPAddresses")
       end
@@ -624,5 +659,14 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
   # @return [Array<String>] the type of every resource in the template.
   def resource_types(template)
     template["resources"].map { |resource| resource["type"] }
+  end
+
+  # The subnet the network interface is wired to, read out of the rendered
+  # template rather than from the driver's internals.
+  #
+  # @param driver [Kitchen::Driver::Azurerm]
+  # @return [String]
+  def subnet_ref_of(driver)
+    rendered_template(driver).dig("variables", "subnetRef")
   end
 end
