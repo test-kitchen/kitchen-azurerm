@@ -5,6 +5,14 @@ This CHANGELOG is maintained by the [release-please-action](google-github-action
 
 ## Unreleased
 
+## [2.1.4](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.3...v2.1.4) (2026-08-23)
+
+
+### Bug Fixes
+
+* let destroy finish when the resource group is already gone ([#344](https://github.com/test-kitchen/kitchen-azurerm/issues/344)) ([b0eda76](https://github.com/test-kitchen/kitchen-azurerm/commit/b0eda7603d1dfdc4a0a4a1d31d45e3e442b1000d))
+* stop concurrent creates from overwriting each other's SSH key ([#343](https://github.com/test-kitchen/kitchen-azurerm/issues/343)) ([d642b61](https://github.com/test-kitchen/kitchen-azurerm/commit/d642b61ab5db94dba69ddb11319506707d4f408e))
+
 ## [2.1.3](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.2...v2.1.3) (2026-08-23)
 
 
