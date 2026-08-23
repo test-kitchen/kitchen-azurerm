@@ -25,6 +25,13 @@ module Kitchen
         # @return [String]
         NETWORK_API_VERSION = "2025-07-01".freeze
 
+        # ARM API version used for compute resource requests. Matches the
+        # version the bundled deployment templates declare for virtual
+        # machines.
+        #
+        # @return [String]
+        COMPUTE_API_VERSION = "2025-04-01".freeze
+
         # @param subscription_id [String]
         # @param environment [Environments::Environment]
         # @param token_provider [TokenProvider]
@@ -107,6 +114,17 @@ module Kitchen
           payload.is_a?(Hash) ? Array(payload["value"]) : []
         end
 
+        # Reads a virtual machine's instance view, which carries its current
+        # power state.
+        #
+        # @param resource_group [String]
+        # @param name [String] virtual machine name.
+        # @return [Hash]
+        def virtual_machine_instance_view(resource_group, name)
+          call(:get, "#{compute_path(resource_group, "virtualMachines", name)}/instanceView",
+            api_version: COMPUTE_API_VERSION).json
+        end
+
         # Reads a public IP address resource.
         #
         # @param resource_group [String]
@@ -148,6 +166,14 @@ module Kitchen
         # @return [String]
         def network_path(resource_group, type, name)
           "#{resource_group_path(resource_group)}/providers/Microsoft.Network/#{type}/#{escape(name)}"
+        end
+
+        # @param resource_group [String]
+        # @param type [String] e.g. +"virtualMachines"+.
+        # @param name [String]
+        # @return [String]
+        def compute_path(resource_group, type, name)
+          "#{resource_group_path(resource_group)}/providers/Microsoft.Compute/#{type}/#{escape(name)}"
         end
 
         # @param value [String]

@@ -729,6 +729,50 @@ module Kitchen
         end
       end
 
+      # How Azure's power states map onto Test Kitchen's liveness question.
+      #
+      # Anything absent from this table is passed through as-is with +live+
+      # left nil: reporting a state we have not seen before is more use than
+      # guessing whether it counts as running.
+      #
+      # @return [Hash{String => Boolean}]
+      POWER_STATES = {
+        "running" => true,
+        "starting" => true,
+        "stopping" => true,
+        "stopped" => false,
+        "deallocating" => false,
+        "deallocated" => false,
+      }.freeze
+
+      # Reports whether the virtual machine backing this instance is running.
+      #
+      # Drives +kitchen list --live+ (and its +kitchen status+ alias). Test
+      # Kitchen rescues anything raised here and reports "unknown", but a
+      # listing should not be where an Azure outage first shows up, so the
+      # failure modes are handled explicitly and reported as data.
+      #
+      # No retries: this is a status probe behind an interactive command, and
+      # waiting out the retry budget on every unreachable instance would be
+      # worse than saying so promptly.
+      #
+      # @param state [Hash] the instance state.
+      # @return [Hash] +:live+, +:state+, +:resource_id+ and +:message+.
+      def status(state)
+        resource_group = state[:azure_resource_group_name]
+        vm_name = state[:vm_name]
+        return { live: false, state: "not_created", message: "No Azure virtual machine has been created yet." } unless
+          state[:server_id] && resource_group && vm_name
+
+        power_state_status(state, resource_group, vm_name)
+      rescue Azure::OperationError => operation_error
+        return { live: false, state: "not_created", message: "The virtual machine no longer exists in Azure." } if operation_error.status == 404
+
+        { live: nil, state: "unknown", message: "#{operation_error.code}: #{operation_error.message}" }
+      rescue Azure::TransientError => transient_error
+        { live: nil, state: "unknown", message: "Could not reach Azure (#{transient_error.message})." }
+      end
+
       # Tears down whatever {#create} built.
       #
       # @param state [Hash] the instance state, mutated in place.
@@ -771,6 +815,53 @@ module Kitchen
         state.delete(:hostname)
         state.delete(:username)
         state.delete(:password)
+      end
+
+      # Asks Azure for the virtual machine's power state.
+      #
+      # @param state [Hash] the instance state.
+      # @param resource_group [String]
+      # @param vm_name [String]
+      # @return [Hash] as {#status} returns.
+      def power_state_status(state, resource_group, vm_name)
+        view = status_arm_client(state).virtual_machine_instance_view(resource_group, vm_name)
+        status = Array(view["statuses"]).find { |entry| entry["code"].to_s.start_with?("PowerState/") }
+        power = status && status["code"].to_s.split("/", 2).last
+
+        {
+          live: power ? POWER_STATES[power] : nil,
+          state: power || "unknown",
+          resource_id: virtual_machine_id(status_subscription_id(state), resource_group, vm_name),
+          message: status && status["displayStatus"],
+        }
+      end
+
+      # An ARM client for a status probe, built from state the way {#destroy}
+      # builds one, so that an instance created against another subscription
+      # or cloud is still asked about in the right place.
+      #
+      # @param state [Hash] the instance state.
+      # @return [Azure::ArmClient]
+      def status_arm_client(state)
+        @arm_client ||= Kitchen::Driver::AzureCredentials.new(
+          subscription_id: status_subscription_id(state),
+          environment: state[:azure_environment] || config[:azure_environment]
+        ).arm_client
+      end
+
+      # @param state [Hash] the instance state.
+      # @return [String, nil] the subscription the instance was created in.
+      def status_subscription_id(state)
+        state[:subscription_id] || config[:subscription_id]
+      end
+
+      # @param subscription_id [String]
+      # @param resource_group [String]
+      # @param vm_name [String]
+      # @return [String] the virtual machine's ARM resource id.
+      def virtual_machine_id(subscription_id, resource_group, vm_name)
+        "/subscriptions/#{subscription_id}/resourceGroups/#{resource_group}" \
+          "/providers/Microsoft.Compute/virtualMachines/#{vm_name}"
       end
 
       # Deletes an explicitly-named resource group when the instance itself was
