@@ -66,8 +66,12 @@ module Kitchen
 
       # Ubuntu 22.04 LTS, generation 2. Canonical renamed their offers after
       # 18.04, so the old "UbuntuServer" offer no longer resolves at all.
+      #
+      # @return [String]
+      DEFAULT_IMAGE_URN = "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest".freeze
+
       default_config(:image_urn) do |_config|
-        "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest"
+        DEFAULT_IMAGE_URN
       end
 
       default_config(:image_id) do |_config|
@@ -273,12 +277,12 @@ module Kitchen
         end
 
         begin
-          run_deployment(state, "pre-deploy", pre_deployment(config[:pre_deployment_template], config[:pre_deployment_parameters])) if File.file?(config[:pre_deployment_template])
+          run_deployment(state, "pre-deploy", pre_deployment(config[:pre_deployment_template], config[:pre_deployment_parameters])) if File.file?(config[:pre_deployment_template].to_s)
 
           run_deployment(state, "deploy", deployment(deployment_parameters))
           store_deployment_credentials(state, deployment_parameters)
 
-          run_deployment(state, "post-deploy", post_deployment(config[:post_deployment_template], config[:post_deployment_parameters])) if File.file?(config[:post_deployment_template])
+          run_deployment(state, "post-deploy", post_deployment(config[:post_deployment_template], config[:post_deployment_parameters])) if File.file?(config[:post_deployment_template].to_s)
         rescue Azure::OperationError => operation_error
           info operation_error.body["error"]
           raise operation_error
@@ -329,8 +333,21 @@ module Kitchen
       def image_parameters
         return { "imageId" => config[:image_id] } if config[:image_id].to_s != ""
 
-        publisher, offer, sku, version = config[:image_urn].split(":", 4)
+        publisher, offer, sku, version = image_urn.split(":", 4)
         { "imagePublisher" => publisher, "imageOffer" => offer, "imageSku" => sku, "imageVersion" => version }
+      end
+
+      # The Marketplace image URN to deploy from.
+      #
+      # An +image_urn:+ written with no value is nil rather than "", which
+      # counts as unset here the way it does everywhere else in the driver -
+      # so it falls back to {DEFAULT_IMAGE_URN} rather than failing with a
+      # Ruby error naming neither the setting nor the file it came from.
+      #
+      # @return [String]
+      def image_urn
+        urn = config[:image_urn].to_s
+        urn.empty? ? DEFAULT_IMAGE_URN : urn
       end
 
       # The OS disk size, as a number ARM will accept.
