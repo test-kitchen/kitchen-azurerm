@@ -64,14 +64,32 @@ RSpec.describe Kitchen::Driver::AzureCredentials do
 
     context "with no credentials file and no environment variables" do
       it "logs which path it looked in" do
-        expect(Kitchen.logger).to receive(:debug).with(/#{Regexp.escape(described_class.default_config_path)} was not found/)
+        allow(Kitchen.logger).to receive(:debug)
         provider
+        expect(Kitchen.logger).to have_received(:debug)
+          .with(/#{Regexp.escape(described_class.default_config_path)} was not found/)
       end
 
-      it "warns that it is falling back to the Azure CLI" do
+      # Configuring no credentials at all is how someone signed in with
+      # `az login` is meant to use the driver. Warning about it on every
+      # create and destroy trained users to ignore the warnings that matter.
+      it "does not warn, because this is a supported way to authenticate" do
         allow(Kitchen.logger).to receive(:warn)
         provider
-        expect(Kitchen.logger).to have_received(:warn).with("Using tenant id set through `az login`.")
+        expect(Kitchen.logger).not_to have_received(:warn)
+      end
+
+      it "explains at debug level which credentials it settled on" do
+        allow(Kitchen.logger).to receive(:debug)
+        provider
+        expect(Kitchen.logger).to have_received(:debug).with(/az login/)
+      end
+
+      # The file is not there at all, so it cannot be missing a tenant_id.
+      it "does not claim a file that does not exist is missing a tenant_id" do
+        allow(Kitchen.logger).to receive(:warn)
+        provider
+        expect(Kitchen.logger).not_to have_received(:warn).with(/does not contain tenant_id/)
       end
 
       it "falls back to the Azure CLI token provider" do
@@ -91,20 +109,32 @@ RSpec.describe Kitchen::Driver::AzureCredentials do
         expect(other.token_provider).to be_an_instance_of(Kitchen::Driver::Azure::ManagedIdentityToken)
       end
 
-      it "warns only once about a missing tenant id, however often it is asked" do
-        unknown = described_class.new(subscription_id: "00000000-0000-0000-0000-000000000000")
-        allow(Kitchen.logger).to receive(:warn)
-
-        3.times { unknown.send(:tenant_id!) }
-
-        expect(Kitchen.logger).to have_received(:warn).with(/does not contain tenant_id/).once
-      end
-
+      # Having a credentials file but no entry for the subscription under test
+      # is worth saying out loud: the deployment is about to run as whoever is
+      # signed in to the CLI, which may be a different identity entirely.
       it "warns when the subscription has no section at all" do
         unknown = described_class.new(subscription_id: "00000000-0000-0000-0000-000000000000")
         allow(Kitchen.logger).to receive(:warn)
         unknown.token_provider
-        expect(Kitchen.logger).to have_received(:warn).with(/does not contain tenant_id/)
+        expect(Kitchen.logger).to have_received(:warn)
+          .with(/no \[00000000-0000-0000-0000-000000000000\] section/)
+      end
+
+      it "names the file it read when the section is missing" do
+        unknown = described_class.new(subscription_id: "00000000-0000-0000-0000-000000000000")
+        allow(Kitchen.logger).to receive(:warn)
+        unknown.token_provider
+        expect(Kitchen.logger).to have_received(:warn)
+          .with(/#{Regexp.escape(described_class.default_config_path)}/)
+      end
+
+      # An empty section is how a user says "for this subscription, use the
+      # CLI" - deliberate, so it must not warn.
+      it "stays quiet when the subscription has an empty section" do
+        empty = described_class.new(subscription_id: CredentialsFileHelper::SUBSCRIPTIONS[:azure_cli])
+        allow(Kitchen.logger).to receive(:warn)
+        empty.token_provider
+        expect(Kitchen.logger).not_to have_received(:warn)
       end
     end
 
@@ -152,6 +182,45 @@ RSpec.describe Kitchen::Driver::AzureCredentials do
 
         expect(tenant_id_of(provider)).to eq("env-tenant")
         expect(client_id_of(provider)).to eq("b5f3d6df-00bf-4451-a4f2-db3bc7731b58")
+      end
+    end
+
+    # A half-configured service principal is the case that genuinely deserves
+    # a warning: without it the run silently authenticates as whoever is
+    # signed in to the Azure CLI, which in CI is usually nobody at all.
+    describe "incomplete credentials" do
+      before { ENV.delete("AZURE_CONFIG_FILE") }
+
+      it "warns when a client id and secret are set but the tenant is not" do
+        set_env("AZURE_CLIENT_ID" => "c", "AZURE_CLIENT_SECRET" => "s")
+        allow(Kitchen.logger).to receive(:warn)
+
+        credentials.token_provider
+
+        expect(Kitchen.logger).to have_received(:warn).with(/Incomplete Azure credentials.*tenant_id/)
+      end
+
+      it "still falls back to the Azure CLI so the run can continue" do
+        set_env("AZURE_CLIENT_ID" => "c", "AZURE_CLIENT_SECRET" => "s")
+        expect(credentials.token_provider).to be_an_instance_of(Kitchen::Driver::Azure::AzureCliToken)
+      end
+
+      it "warns when a federated token file is set without a client id" do
+        set_env("AZURE_FEDERATED_TOKEN_FILE" => File.join(ENV.fetch("HOME"), "token").tap { |f| File.write(f, "a") })
+        allow(Kitchen.logger).to receive(:warn)
+
+        credentials.token_provider
+
+        expect(Kitchen.logger).to have_received(:warn).with(/Incomplete Azure credentials.*client_id/)
+      end
+
+      it "lists every missing value rather than only the first" do
+        set_env("AZURE_CLIENT_SECRET" => "s")
+        allow(Kitchen.logger).to receive(:warn)
+
+        credentials.token_provider
+
+        expect(Kitchen.logger).to have_received(:warn).with(/tenant_id.*client_id|client_id.*tenant_id/)
       end
     end
 

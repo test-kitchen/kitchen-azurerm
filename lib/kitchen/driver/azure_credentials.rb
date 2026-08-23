@@ -112,21 +112,68 @@ module Kitchen
 
       # @return [Azure::TokenProvider]
       def build_token_provider
-        if federated_token_file && client_id && tenant_id!
+        if federated_token_file && client_id && tenant_id
           debug "Authenticating with workload identity federation (#{federated_token_file})."
           Azure::WorkloadIdentityToken.new(environment: azure_environment, tenant_id:, client_id:,
             token_file: federated_token_file)
-        elsif client_id && client_secret && tenant_id!
+        elsif client_id && client_secret && tenant_id
+          debug "Authenticating as a service principal."
           Azure::ServicePrincipalToken.new(environment: azure_environment, tenant_id:, client_id:, client_secret:)
         elsif use_managed_identity?
+          debug "Authenticating as a managed identity."
           Azure::ManagedIdentityToken.new(environment: azure_environment, client_id:)
-        elsif tenant_id!
+        elsif tenant_id
           # A tenant with no client credentials means a system-assigned identity.
+          debug "Authenticating as a system-assigned managed identity."
           Azure::ManagedIdentityToken.new(environment: azure_environment)
         else
-          warn("Using tenant id set through `az login`.")
+          warn_about_unusable_credentials
+          debug "No Azure credentials were configured; using the token cached by `az login`."
           Azure::AzureCliToken.new(environment: azure_environment)
         end
+      end
+
+      # Warns when credentials were supplied but cannot be used.
+      #
+      # Reaching the Azure CLI with nothing configured is a supported way to
+      # run the driver, so it passes without comment - warning about it on
+      # every create and destroy only taught users to ignore the warnings that
+      # matter. Reaching it having half-configured a service principal is a
+      # mistake worth interrupting for, because the run is about to
+      # authenticate as somebody else entirely.
+      #
+      # @return [void]
+      def warn_about_unusable_credentials
+        if partial_credentials?
+          warn("Incomplete Azure credentials: no #{missing_credentials.join(" or ")} was found in the " \
+               "environment or #{config_path}. Falling back to the credentials from `az login`.")
+        elsif credentials_file_without_subscription?
+          warn("#{config_path} has no [#{subscription_id}] section. " \
+               "Falling back to the credentials from `az login`.")
+        end
+      end
+
+      # Whether some, but not enough, client credentials were supplied.
+      #
+      # @return [Boolean]
+      def partial_credentials?
+        !(client_id.nil? && client_secret.nil? && federated_token_file.nil?)
+      end
+
+      # The credential values needed to use what was supplied.
+      #
+      # @return [Array<String>]
+      def missing_credentials
+        { "tenant_id" => tenant_id, "client_id" => client_id }.select { |_key, value| value.nil? }.keys
+      end
+
+      # Whether a credentials file exists but says nothing about the
+      # subscription under test. An empty section is deliberate - it is how a
+      # user opts one subscription in to the CLI - so it does not count.
+      #
+      # @return [Boolean]
+      def credentials_file_without_subscription?
+        File.file?(config_path) && !credentials.has_section?(subscription_id)
       end
 
       # Whether to authenticate as a managed identity.
@@ -170,23 +217,16 @@ module Kitchen
       # Reads a property from the section of the credentials file matching
       # {#subscription_id}.
       #
+      # Reads through +to_h+ rather than +IniFile#[]+, which auto-vivifies:
+      # asking an +IniFile+ for a section it does not have *adds* that section.
+      # Looking up the credentials of an unconfigured subscription therefore
+      # used to leave the parsed file claiming to contain it.
+      #
       # @param property [String] the INI key to read.
       # @return [String, nil]
       def credentials_property(property)
-        value = credentials[subscription_id]&.[](property)
+        value = credentials.to_h[subscription_id]&.[](property)
         value unless value.to_s.empty?
-      end
-
-      # Tenant ID, warning the user once when one cannot be resolved.
-      #
-      # @return [String, nil]
-      def tenant_id!
-        return tenant_id if tenant_id
-        return nil if @warned_about_tenant_id
-
-        @warned_about_tenant_id = true
-        warn("(#{config_path}) does not contain tenant_id neither is the AZURE_TENANT_ID environment variable set.")
-        nil
       end
 
       # @return [String, nil] tenant ID from the environment or credentials file.
