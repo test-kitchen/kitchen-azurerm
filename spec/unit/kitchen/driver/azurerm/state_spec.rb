@@ -21,6 +21,13 @@ RSpec.describe Kitchen::Driver::Azurerm, "state management" do
     it "is true for a falsey but non-nil value" do
       expect(driver.existing_state_value?({ use_managed_disks: false }, :use_managed_disks)).to be true
     end
+
+    # A blank value is not a value. Left standing, one written into state by a
+    # failed run shadows the real one in config for the rest of the instance's
+    # life.
+    it "is false when the value is blank" do
+      expect(driver.existing_state_value?({ subscription_id: "" }, :subscription_id)).to be false
+    end
   end
 
   describe "#validate_state" do
@@ -194,6 +201,11 @@ RSpec.describe Kitchen::Driver::Azurerm, "state management" do
       it "does not overwrite values already in state" do
         driver.validate_state(state.merge!(subscription_id: "sub-from-state"))
         expect(state[:subscription_id]).to eq("sub-from-state")
+      end
+
+      it "replaces a blank value left in state by an earlier run" do
+        driver.validate_state(state.merge!(subscription_id: ""))
+        expect(state[:subscription_id]).to eq("sub-123")
       end
     end
 
