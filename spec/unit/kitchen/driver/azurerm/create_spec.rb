@@ -405,25 +405,64 @@ RSpec.describe Kitchen::Driver::Azurerm, "#create" do
     end
   end
 
+  # An interrupted `kitchen create` leaves its deployment running in Azure.
+  # Re-running it gets DeploymentActive back from ARM, which used to abandon
+  # the rest of create: the credentials were never written to state, and the
+  # instance was reported as created anyway. The transport then failed with a
+  # bare "SSH session could not be established" naming nothing that led to it.
   describe "when a deployment is already running" do
     before do
       allow(arm_client).to receive(:create_deployment)
         .and_raise(azure_operation_error(code: "DeploymentActive"))
     end
 
-    it "does not raise, because the existing deployment will finish on its own" do
+    it "does not raise, because the existing deployment is the one we wanted" do
       expect { driver.create(state) }.not_to raise_error
     end
 
-    it "tells the user what happened" do
+    it "says it is waiting rather than that it gave up" do
       allow(Kitchen.logger).to receive(:info)
       driver.create(state)
-      expect(Kitchen.logger).to have_received(:info).with(/Deployment for resource group .* is ongoing/)
+      expect(Kitchen.logger).to have_received(:info).with(/already running.*waiting for it/i)
+    end
+
+    it "waits for the running deployment to reach an end state" do
+      driver.create(state)
+      expect(arm_client).to have_received(:deployment).with(anything, /\Adeploy-/)
     end
 
     it "still resolves a hostname" do
       driver.create(state)
       expect(state[:hostname]).to eq("40.121.0.1")
+    end
+
+    # The whole point. Without this the instance is unreachable, and for a
+    # password-authenticated instance the generated password is lost for good:
+    # the next run generates a different one that was never applied to the VM.
+    it "stores the deployment credentials" do
+      driver.create(state)
+      expect(state[:username]).to eq("azure")
+    end
+
+    it "stores the generated password when there is no ssh key" do
+      driver = build_driver(transport: transport_double(ssh_key: nil))
+      stub_arm_client(driver, arm_client:)
+      record_deployments(arm_client)
+      allow(arm_client).to receive(:create_deployment)
+        .and_raise(azure_operation_error(code: "DeploymentActive"))
+
+      driver.create(state)
+
+      expect(state[:password]).not_to be_nil
+    end
+
+    it "surfaces a failure in the deployment it waited for" do
+      allow(arm_client).to receive(:deployment).and_return(deployment_response("Failed"))
+      allow(arm_client).to receive(:deployment_operations)
+        .and_return([deployment_operation(provisioning_state: "Failed", status_code: "Conflict",
+          status_message: "quota exceeded")])
+
+      expect { driver.create(state) }.to raise_error(/quota exceeded/)
     end
   end
 
