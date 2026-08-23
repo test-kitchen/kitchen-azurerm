@@ -735,6 +735,54 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
     end
   end
 
+  # `custom_data:` or `image_id:` written with no value is nil in YAML, not "".
+  # The templates guard with .empty? while the rest of the driver uses
+  # .to_s.empty?, so a nil arrived as `undefined method 'empty?' for nil` -
+  # a Ruby error naming neither the setting nor the file it came from.
+  describe "settings written with no value" do
+    it "treats a nil custom_data as unset" do
+      expect { build_driver(custom_data: nil).virtual_machine_deployment_template }.not_to raise_error
+    end
+
+    it "treats a nil image_id as unset, falling back to the image_urn" do
+      driver = build_driver(image_id: nil)
+      expect(driver.virtual_machine_deployment_template).to include("imagePublisher")
+    end
+
+    it "treats a nil vm_tags as unset" do
+      expect { build_driver(vm_tags: nil).virtual_machine_deployment_template }.not_to raise_error
+    end
+
+    it "treats a nil open_ports as unset" do
+      expect(build_driver(open_ports: nil).send(:nsg_ports)).to eq([22])
+    end
+  end
+
+  # `user_assigned_identities` takes a list, but a single identity written as
+  # a plain string is an easy mistake, and produced `undefined method 'to_h'
+  # for an instance of String`.
+  describe "user_assigned_identities given as a single string" do
+    let(:identity) { "/subscriptions/x/resourcegroups/y/providers/Microsoft.ManagedIdentity/userAssignedIdentities/z" }
+
+    it "is accepted as a list of one" do
+      driver = build_driver(user_assigned_identities: identity)
+      parameters = driver.build_deployment_parameters(uuid: "a" * 16, vm_name: "tk-a")
+      expect(parameters[:userAssignedIdentities]).to eq(identity => {})
+    end
+
+    it "still accepts a list" do
+      driver = build_driver(user_assigned_identities: [identity])
+      parameters = driver.build_deployment_parameters(uuid: "a" * 16, vm_name: "tk-a")
+      expect(parameters[:userAssignedIdentities]).to eq(identity => {})
+    end
+
+    it "still accepts none" do
+      driver = build_driver
+      parameters = driver.build_deployment_parameters(uuid: "a" * 16, vm_name: "tk-a")
+      expect(parameters[:userAssignedIdentities]).to eq({})
+    end
+  end
+
   # @param nsg [Hash] a parsed network security group resource.
   # @return [Array<String>] the destination port of every rule.
   def rule_ports(nsg)

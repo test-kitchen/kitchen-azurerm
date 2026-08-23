@@ -302,7 +302,7 @@ module Kitchen
           dnsNameForPublicIP: "kitchen-#{state[:uuid]}",
           vmName: state[:vm_name],
           systemAssignedIdentity: config[:system_assigned_identity],
-          userAssignedIdentities: config[:user_assigned_identities].to_h { |identity| [identity, {}] },
+          userAssignedIdentities: Array(config[:user_assigned_identities]).to_h { |identity| [identity, {}] },
           secretUrl: config[:secret_url],
           vaultName: config[:vault_name],
           vaultResourceGroup: config[:vault_resource_group],
@@ -940,8 +940,11 @@ module Kitchen
         data = {
           vm_tags: vm_tag_string(config[:vm_tags]),
           storage_account_type: config[:storage_account_type],
-          image_id: config[:image_id],
-          custom_data: config[:custom_data],
+          # A setting written with no value is nil, not "". The templates ask
+          # these two whether they are empty, so give them something that can
+          # answer.
+          image_id: config[:image_id].to_s,
+          custom_data: config[:custom_data].to_s,
           os_disk_size_gb: config[:os_disk_size_gb],
           data_disks_for_vm_json:,
           use_ephemeral_osdisk: config[:use_ephemeral_osdisk],
