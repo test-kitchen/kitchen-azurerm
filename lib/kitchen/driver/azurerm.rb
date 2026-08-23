@@ -854,11 +854,20 @@ module Kitchen
 
       # The full first-boot script handed to a Windows VM as custom data.
       #
+      # A Windows VM has exactly one custom data slot, and the driver needs it
+      # for the WinRM bootstrap. Any +custom_data+ the user configured has to
+      # travel in the same slot, so it is appended here rather than assigned
+      # over the top - which is what used to happen, silently discarding it.
+      #
+      # It runs after WinRM is listening and the data disks are formatted, and
+      # before the logoff that ends the first-logon session.
+      #
       # @return [String]
       def custom_data_script_windows
         <<-EOH
   #{enable_winrm_powershell_script}
   #{format_data_disks_powershell_script}
+  #{custom_data_content}
   logoff
         EOH
       end
@@ -1067,18 +1076,25 @@ module Kitchen
 
       # Base64-encoded custom data for the VM.
       #
-      # +custom_data+ may be either the literal content or a path to a file
-      # holding it.
-      #
       # @return [String, nil] nil when no +custom_data+ is configured.
       def prepared_custom_data
         return nil if config[:custom_data].nil?
 
-        @prepared_custom_data ||= if readable_file?(config[:custom_data])
-                                    Base64.strict_encode64(File.read(config[:custom_data]))
-                                  else
-                                    Base64.strict_encode64(config[:custom_data])
-                                  end
+        @prepared_custom_data ||= Base64.strict_encode64(custom_data_content)
+      end
+
+      # The configured custom data, as content.
+      #
+      # +custom_data+ may be either the literal content or a path to a file
+      # holding it, so this resolves whichever was given.
+      #
+      # @return [String] empty when no +custom_data+ is configured.
+      def custom_data_content
+        @custom_data_content ||= if readable_file?(config[:custom_data])
+                                   File.read(config[:custom_data])
+                                 else
+                                   config[:custom_data].to_s
+                                 end
       end
 
       private
