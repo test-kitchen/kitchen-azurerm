@@ -91,6 +91,37 @@ RSpec.describe Kitchen::Driver::Azurerm, "state management" do
         expect(name.length).to eq(15)
       end
 
+      # The network interface name is derived from the VM name, and Azure
+      # requires both to end with a word character. Truncating the prefix to
+      # exactly 15 characters could leave a trailing separator, which ARM
+      # rejected at preflight:
+      #
+      #   Resource name nic-verylongprefix- is invalid. [...] it must end with
+      #   a word character or with '_'.
+      it "does not end with a separator when the prefix fills the whole name" do
+        driver = build_driver(vm_prefix: "verylongprefix-")
+        expect(driver.validate_state({})[:vm_name]).to match(/\w\z/)
+      end
+
+      it "derives a network interface name Azure will accept" do
+        driver = build_driver(vm_prefix: "verylongprefix-")
+        state = driver.validate_state({})
+        expect(driver.nic_name(state)).to match(/\A\w[\w.-]*\w\z/)
+      end
+
+      it "keeps uuid entropy even when the prefix fills the whole name" do
+        driver = build_driver(vm_prefix: "verylongprefix-")
+        names = Array.new(5) { driver.validate_state({})[:vm_name] }
+        expect(names.uniq.length).to be > 1
+      end
+
+      it "still caps a prefix that is longer than the whole budget" do
+        driver = build_driver(vm_prefix: "an-absurdly-long-prefix-indeed-")
+        name = driver.validate_state({})[:vm_name]
+        expect(name.length).to eq(15)
+        expect(name).to match(/\w\z/)
+      end
+
       it "keeps an existing vm_name" do
         expect(driver.validate_state(vm_name: "from-state")[:vm_name]).to eq("from-state")
       end
