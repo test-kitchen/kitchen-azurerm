@@ -686,7 +686,12 @@ module Kitchen
         KEY_GENERATION_MUTEX.synchronize do
           generate_key_pair(private_key_filename) unless File.file?(private_key_filename)
 
-          public_key_filename = instance.transport[:ssh_public_key] || "#{private_key_filename}.pub"
+          explicit = instance.transport[:ssh_public_key]
+          public_key_filename = explicit || "#{private_key_filename}.pub"
+          unless File.file?(public_key_filename)
+            raise Kitchen::UserError, missing_public_key_message(private_key_filename, public_key_filename, explicit)
+          end
+
           File.read(public_key_filename).strip
         end
       end
@@ -705,6 +710,33 @@ module Kitchen
         File.chmod(0600, private_key_filename)
         File.write("#{private_key_filename}.pub", key.ssh_public_key)
         File.chmod(0600, "#{private_key_filename}.pub")
+      end
+
+      # Explains that the public half of the transport's key could not be found.
+      #
+      # +ssh_key+ names the *private* key, so a user who keeps only that has
+      # nothing wrong with their kitchen.yml. They used to get a raw
+      # Errno::ENOENT for a ".pub" path they never wrote, with nothing to say
+      # where it came from or what to do about it.
+      #
+      # The key cannot simply be derived: sshkey only reads PEM-encoded RSA,
+      # while ssh-keygen has emitted the OpenSSH format by default since 7.8
+      # and ed25519 keys are never PEM. +ssh-keygen -y+ handles every format,
+      # so point at that instead.
+      #
+      # @param private_key_filename [String] the configured private key.
+      # @param public_key_filename [String] where the public key was looked for.
+      # @param explicit [String, nil] +ssh_public_key+, when the user set it.
+      # @return [String]
+      def missing_public_key_message(private_key_filename, public_key_filename, explicit)
+        if explicit
+          "The transport's ssh_public_key setting points at #{public_key_filename}, which does not exist. " \
+            "Correct the path, or remove the setting to use #{private_key_filename}.pub."
+        else
+          "No public key was found at #{public_key_filename}. The transport's ssh_key setting names the " \
+            "private key, and the public half of it has to go on the virtual machine. Create it with: " \
+            "ssh-keygen -y -f #{private_key_filename} > #{public_key_filename}"
+        end
       end
 
       # Builds the pre-deployment from a caller-supplied ARM template file.
