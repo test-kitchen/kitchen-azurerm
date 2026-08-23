@@ -1017,9 +1017,33 @@ module Kitchen
 
       # The port(s) the configured transport connects on.
       #
-      # @return [Array<Integer>] 5985 and 5986 for WinRM, otherwise 22.
+      # The transport already knows which port it will dial, so a +port+ set on
+      # it is authoritative: assuming the default instead produced an instance
+      # nothing could reach, and left the user repeating the port in
+      # +open_ports+ to get in.
+      #
+      # WinRM keeps both standard ports regardless, because
+      # {#enable_winrm_powershell_script} creates both listeners whatever the
+      # transport was pointed at.
+      #
+      # @return [Array<Integer>]
       def transport_ports
-        instance.transport.name.to_s.casecmp("winrm") == 0 ? [5985, 5986] : [22]
+        configured = instance.transport[:port].to_i
+
+        if winrm_transport?
+          ([5985, 5986] + [configured]).reject(&:zero?).uniq
+        elsif configured == 0
+          [22]
+        else
+          [configured]
+        end
+      end
+
+      # Whether the instance is driven over WinRM.
+      #
+      # @return [Boolean]
+      def winrm_transport?
+        instance.transport.name.to_s.casecmp("winrm") == 0
       end
 
       # ARM security rules for the generated network security group.

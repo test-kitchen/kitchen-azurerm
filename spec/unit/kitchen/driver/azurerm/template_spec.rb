@@ -336,6 +336,41 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
       end
     end
 
+    # The transport knows which port it will dial; the security group used to
+    # assume the default. Setting `port:` on the transport therefore produced
+    # an instance nothing could reach, and the only way out was to repeat the
+    # port in open_ports.
+    context "with a transport on a non-default port" do
+      let(:transport) { transport_double(name: "Ssh", port: 2222) }
+
+      it "opens the port the transport will actually connect on" do
+        expect(rule_ports(nsg)).to include("2222")
+      end
+
+      it "does not open the default port instead" do
+        expect(rule_ports(nsg)).to eq(["2222"])
+      end
+    end
+
+    context "with a WinRM transport on a non-default port" do
+      let(:transport) { transport_double(name: "Winrm", port: 5999) }
+      let(:platform_name) { "windows-2022" }
+
+      # Both standard listeners are still created by the bootstrap script, so
+      # they stay open alongside whatever the transport was pointed at.
+      it "opens the configured port as well as the standard pair" do
+        expect(rule_ports(nsg)).to contain_exactly("5985", "5986", "5999")
+      end
+    end
+
+    context "with a transport that reports no port" do
+      let(:transport) { transport_double(name: "Ssh") }
+
+      it "falls back to the default" do
+        expect(rule_ports(nsg)).to eq(["22"])
+      end
+    end
+
     context "with extra open_ports" do
       let(:config) { { open_ports: [443, 8080] } }
 
