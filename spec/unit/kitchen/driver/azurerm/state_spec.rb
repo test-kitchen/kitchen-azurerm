@@ -137,6 +137,50 @@ RSpec.describe Kitchen::Driver::Azurerm, "state management" do
         expect(driver.validate_state(azure_resource_group_name: "kitchen-existing")[:azure_resource_group_name])
           .to eq("kitchen-existing")
       end
+
+      # The name is generated from the instance name, which is the suite and
+      # platform joined together, so a descriptive suite on a long platform
+      # overruns Azure's limit and `kitchen create` fails on its first call:
+      #
+      #   InvalidResourceGroup: The provided resource group name '...' has a
+      #   length of '107' which exceeds the maximum length of '90'.
+      context "when the instance name is long" do
+        let(:long_instance) { "install-and-configure-monitoring-agent-windows-server-2022-datacenter-azure-edition" }
+
+        subject(:name) { build_driver(instance_name: long_instance).azure_resource_group_name }
+
+        it "stays within Azure's 90 character limit" do
+          expect(name.length).to be <= 90
+        end
+
+        it "keeps the timestamp, which is what makes it unique" do
+          expect(name).to match(/-\d{8}T\d{6}\z/)
+        end
+
+        it "keeps the configured prefix" do
+          expect(name).to start_with("kitchen-")
+        end
+
+        it "keeps a configured suffix" do
+          suffixed = build_driver(instance_name: long_instance, azure_resource_group_suffix: "-ci")
+          expect(suffixed.azure_resource_group_name).to end_with("-ci")
+          expect(suffixed.azure_resource_group_name.length).to be <= 90
+        end
+
+        it "still identifies the instance it belongs to" do
+          expect(name).to include("install-and-configure")
+        end
+      end
+
+      it "does not truncate a name that already fits" do
+        expect(build_driver(instance_name: "default-ubuntu-2204").azure_resource_group_name)
+          .to start_with("kitchen-default-ubuntu-2204-")
+      end
+
+      it "copes with a prefix that consumes the whole budget" do
+        driver = build_driver(azure_resource_group_prefix: "p" * 95)
+        expect(driver.azure_resource_group_name).to start_with("p" * 90)
+      end
     end
 
     describe "config values copied into state" do

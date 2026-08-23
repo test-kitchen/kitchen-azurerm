@@ -482,7 +482,18 @@ module Kitchen
         "#{prefix}#{state[:uuid][0, MAX_VM_NAME_LENGTH - prefix.length]}"
       end
 
+      # Maximum length of an Azure resource group name.
+      #
+      # @return [Integer]
+      MAX_RESOURCE_GROUP_NAME_LENGTH = 90
+
       # Name of the resource group this instance deploys into.
+      #
+      # The instance name is the suite and platform joined together, so a
+      # descriptive suite on a long platform overruns Azure's limit and
+      # +kitchen create+ fails on its very first call - over a name the user
+      # never chose. Only that part is shortened: the prefix and suffix were
+      # asked for explicitly, and the timestamp is what keeps the name unique.
       #
       # @return [String] +explicit_resource_group_name+ when set, otherwise
       #   prefix + instance name + UTC timestamp + suffix.
@@ -490,7 +501,12 @@ module Kitchen
         return config[:explicit_resource_group_name] if config[:explicit_resource_group_name]
 
         formatted_time = Time.now.utc.strftime "%Y%m%dT%H%M%S"
-        "#{config[:azure_resource_group_prefix]}#{config[:azure_resource_group_name]}-#{formatted_time}#{config[:azure_resource_group_suffix]}"
+        prefix = config[:azure_resource_group_prefix].to_s
+        suffix = config[:azure_resource_group_suffix].to_s
+        room = MAX_RESOURCE_GROUP_NAME_LENGTH - prefix.length - suffix.length - formatted_time.length - 1
+        name = config[:azure_resource_group_name].to_s[0, [room, 0].max]
+
+        "#{prefix}#{name}-#{formatted_time}#{suffix}"
       end
 
       # JSON fragment describing the data disks to attach to the VM.
