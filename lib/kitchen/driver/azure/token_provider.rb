@@ -120,6 +120,67 @@ module Kitchen
         end
       end
 
+      # Authenticates with a federated token issued by another identity
+      # provider - GitHub Actions, GitLab, Azure DevOps, or a Kubernetes
+      # service account - rather than a stored secret.
+      #
+      # The platform writes a short-lived signed assertion to a file and
+      # rotates it; the file is therefore re-read on every token fetch rather
+      # than cached, or a long +kitchen test+ run would start presenting an
+      # assertion that has since expired.
+      class WorkloadIdentityToken < TokenProvider
+        # @return [String] the client assertion type required by Entra ID.
+        ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer".freeze
+
+        # @param environment [Environments::Environment]
+        # @param tenant_id [String]
+        # @param client_id [String]
+        # @param token_file [String] path to the federated token file.
+        def initialize(environment:, tenant_id:, client_id:, token_file:)
+          super(environment:)
+          @tenant_id = tenant_id
+          @client_id = client_id
+          @token_file = token_file
+        end
+
+        # @return [String] path to the federated token file.
+        attr_reader :token_file
+
+        # @return [Array(String, Integer)]
+        # @raise [OperationError] if the assertion file cannot be read.
+        def fetch_token
+          response = Http.request(
+            method: :post,
+            url: environment.token_url_v2(@tenant_id),
+            headers: { "Content-Type" => "application/x-www-form-urlencoded" },
+            body: URI.encode_www_form(
+              grant_type: "client_credentials",
+              client_id: @client_id,
+              client_assertion_type: ASSERTION_TYPE,
+              client_assertion: assertion,
+              scope: environment.default_scope
+            )
+          )
+
+          token_from(response, "the workload identity token endpoint")
+        end
+
+        private
+
+        # The current federated assertion, read fresh each time.
+        #
+        # @return [String]
+        # @raise [OperationError] if the file is missing or unreadable.
+        def assertion
+          File.read(token_file).strip
+        rescue SystemCallError => e
+          raise OperationError.new(
+            "Could not read the federated token file at #{token_file} (#{e.class}). " \
+            "AZURE_FEDERATED_TOKEN_FILE must point at a readable assertion issued by your CI platform."
+          )
+        end
+      end
+
       # Authenticates as a managed identity, via the Instance Metadata Service.
       #
       # This replaces the legacy MSI extension endpoint on port 50342 that the

@@ -158,6 +158,58 @@ RSpec.describe Kitchen::Driver::AzureCredentials do
     describe "token provider selection" do
       before { use_fixture_credentials_file }
 
+      # Each row is the combination a user actually configures, and the
+      # provider it must resolve to. Getting this table wrong is how an
+      # instance silently authenticates as the wrong thing - or, worse, falls
+      # through to a credential that is not present in CI at all.
+      describe "the full matrix" do
+        let(:token_file) { File.join(ENV.fetch("HOME"), "federated-token").tap { |f| File.write(f, "assertion") } }
+
+        before { ENV.delete("AZURE_CONFIG_FILE") }
+
+        {
+          "nothing configured" => [{}, Kitchen::Driver::Azure::AzureCliToken],
+          "a tenant alone" => [{ "AZURE_TENANT_ID" => "t" }, Kitchen::Driver::Azure::ManagedIdentityToken],
+          "a client id alone" => [{ "AZURE_CLIENT_ID" => "c" }, Kitchen::Driver::Azure::ManagedIdentityToken],
+          "a client id and tenant" => [{ "AZURE_CLIENT_ID" => "c", "AZURE_TENANT_ID" => "t" }, Kitchen::Driver::Azure::ManagedIdentityToken],
+          "an explicit AZURE_USE_MSI" => [{ "AZURE_USE_MSI" => "1" }, Kitchen::Driver::Azure::ManagedIdentityToken],
+          "a full service principal" => [{ "AZURE_CLIENT_ID" => "c", "AZURE_CLIENT_SECRET" => "s", "AZURE_TENANT_ID" => "t" }, Kitchen::Driver::Azure::ServicePrincipalToken],
+        }.each do |label, (env, expected)|
+          it "resolves #{label} to #{expected.to_s.split("::").last}" do
+            set_env(env)
+            expect(described_class.new(subscription_id: "s").token_provider).to be_an_instance_of(expected)
+          end
+        end
+
+        it "resolves a federated token file to WorkloadIdentityToken" do
+          set_env("AZURE_FEDERATED_TOKEN_FILE" => token_file, "AZURE_CLIENT_ID" => "c", "AZURE_TENANT_ID" => "t")
+          expect(described_class.new(subscription_id: "s").token_provider)
+            .to be_an_instance_of(Kitchen::Driver::Azure::WorkloadIdentityToken)
+        end
+
+        it "prefers federation over a service principal secret" do
+          set_env("AZURE_FEDERATED_TOKEN_FILE" => token_file, "AZURE_CLIENT_ID" => "c",
+            "AZURE_CLIENT_SECRET" => "s", "AZURE_TENANT_ID" => "t")
+          expect(described_class.new(subscription_id: "s").token_provider)
+            .to be_an_instance_of(Kitchen::Driver::Azure::WorkloadIdentityToken)
+        end
+
+        it "ignores an empty AZURE_FEDERATED_TOKEN_FILE" do
+          set_env("AZURE_FEDERATED_TOKEN_FILE" => "", "AZURE_CLIENT_ID" => "c",
+            "AZURE_CLIENT_SECRET" => "s", "AZURE_TENANT_ID" => "t")
+          expect(described_class.new(subscription_id: "s").token_provider)
+            .to be_an_instance_of(Kitchen::Driver::Azure::ServicePrincipalToken)
+        end
+
+        # The instance metadata service never sees a tenant, so requiring one
+        # only stopped the identity from being usable.
+        it "needs no tenant for a user-assigned managed identity" do
+          set_env("AZURE_CLIENT_ID" => "c")
+          provider = described_class.new(subscription_id: "s").token_provider
+          expect(client_id_of(provider)).to eq("c")
+        end
+      end
+
       context "with client_id, client_secret and tenant_id" do
         let(:subscription_id) { CredentialsFileHelper::SUBSCRIPTIONS[:service_principal] }
 
@@ -238,6 +290,23 @@ RSpec.describe Kitchen::Driver::AzureCredentials do
             expect(credentials.azure_environment.resource_manager_url).to eq(expected[:resource_manager_url])
           end
         end
+      end
+    end
+
+    describe "AZURE_AUTHORITY_HOST" do
+      it "redirects token exchange at the authority the platform names" do
+        set_env("AZURE_AUTHORITY_HOST" => "https://login.example.invalid/")
+        expect(credentials.azure_environment.authentication_endpoint).to eq("https://login.example.invalid/")
+      end
+
+      it "leaves the resource manager endpoint alone" do
+        set_env("AZURE_AUTHORITY_HOST" => "https://login.example.invalid/")
+        expect(credentials.azure_environment.resource_manager_url).to eq("https://management.azure.com/")
+      end
+
+      it "is ignored when empty" do
+        set_env("AZURE_AUTHORITY_HOST" => "")
+        expect(credentials.azure_environment.authentication_endpoint).to eq("https://login.microsoftonline.com/")
       end
     end
 

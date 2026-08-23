@@ -19,12 +19,44 @@ module Kitchen
         # @!attribute [r] token_audience
         #   @return [String] audience/resource the access token is requested for.
         Environment = Struct.new(:name, :resource_manager_url, :authentication_endpoint, :token_audience) do
-          # The OAuth2 token URL for a tenant in this cloud.
+          # The OAuth2 v1.0 token URL for a tenant in this cloud.
           #
           # @param tenant_id [String]
           # @return [String]
           def token_url(tenant_id)
             "#{authentication_endpoint.chomp("/")}/#{tenant_id}/oauth2/token"
+          end
+
+          # The OAuth2 v2.0 token URL for a tenant in this cloud.
+          #
+          # Federated (assertion-based) client credentials are documented
+          # against v2.0, which takes a +scope+ rather than a +resource+.
+          #
+          # @param tenant_id [String]
+          # @return [String]
+          def token_url_v2(tenant_id)
+            "#{authentication_endpoint.chomp("/")}/#{tenant_id}/oauth2/v2.0/token"
+          end
+
+          # The v2.0 scope covering every permission this driver needs.
+          #
+          # @return [String] e.g. +"https://management.azure.com/.default"+
+          def default_scope
+            "#{resource_manager_url.chomp("/")}/.default"
+          end
+
+          # A copy of this cloud pointed at a different Entra ID authority.
+          #
+          # Platforms that issue federated tokens - AKS in particular - set
+          # +AZURE_AUTHORITY_HOST+ to say where those tokens should be
+          # exchanged.
+          #
+          # @param authority [String, nil] the authority URL, or nil to keep this one.
+          # @return [Environment]
+          def with_authority(authority)
+            return self if authority.to_s.empty?
+
+            self.class.new(name, resource_manager_url, authority, token_audience).freeze
           end
         end
 

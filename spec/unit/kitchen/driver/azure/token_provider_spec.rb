@@ -90,6 +90,90 @@ RSpec.describe "Azure token providers" do
     end
   end
 
+  describe Kitchen::Driver::Azure::WorkloadIdentityToken do
+    subject(:provider) do
+      described_class.new(environment:, tenant_id: "a-tenant", client_id: "a-client", token_file:)
+    end
+
+    let(:token_file) { File.join(ENV.fetch("HOME"), "federated-token") }
+    let(:token_url) { "https://login.microsoftonline.com/a-tenant/oauth2/v2.0/token" }
+
+    before { File.write(token_file, "an-assertion\n") }
+
+    # Federated credentials are documented against the v2.0 endpoint, which
+    # takes a scope rather than a resource.
+    it "exchanges the assertion at the v2.0 endpoint" do
+      stub = stub_request(:post, token_url)
+        .with(body: {
+                "grant_type" => "client_credentials",
+                "client_id" => "a-client",
+                "client_assertion_type" => "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                "client_assertion" => "an-assertion",
+                "scope" => "https://management.azure.com/.default",
+              })
+        .to_return(status: 200, body: '{"access_token":"tok","expires_in":"3599"}')
+
+      expect(provider.access_token).to eq("tok")
+      expect(stub).to have_been_requested
+    end
+
+    it "sends no client secret" do
+      stub = stub_request(:post, token_url).with { |r| !r.body.include?("client_secret") }
+        .to_return(status: 200, body: '{"access_token":"tok"}')
+
+      provider.access_token
+      expect(stub).to have_been_requested
+    end
+
+    # CI platforms rotate the assertion file. Caching its contents would mean
+    # presenting an expired assertion partway through a long kitchen run.
+    it "re-reads the assertion file on every fetch rather than caching it" do
+      stub_request(:post, token_url)
+        .to_return({ status: 200, body: '{"access_token":"first","expires_in":"60"}' },
+          { status: 200, body: '{"access_token":"second","expires_in":"3599"}' })
+
+      provider.access_token
+      File.write(token_file, "a-rotated-assertion")
+      provider.access_token
+
+      expect(a_request(:post, token_url).with(body: hash_including("client_assertion" => "a-rotated-assertion")))
+        .to have_been_made
+    end
+
+    it "still caches the access token itself" do
+      stub = stub_request(:post, token_url).to_return(status: 200, body: '{"access_token":"tok","expires_in":"3599"}')
+      3.times { provider.access_token }
+      expect(stub).to have_been_requested.once
+    end
+
+    it "explains what to fix when the assertion file is missing" do
+      File.delete(token_file)
+
+      expect { provider.access_token }
+        .to raise_error(Kitchen::Driver::Azure::OperationError, /AZURE_FEDERATED_TOKEN_FILE must point at a readable assertion/)
+    end
+
+    it "surfaces a rejected assertion" do
+      stub_request(:post, token_url).to_return(status: 400, body: '{"error":"invalid_client"}')
+
+      expect { provider.access_token }
+        .to raise_error(Kitchen::Driver::Azure::OperationError, /workload identity token endpoint \(HTTP 400\)/)
+    end
+
+    context "in a sovereign cloud" do
+      let(:environment) { Kitchen::Driver::Azure::Environments.fetch("AzureUSGovernment") }
+
+      it "uses that cloud's scope" do
+        stub = stub_request(:post, "https://login.microsoftonline.us/a-tenant/oauth2/v2.0/token")
+          .with(body: hash_including("scope" => "https://management.usgovcloudapi.net/.default"))
+          .to_return(status: 200, body: '{"access_token":"tok"}')
+
+        provider.access_token
+        expect(stub).to have_been_requested
+      end
+    end
+  end
+
   describe Kitchen::Driver::Azure::ManagedIdentityToken do
     subject(:provider) { described_class.new(environment:) }
 
