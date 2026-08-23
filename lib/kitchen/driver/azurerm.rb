@@ -315,7 +315,7 @@ module Kitchen
 
         parameters["nicName"] = nic_name(state)
         parameters["customData"] = prepared_custom_data unless config[:custom_data].to_s.empty?
-        parameters["osDiskSizeGb"] = config[:os_disk_size_gb] unless config[:os_disk_size_gb].to_s.empty?
+        parameters["osDiskSizeGb"] = os_disk_size_gb unless config[:os_disk_size_gb].to_s.empty?
         parameters["nsgId"] = config[:nsg_id] unless config[:nsg_id].to_s.empty?
 
         parameters.merge(image_parameters)
@@ -331,6 +331,28 @@ module Kitchen
 
         publisher, offer, sku, version = config[:image_urn].split(":", 4)
         { "imagePublisher" => publisher, "imageOffer" => offer, "imageSku" => sku, "imageVersion" => version }
+      end
+
+      # The OS disk size, as a number ARM will accept.
+      #
+      # YAML makes +os_disk_size_gb: 64+ an Integer and +os_disk_size_gb: "64"+
+      # a String, and the ARM parameter is typed +int+ - Azure rejects the
+      # String outright rather than coercing it:
+      #
+      #   The provided value for the template parameter 'osDiskSizeGb' is not
+      #   valid. Expected a value of type 'Integer', but received a value of
+      #   type 'String'.
+      #
+      # Quoting a number in kitchen.yml is an easy thing to do, and the driver
+      # already tolerates the same ambiguity for +boot_diagnostics_enabled+.
+      #
+      # @return [Integer]
+      # @raise [Kitchen::UserError] if the value is not a whole number.
+      def os_disk_size_gb
+        Integer(config[:os_disk_size_gb])
+      rescue ArgumentError, TypeError
+        raise Kitchen::UserError,
+          "os_disk_size_gb must be a whole number of gigabytes, but was #{config[:os_disk_size_gb].inspect}."
       end
 
       # Whether managed boot diagnostics should be switched on.
