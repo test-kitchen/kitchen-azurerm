@@ -19,6 +19,39 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
 
   before { stub_arm_client(driver, arm_client:) }
 
+  # An empty subscription_id in state used to be taken as authoritative, so
+  # destroy built a client with no subscription at all and Azure was asked to
+  # DELETE /subscriptions//resourcegroups/... - a 400 that left the resource
+  # group behind, still billing.
+  describe "with a blank subscription_id left in state" do
+    let(:config) { { subscription_id: "sub-from-config" } }
+
+    before { state[:subscription_id] = "" }
+
+    it "falls back to the configured subscription" do
+      driver.destroy(state)
+      expect(Kitchen::Driver::AzureCredentials).to have_received(:new)
+        .with(hash_including(subscription_id: "sub-from-config"))
+    end
+
+    it "repairs the value in state" do
+      driver.destroy(state)
+      expect(state[:subscription_id]).to eq("sub-from-config")
+    end
+  end
+
+  describe "with a blank azure_environment left in state" do
+    let(:config) { { azure_environment: "AzureUSGovernment" } }
+
+    before { state[:azure_environment] = "" }
+
+    it "falls back to the configured cloud" do
+      driver.destroy(state)
+      expect(Kitchen::Driver::AzureCredentials).to have_received(:new)
+        .with(hash_including(environment: "AzureUSGovernment"))
+    end
+  end
+
   describe "the ordinary case" do
     it "deletes the resource group" do
       driver.destroy(state)

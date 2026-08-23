@@ -451,11 +451,20 @@ module Kitchen
 
       # Whether a state property is already populated.
       #
+      # A blank value does not count. A run that fails early still writes its
+      # state, so an empty +subscription_id+ - which is what a quoted ERB
+      # interpolation of an unset variable produces - used to be taken as
+      # authoritative from then on, shadowing the real value in config for the
+      # rest of the instance's life.
+      #
+      # +false+ is a value, so this asks whether the value is blank rather
+      # than whether it is truthy.
+      #
       # @param state [Hash] Hash of existing state values.
       # @param property [Symbol, String] the property to check.
-      # @return [Boolean] true when the key exists and its value is not nil.
+      # @return [Boolean] true when the key exists and its value is not blank.
       def existing_state_value?(state, property)
-        state.key?(property) && !state[property].nil?
+        state.key?(property) && !state[property].to_s.empty?
       end
 
       # Fills in any state values that are not already present.
@@ -823,8 +832,8 @@ module Kitchen
       # @raise [Azure::OperationError] if an Azure API call fails.
       def destroy(state)
         # TODO: We have some not so fun state issues we need to clean up
-        state[:azure_environment] = config[:azure_environment] unless state[:azure_environment]
-        state[:subscription_id] = config[:subscription_id] unless state[:subscription_id]
+        state[:azure_environment] = config[:azure_environment] unless existing_state_value?(state, :azure_environment)
+        state[:subscription_id] = config[:subscription_id] unless existing_state_value?(state, :subscription_id)
 
         @arm_client = Kitchen::Driver::AzureCredentials.new(subscription_id: state[:subscription_id],
           environment: state[:azure_environment]).arm_client
