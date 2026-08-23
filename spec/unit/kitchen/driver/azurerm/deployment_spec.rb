@@ -138,9 +138,27 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
     end
 
     %w{Canceled Deleted Succeeded}.each do |state|
-      it "treats #{state} as terminal" do
+      it "treats #{state} as terminal, rather than polling forever" do
         allow(arm_client).to receive(:deployment).and_return(deployment_response(state))
-        expect { driver.follow_deployment_until_end_state("rg", "deploy-1") }.not_to raise_error
+        driver.follow_deployment_until_end_state("rg", "deploy-1")
+      rescue RuntimeError
+        # Terminal but unsuccessful states raise; the point here is that the
+        # poll loop ends at all.
+      end
+    end
+
+    # Azure has four terminal states and only one of them means the machine
+    # exists. Canceled and Deleted were treated exactly like Succeeded, so
+    # create carried on and handed the transport a hostname for a VM that was
+    # never built.
+    %w{Canceled Deleted}.each do |state|
+      context "when the deployment ends as #{state}" do
+        let(:arm_client) { arm_client_double(deployment: deployment_response(state), deployment_operations: []) }
+
+        it "raises rather than reporting success" do
+          expect { driver.follow_deployment_until_end_state("rg", "deploy-1") }
+            .to raise_error(/deploy-1.*#{state}/)
+        end
       end
     end
 
@@ -170,9 +188,19 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployments" do
           .to raise_error(/first problem.*second problem/m)
       end
 
-      it "does not raise when every operation reported OK" do
+      # A deployment can fail without any single operation reporting a
+      # non-OK status - a preflight rejection, or a failure Azure records
+      # against the deployment rather than an operation. Returning quietly
+      # here reported the failed deployment as a successful create.
+      it "still raises when no individual operation reported a failure" do
         allow(arm_client).to receive(:deployment_operations).and_return([deployment_operation(status_code: "OK")])
-        expect { driver.follow_deployment_until_end_state("rg", "deploy-1") }.not_to raise_error
+        expect { driver.follow_deployment_until_end_state("rg", "deploy-1") }
+          .to raise_error(/deploy-1.*Failed/)
+      end
+
+      it "names the resource group it was deploying into" do
+        allow(arm_client).to receive(:deployment_operations).and_return([])
+        expect { driver.follow_deployment_until_end_state("rg", "deploy-1") }.to raise_error(/rg/)
       end
     end
   end
