@@ -32,6 +32,11 @@ module Kitchen
         # @return [String]
         COMPUTE_API_VERSION = "2025-04-01".freeze
 
+        # ARM API version used to read the subscription itself.
+        #
+        # @return [String]
+        SUBSCRIPTION_API_VERSION = "2022-12-01".freeze
+
         # @param subscription_id [String]
         # @param environment [Environments::Environment]
         # @param token_provider [TokenProvider]
@@ -49,6 +54,19 @@ module Kitchen
 
         # @return [TokenProvider]
         attr_reader :token_provider
+
+        # Reads the subscription itself.
+        #
+        # Unlike a resource group HEAD - which answers 404 both for a
+        # subscription that does not exist and for one that merely has no such
+        # group - this distinguishes a reachable subscription from a wrong
+        # one, so it is what {Azurerm#doctor} probes with.
+        #
+        # @return [Hash]
+        def subscription
+          call(:get, "/subscriptions/#{escape(subscription_id)}",
+            api_version: SUBSCRIPTION_API_VERSION).json
+        end
 
         # Whether a resource group exists.
         #

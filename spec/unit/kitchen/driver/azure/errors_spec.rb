@@ -19,6 +19,19 @@ RSpec.describe Kitchen::Driver::Azure::OperationError do
     expect(error.body.dig("error", "message")).to eq("busy")
   end
 
+  it "exposes Azure's own explanation separately from its own message" do
+    expect(error.detail).to eq("busy")
+    expect(error.message).to eq("boom")
+  end
+
+  it "has no detail when Azure sent no error object" do
+    expect(described_class.new("boom").detail).to be_nil
+  end
+
+  it "has no detail when the body is not a Hash" do
+    expect(described_class.new("boom", body: "plain text").detail).to be_nil
+  end
+
   it "has no code when Azure sent no error object" do
     expect(described_class.new("boom").code).to be_nil
   end

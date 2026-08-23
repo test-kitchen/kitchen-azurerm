@@ -287,6 +287,78 @@ module Kitchen
         state[:hostname] = resolve_hostname(state, deployment_parameters["nicName"])
       end
 
+      # Settings the driver cannot supply a default for, and what they are.
+      #
+      # @return [Hash{Symbol => String}]
+      REQUIRED_CONFIG = {
+        subscription_id: "the Azure subscription to deploy into",
+        location: "the Azure region to deploy into, e.g. eastus",
+        machine_size: "the VM size to deploy, e.g. Standard_D2s_v3",
+      }.freeze
+
+      # Checks configuration and credentials, for +kitchen doctor+.
+      #
+      # Deployment failures are usually one of two things: a required setting
+      # nobody filled in, or credentials that do not work. Both otherwise
+      # surface as an Azure error partway through a create, once the resource
+      # group already exists, so this looks for them up front.
+      #
+      # @param state [Hash] the instance state, unused - the checks are about
+      #   configuration and credentials, which exist before any instance does.
+      # @return [Boolean] true when a problem was found, as +kitchen doctor+
+      #   expects.
+      def doctor(_state)
+        problems = missing_required_config
+        problems += unreachable_azure if problems.empty?
+        problems.each { |problem| error("kitchen-azurerm: #{problem}") }
+        problems.any?
+      end
+
+      # Required settings that were left unset.
+      #
+      # @return [Array<String>]
+      def missing_required_config
+        REQUIRED_CONFIG.select { |option, _| config[option].to_s.empty? }
+          .map { |option, purpose| "#{option} is not set. It has no default: give it #{purpose}." }
+      end
+
+      # Whether Azure answers, accepts the credentials, and knows the
+      # subscription.
+      #
+      # Reads the subscription rather than probing a resource group: ARM
+      # answers a resource group HEAD with 404 both for a subscription that
+      # does not exist and for one that merely has no such group, so it cannot
+      # tell a wrong subscription from a healthy one. Reading the subscription
+      # gives back either its details or +SubscriptionNotFound+.
+      #
+      # @return [Array<String>]
+      def unreachable_azure
+        Kitchen::Driver::AzureCredentials.new(subscription_id: config[:subscription_id],
+          environment: config[:azure_environment]).arm_client.subscription
+        []
+      rescue Azure::OperationError => operation_error
+        [azure_problem(operation_error)]
+      rescue Azure::TransientError => transient_error
+        ["Could not reach Azure (#{transient_error.message})."]
+      end
+
+      # Describes an OperationError raised while checking Azure.
+      #
+      # An error carrying no Azure error code never reached ARM - it comes
+      # from acquiring the token, and already explains itself. Announcing that
+      # Azure rejected a request that was never made only sends the reader
+      # looking in the wrong place.
+      #
+      # @param operation_error [Azure::OperationError]
+      # @return [String]
+      def azure_problem(operation_error)
+        return operation_error.message unless operation_error.code
+
+        "Azure rejected the request (#{operation_error.code}: " \
+          "#{operation_error.detail || operation_error.message}). " \
+          "Check the credentials, and that they can reach subscription #{config[:subscription_id]}."
+      end
+
       # Builds the ARM parameter values for the virtual machine deployment.
       #
       # @param state [Hash] instance state, already through {#validate_state}.
