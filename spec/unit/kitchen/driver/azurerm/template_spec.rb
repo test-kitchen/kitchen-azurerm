@@ -576,6 +576,44 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
     end
   end
 
+  describe "#prepared_custom_data" do
+    it "is nil when custom_data is not configured" do
+      expect(build_driver(custom_data: nil).prepared_custom_data).to be_nil
+    end
+
+    context "with inline content" do
+      let(:config) { { custom_data: "#!/bin/sh\necho hello\n" } }
+
+      it "base64 encodes it" do
+        expect(Base64.decode64(driver.prepared_custom_data)).to eq("#!/bin/sh\necho hello\n")
+      end
+
+      it "memoizes the result" do
+        expect(driver.prepared_custom_data).to equal(driver.prepared_custom_data)
+      end
+    end
+
+    context "with a path to a file" do
+      let(:path) { File.join(ENV.fetch("HOME"), "cloud-init.yml") }
+      let(:config) { { custom_data: path } }
+
+      before { File.write(path, "#cloud-config\npackages:\n  - htop\n") }
+
+      it "base64 encodes the file's contents" do
+        expect(Base64.decode64(driver.prepared_custom_data)).to eq("#cloud-config\npackages:\n  - htop\n")
+      end
+    end
+
+    context "with a multi-line document that resembles nothing on disk" do
+      let(:config) { { custom_data: "#cloud-config\n#{"x" * 5000}\n" } }
+
+      it "encodes it inline without touching the filesystem" do
+        expect(File).not_to receive(:file?)
+        expect(Base64.decode64(driver.prepared_custom_data)).to start_with("#cloud-config")
+      end
+    end
+  end
+
   # `custom_data:` or `image_id:` written with no value is nil in YAML, not "".
   # The templates guard with .empty? while the rest of the driver uses
   # .to_s.empty?, so a nil arrived as `undefined method 'empty?' for nil` -
@@ -621,44 +659,6 @@ RSpec.describe Kitchen::Driver::Azurerm, "deployment template rendering" do
       driver = build_driver
       parameters = driver.build_deployment_parameters(uuid: "a" * 16, vm_name: "tk-a")
       expect(parameters[:userAssignedIdentities]).to eq({})
-    end
-  end
-
-  describe "#prepared_custom_data" do
-    it "is nil when custom_data is not configured" do
-      expect(build_driver(custom_data: nil).prepared_custom_data).to be_nil
-    end
-
-    context "with inline content" do
-      let(:config) { { custom_data: "#!/bin/sh\necho hello\n" } }
-
-      it "base64 encodes it" do
-        expect(Base64.decode64(driver.prepared_custom_data)).to eq("#!/bin/sh\necho hello\n")
-      end
-
-      it "memoizes the result" do
-        expect(driver.prepared_custom_data).to equal(driver.prepared_custom_data)
-      end
-    end
-
-    context "with a path to a file" do
-      let(:path) { File.join(ENV.fetch("HOME"), "cloud-init.yml") }
-      let(:config) { { custom_data: path } }
-
-      before { File.write(path, "#cloud-config\npackages:\n  - htop\n") }
-
-      it "base64 encodes the file's contents" do
-        expect(Base64.decode64(driver.prepared_custom_data)).to eq("#cloud-config\npackages:\n  - htop\n")
-      end
-    end
-
-    context "with a multi-line document that resembles nothing on disk" do
-      let(:config) { { custom_data: "#cloud-config\n#{"x" * 5000}\n" } }
-
-      it "encodes it inline without touching the filesystem" do
-        expect(File).not_to receive(:file?)
-        expect(Base64.decode64(driver.prepared_custom_data)).to start_with("#cloud-config")
-      end
     end
   end
 
