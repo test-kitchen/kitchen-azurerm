@@ -207,21 +207,19 @@ RSpec.describe Kitchen::Driver::Azurerm, "#destroy" do
       context "with destroy_explicit_resource_group_tags disabled" do
         let(:config) { super().merge(destroy_explicit_resource_group_tags: false) }
 
-        it "restores the configured tags instead" do
+        # ARM's PUT on a resource group replaces its tags rather than merging
+        # them, so rewriting the group at all is what destroyed the tags this
+        # setting promises to keep. An empty Complete-mode deployment leaves
+        # them alone, so the way to preserve them is to leave the group be.
+        it "leaves the resource group alone so its tags survive" do
           driver.destroy(state)
-          expect(arm_client).to have_received(:create_or_update_resource_group)
-            .with(anything, hash_including(tags: { owner: "platform" }))
+          expect(arm_client).not_to have_received(:create_or_update_resource_group)
         end
 
         it "says so" do
           allow(Kitchen.logger).to receive(:warn)
           driver.destroy(state)
           expect(Kitchen.logger).to have_received(:warn).with(/tags on the resource group will NOT be removed/)
-        end
-
-        it "does not also clear them" do
-          driver.destroy(state)
-          expect(arm_client).to have_received(:create_or_update_resource_group).once
         end
       end
     end

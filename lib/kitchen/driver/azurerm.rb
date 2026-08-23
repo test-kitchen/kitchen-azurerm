@@ -939,7 +939,15 @@ module Kitchen
       end
 
       # Empties a resource group by deploying an empty template in Complete
-      # mode, then restores or clears the group's tags per configuration.
+      # mode, then clears the group's tags unless asked to keep them.
+      #
+      # An empty Complete-mode deployment removes the resources in the group
+      # and leaves the group's own tags alone, so keeping them means leaving
+      # the group be. Rewriting it is what used to remove them: ARM's PUT on a
+      # resource group replaces its tags rather than merging them, so putting
+      # the *configured* tags back overwrote whatever the group actually
+      # carried - which, with +resource_group_tags+ unset, meant erasing them
+      # while announcing they would be kept.
       #
       # @param state [Hash] the instance state.
       # @return [void]
@@ -950,11 +958,11 @@ module Kitchen
 
         if config[:destroy_explicit_resource_group_tags] == false
           warn 'The "destroy_explicit_resource_group_tags" setting value is set to "false". The tags on the resource group will NOT be removed.'
-          create_resource_group(state[:azure_resource_group_name], get_resource_group)
-        else
-          warn 'The "destroy_explicit_resource_group_tags" setting value is set to "true". The tags on the resource group will be removed.'
-          create_resource_group(state[:azure_resource_group_name], get_resource_group.merge(tags: {}))
+          return
         end
+
+        warn 'The "destroy_explicit_resource_group_tags" setting value is set to "true". The tags on the resource group will be removed.'
+        create_resource_group(state[:azure_resource_group_name], get_resource_group.merge(tags: {}))
       rescue Azure::OperationError => operation_error
         error operation_error.body
         raise operation_error
