@@ -13,10 +13,6 @@ group :development do
   gem "yard", "~> 0.9"
 end
 
-group :debug do
-  gem "pry"
-end
-
 group :cookstyle do
   gem "cookstyle", "~> 8.4"
 end
