@@ -2,6 +2,7 @@ require "kitchen"
 
 require_relative "azure_credentials"
 require_relative "azure/errors"
+require_relative "azurerm_version"
 require "securerandom" unless defined?(SecureRandom)
 require "base64" unless defined?(Base64)
 autoload :SSHKey, "sshkey"
@@ -30,6 +31,8 @@ module Kitchen
       attr_accessor :arm_client
 
       kitchen_driver_api_version 2
+
+      plugin_version Kitchen::Driver::AZURERM_VERSION
 
       # Settings that Azure retirements have made inoperable. They are still
       # accepted so that an existing kitchen.yml keeps loading, but they no

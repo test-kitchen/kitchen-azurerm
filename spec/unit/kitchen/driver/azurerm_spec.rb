@@ -6,6 +6,11 @@ RSpec.describe Kitchen::Driver::Azurerm do
       expect(driver.diagnose_plugin[:api_version]).to eq(2)
     end
 
+    it "reports its own gem version to kitchen diagnose" do
+      expect(driver.diagnose_plugin[:version])
+        .to eq(Kitchen::Driver::AZURERM_VERSION)
+    end
+
     it "is named Azurerm" do
       expect(driver.name).to eq("Azurerm")
     end
