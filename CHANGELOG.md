@@ -5,6 +5,19 @@ This CHANGELOG is maintained by the [release-please-action](google-github-action
 
 ## Unreleased
 
+## [2.3.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.2.0...v2.3.0) (2026-08-23)
+
+
+### Features
+
+* check configuration and credentials in `kitchen doctor` ([#352](https://github.com/test-kitchen/kitchen-azurerm/issues/352)) ([6352466](https://github.com/test-kitchen/kitchen-azurerm/commit/63524669a8f7a943a392493f294eab849f87cc0c))
+
+
+### Bug Fixes
+
+* accept image_urn and the deployment templates written with no value ([#346](https://github.com/test-kitchen/kitchen-azurerm/issues/346)) ([b037b9d](https://github.com/test-kitchen/kitchen-azurerm/commit/b037b9d18f7fcad9161b127b77c4e3b0a9aa2ffd))
+* explain a missing public key instead of failing on its path ([#347](https://github.com/test-kitchen/kitchen-azurerm/issues/347)) ([388676e](https://github.com/test-kitchen/kitchen-azurerm/commit/388676e81ad29a09dc6fd2b90fe915b22695ddfe))
+
 ## [2.2.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.1.4...v2.2.0) (2026-08-23)
 
 
