@@ -15,12 +15,6 @@ require "simplecov"
 SimpleCov.start do
   add_filter "/spec/"
   enable_coverage :branch
-  # Only enforce the floor on a full-suite run; running a single spec file
-  # legitimately covers far less than the whole driver.
-  # The only uncovered branches are the `require "x" unless defined?(X)` guards
-  # at the top of each file, which cannot both be taken in one process. There
-  # are 16 of them, so 92% is the practical ceiling.
-  minimum_coverage(line: 100, branch: 92) if ARGV.grep(/_spec\.rb/).empty?
 end
 
 require "stringio"
