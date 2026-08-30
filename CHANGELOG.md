@@ -5,6 +5,13 @@ This CHANGELOG is maintained by the [release-please-action](google-github-action
 
 ## Unreleased
 
+## [2.4.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.3.0...v2.4.0) (2026-08-30)
+
+
+### Features
+
+* report the plugin version to kitchen diagnose ([#357](https://github.com/test-kitchen/kitchen-azurerm/issues/357)) ([0d1f9dd](https://github.com/test-kitchen/kitchen-azurerm/commit/0d1f9dd102f9aab31624a2fef9e5ced0a302e15e))
+
 ## [2.3.0](https://github.com/test-kitchen/kitchen-azurerm/compare/v2.2.0...v2.3.0) (2026-08-23)
 
 
