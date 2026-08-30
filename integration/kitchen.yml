@@ -1,0 +1,146 @@
+---
+# Integration suites for kitchen-azurerm. Each one deploys a real virtual
+# machine and asserts, on the instance, that the driver configured it the way
+# the suite asked for.
+#
+# See integration/README.md for how to run these.
+
+driver:
+  name: azurerm
+  subscription_id: <%= ENV["AZURE_SUBSCRIPTION_ID"] %>
+  location: <%= ENV.fetch("KITCHEN_AZURE_LOCATION", "eastus") %>
+  machine_size: Standard_B1s
+  resource_group_tags:
+    created-by: kitchen-azurerm-integration
+    run-id: <%= ENV.fetch("KITCHEN_RUN_ID", "local") %>
+
+# Assertions live in the provisioner rather than a verifier: the script is
+# transferred over the driver's own transport and run on the instance, so
+# reaching the machine at all is part of every assertion, and a non-zero exit
+# fails the suite.
+provisioner:
+  name: shell
+
+verifier:
+  name: shell
+  command: echo "assertions run in the provisioner"
+
+platforms:
+  - name: ubuntu-2204
+    driver:
+      image_urn: Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest
+    transport:
+      ssh_key: <%= ENV.fetch("KITCHEN_SSH_KEY", "~/.ssh/id_kitchen_azurerm") %>
+
+  - name: windows-2022
+    driver:
+      image_urn: MicrosoftWindowsServer:WindowsServer:2022-datacenter-azure-edition:latest
+      machine_size: Standard_B2s
+    transport:
+      name: winrm
+      elevated: true
+
+suites:
+  # The default path: marketplace image, SSH key, public IP, generated NSG.
+  - name: default
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/baseline.sh
+
+  # No ssh_key on the transport, so the driver generates a password and stores
+  # it in state.
+  - name: password
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/baseline.sh
+    transport:
+      ssh_key: ~
+
+  - name: tags
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/tags.sh
+    driver:
+      vm_tags:
+        owner: kitchen-azurerm
+        purpose: integration
+
+  - name: data-disks
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/data_disks.sh
+    driver:
+      data_disks:
+        - lun: 0
+          disk_size_gb: 10
+        - lun: 1
+          disk_size_gb: 20
+
+  - name: custom-data
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/custom_data.sh
+    driver:
+      custom_data: cloud-init.txt
+
+  - name: identity
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/identity.sh
+    driver:
+      system_assigned_identity: true
+
+  - name: os-disk
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/os_disk.sh
+    driver:
+      os_disk_size_gb: 64
+      storage_account_type: Premium_LRS
+      open_ports: [80, 443]
+
+  - name: fqdn
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/baseline.sh
+    driver:
+      use_fqdn_hostname: true
+
+  # A vm_prefix longer than the documented three characters must still yield a
+  # name Azure accepts, including the network interface named after it.
+  - name: long-prefix
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/baseline.sh
+    driver:
+      vm_prefix: verylongprefix-
+
+  # Deploys an extra ARM template before and after the virtual machine.
+  - name: pre-post-deploy
+    includes: [ubuntu-2204]
+    provisioner:
+      script: scripts/baseline.sh
+    driver:
+      pre_deployment_template: arm/pre-deploy.json
+      pre_deployment_parameters:
+        prefix: kitchen
+      post_deployment_template: arm/post-deploy.json
+      post_deployment_parameters:
+        label: kitchen
+
+  # Windows takes a different path entirely: custom data carries a PowerShell
+  # bootstrap and the unattend content runs it at first logon.
+  - name: winrm
+    includes: [windows-2022]
+    provisioner:
+      script: scripts/windows.ps1
+
+  - name: format-data-disks
+    includes: [windows-2022]
+    provisioner:
+      script: scripts/windows_data_disks.ps1
+    driver:
+      format_data_disks: true
+      data_disks:
+        - lun: 0
+          disk_size_gb: 10

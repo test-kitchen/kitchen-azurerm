@@ -1,0 +1,92 @@
+---
+name: "Integration Tests"
+
+# These deploy real virtual machines into a real subscription, so they are
+# never run automatically on a pull request: secrets are not available to forks,
+# and every run costs money. Maintainers trigger them by hand, and they run
+# weekly against main so that an Azure-side change is noticed before a release.
+"on":
+  workflow_dispatch:
+    inputs:
+      suites:
+        description: "Regexp of suites to run, e.g. 'default|winrm'. Empty runs all of them."
+        required: false
+        default: ""
+  schedule:
+    - cron: "0 4 * * 1"
+
+# The subscription has a finite vCPU quota. Two runs at once exhaust it and
+# both fail, so let an in-flight run finish rather than cancelling it.
+concurrency:
+  group: azure-integration
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_FEDERATED_TOKEN_FILE: ${{ github.workspace }}/.azure-federated-token
+      KITCHEN_SSH_KEY: ${{ github.workspace }}/.ssh/integration
+      KITCHEN_RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      # Exchanges GitHub's OIDC token for the assertion the driver presents to
+      # Entra ID, so no client secret is stored anywhere. This is also the only
+      # place the workload identity code path gets exercised: it cannot run on a
+      # developer's machine.
+      - name: Request a federated token
+        run: |
+          set -euo pipefail
+          curl -sSf \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api://AzureADTokenExchange" \
+            | jq -r '.value' > "${AZURE_FEDERATED_TOKEN_FILE}"
+          chmod 600 "${AZURE_FEDERATED_TOKEN_FILE}"
+          test -s "${AZURE_FEDERATED_TOKEN_FILE}"
+
+      # The driver generates the key pair when the private key is absent, which
+      # is a code path worth running too.
+      - name: Prepare the SSH key directory
+        run: mkdir -p "$(dirname "${KITCHEN_SSH_KEY}")"
+
+      - name: Run the integration suites
+        working-directory: integration
+        run: bundle exec kitchen test ${{ github.event.inputs.suites }} --concurrency 4
+
+      # Destroy runs whatever happened above. A suite that leaks virtual
+      # machines on failure turns a red build into a recurring bill.
+      - name: Destroy everything
+        if: always()
+        working-directory: integration
+        run: bundle exec kitchen destroy --concurrency 4
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kitchen-logs
+          path: integration/.kitchen/logs/
+          retention-days: 7
+
+      # Belt and braces: if destroy could not run, say so loudly rather than
+      # leaving resources to be found on the next bill.
+      - name: Warn about anything left behind
+        if: failure()
+        run: |
+          echo "::warning::If 'Destroy everything' did not succeed, check for resource groups tagged run-id=${KITCHEN_RUN_ID}"

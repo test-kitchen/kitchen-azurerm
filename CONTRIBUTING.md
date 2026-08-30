@@ -65,6 +65,23 @@ resources nor require a subscription or a service principal. WebMock also blocks
 real network access outright, so an accidentally unstubbed request fails loudly
 rather than reaching Azure.
 
+### Integration tests
+
+Stubbing at the wire proves the driver sends the right request, not that Azure
+accepts it. The suites in [`integration/`](integration/README.md) close that
+gap: each deploys a real virtual machine and asserts on the instance that it was
+configured as asked.
+
+```sh
+export AZURE_SUBSCRIPTION_ID=...
+bundle exec rake integration:list
+bundle exec rake integration:test
+bundle exec rake integration:destroy   # after a failed run
+```
+
+They are not part of `rake default` — they cost money — and never run on a pull
+request. Maintainers run them on demand, and weekly against `main`.
+
 ### Talking to Azure
 
 The driver calls the Azure Resource Manager REST API directly, using only the
