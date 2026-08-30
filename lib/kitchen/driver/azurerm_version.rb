@@ -6,6 +6,6 @@ module Kitchen
     # driver and, with it, the whole Azure SDK.
     #
     # @return [String]
-    AZURERM_VERSION = "2.3.0".freeze
+    AZURERM_VERSION = "2.4.0".freeze
   end
 end
