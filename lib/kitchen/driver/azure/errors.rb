@@ -22,11 +22,12 @@ module Kitchen
 
         # The HTTP status code of the failing response.
         #
-        # @return [Integer]
+        # @return [Integer, nil] nil when the error was raised before a
+        #   response arrived, as the token providers do.
         attr_reader :status
 
         # @param message [String] human-readable summary.
-        # @param status [Integer] HTTP status code.
+        # @param status [Integer, nil] HTTP status code, when there was one.
         # @param body [Hash] parsed ARM error body.
         def initialize(message, status: nil, body: {})
           super(message)
