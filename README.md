@@ -27,11 +27,13 @@ please raise an issue.
 - [Quick start](#quick-start)
 - [Authentication](#authentication)
 - [Configuration reference](#configuration-reference)
+- [Other commands](#other-commands)
 - [Common setups](#common-setups)
 - [Finding an image URN](#finding-an-image-urn)
 - [Troubleshooting](#troubleshooting)
 - [Using with Chef](#using-with-chef)
 - [Contributing](#contributing)
+- [Author](#author)
 - [License and Copyright](#license-and-copyright)
 
 ---
@@ -355,6 +357,74 @@ warning and ignores them.
 | `existing_storage_account_blob_url` | OS disks are no longer placed in a storage account you supply. |
 | `existing_storage_account_container` | As above. |
 
+## Other commands
+
+### `kitchen doctor`
+
+Checks the configuration and the credentials up front, rather than letting a
+deployment discover the problem for you:
+
+```bash
+cinc kitchen doctor default-ubuntu-2204
+```
+
+A failed create is usually one of two things — a required setting nobody filled
+in, or credentials that do not work. Both otherwise surface as an Azure error
+partway through `kitchen create`, once the resource group already exists.
+
+It reports every problem it finds rather than stopping at the first, and exits
+non-zero when there is one:
+
+```text
+-----> The doctor is in
+>>>>>> kitchen-azurerm: location is not set. It has no default: give it the Azure region to deploy into, e.g. eastus.
+>>>>>> kitchen-azurerm: machine_size is not set. It has no default: give it the VM size to deploy, e.g. Standard_D2s_v3.
+```
+
+Once `subscription_id`, `location`, and `machine_size` are all set, it goes on
+to read the subscription itself. That proves the credentials work *and* that
+they reach the subscription you configured — a resource group check cannot,
+because Azure answers 404 both for a subscription that does not exist and for
+one that merely has no such group:
+
+```text
+-----> The doctor is in
+>>>>>> kitchen-azurerm: Azure rejected the request (AuthorizationFailed: The client does not have authorization to perform action 'Microsoft.Resources/subscriptions/read' over scope '/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'). Check the credentials, and that they can reach subscription xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.
+```
+
+Test Kitchen doctors only the first instance unless you name one or pass
+`--all`. Since these checks are about configuration and credentials rather than
+any particular instance, the first one is normally all you need.
+
+### `kitchen list --live`
+
+Asks Azure what power state each virtual machine is actually in, rather than
+reporting only the last action Test Kitchen took:
+
+```bash
+cinc kitchen list --live
+```
+
+```text
+Instance             Driver   Provisioner  Verifier     Transport  Last Action  Last Error  Live Status
+default-ubuntu-2204  Azurerm  CincInfra    CincAuditor  Ssh        Converged    <None>      deallocated
+```
+
+The live status is Azure's own power state — `running`, `starting`, `stopping`,
+`stopped`, `deallocating`, or `deallocated` — plus `not_created` when the state
+file names no virtual machine, and `unknown` when Azure could not be reached,
+no longer has the machine, or answered with a state this driver does not
+recognise. In the last case the message carries Azure's own wording.
+
+This is how a deallocated or hand-deleted VM shows up: Test Kitchen still
+believes the instance is `Converged`, because from its point of view nothing has
+happened since. It is also the quickest way to find instances that are still
+running up a bill.
+
+Unlike `kitchen create` and `kitchen destroy`, this does not retry: it sits
+behind an interactive command, and waiting out the retry budget on every
+unreachable instance would be worse than saying so promptly.
+
 ## Common setups
 
 Each of these shows only the parts that matter — combine them with the quick
@@ -660,7 +730,9 @@ add `--offer` to narrow further.
 ## Troubleshooting
 
 **`kitchen create` fails immediately with an authentication error.**
-Check which method is actually being picked — see [Authentication](#authentication).
+Run [`cinc kitchen doctor`](#kitchen-doctor) first — it reads the subscription
+with whatever credentials resolved and reports exactly what Azure said. Then
+check which method is actually being picked — see [Authentication](#authentication).
 The environment wins over `~/.azure/credentials`, so a stale `AZURE_CLIENT_ID`
 exported in your shell will silently override the file. Confirm the service
 principal still has Contributor on the subscription in `subscription_id`.
