@@ -30,6 +30,17 @@ module Kitchen
       # @return [Azure::ArmClient, nil]
       attr_accessor :arm_client
 
+      # The writer needs a docstring of its own: one comment above an
+      # attr_accessor is copied to both methods, so the argument the writer
+      # takes can only be described here. The directive has to come after the
+      # accessor - placed before it, the accessor overwrites it.
+
+      # @!method arm_client=(client)
+      #   Replaces the ARM client.
+      #
+      #   @param client [Azure::ArmClient, nil] the client to use.
+      #   @return [Azure::ArmClient, nil] the client that was set.
+
       kitchen_driver_api_version 2
 
       plugin_version Kitchen::Driver::AZURERM_VERSION
@@ -256,6 +267,8 @@ module Kitchen
       # @param state [Hash] the instance state, mutated in place.
       # @return [void]
       # @raise [RuntimeError] if no +subscription_id+ can be resolved.
+      # @raise [Kitchen::UserError] if +os_disk_size_gb+ is not a whole number,
+      #   or the public half of the transport's SSH key cannot be found.
       # @raise [Azure::OperationError] if an Azure API call fails
       #   for any reason other than an already-running deployment.
       def create(state)
@@ -310,8 +323,9 @@ module Kitchen
       # surface as an Azure error partway through a create, once the resource
       # group already exists, so this looks for them up front.
       #
-      # @param state [Hash] the instance state, unused - the checks are about
-      #   configuration and credentials, which exist before any instance does.
+      # @param _state [Hash] the instance state. Test Kitchen passes it, but
+      #   the checks are about configuration and credentials, which exist
+      #   before any instance does, so it is ignored.
       # @return [Boolean] true when a problem was found, as +kitchen doctor+
       #   expects.
       def doctor(_state)
@@ -559,7 +573,13 @@ module Kitchen
         state.key?(property) && !state[property].to_s.empty?
       end
 
-      # Fills in any state values that are not already present.
+      # Fills in any state values that are not already present, and drops the
+      # generated password when the transport authenticates with an SSH key.
+      #
+      # +use_managed_disks+ is copied across with the settings that are still
+      # read, even though Azure's retirement of unmanaged disks left nothing
+      # reading it - see {DEPRECATED_CONFIG}. It is written as nil, since the
+      # setting has no default.
       #
       # @param state [Hash] existing Hash of state values.
       # @return [Hash] the same Hash, with defaults applied.
@@ -933,7 +953,9 @@ module Kitchen
       # worse than saying so promptly.
       #
       # @param state [Hash] the instance state.
-      # @return [Hash] +:live+, +:state+, +:resource_id+ and +:message+.
+      # @return [Hash] always +:live+, +:state+ and +:message+; +:resource_id+
+      #   only when the virtual machine was found, since nothing else knows
+      #   which resource to name.
       def status(state)
         resource_group = state[:azure_resource_group_name]
         vm_name = state[:vm_name]
@@ -1394,7 +1416,11 @@ module Kitchen
 
       # Base64-encoded custom data for the VM.
       #
-      # @return [String, nil] nil when no +custom_data+ is configured.
+      # An unset +custom_data+ is "" rather than nil, which encodes to "" - so
+      # callers guard on the setting being empty rather than on this returning
+      # nil.
+      #
+      # @return [String, nil] nil only when +custom_data+ is explicitly nil.
       def prepared_custom_data
         return nil if config[:custom_data].nil?
 
@@ -1543,7 +1569,7 @@ module Kitchen
       # Requests deletion of a resource group without waiting for it to finish.
       #
       # @param resource_group_name [String] the resource group name.
-      # @return [Object] the operation response.
+      # @return [void] ARM answers a delete with no body worth returning.
       def delete_resource_group_async(resource_group_name)
         with_azure_retries("while sending resource group deletion request for '#{resource_group_name}'.") do
           arm_client.delete_resource_group(resource_group_name)

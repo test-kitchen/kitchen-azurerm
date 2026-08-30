@@ -63,6 +63,10 @@ module Kitchen
         # Every supported cloud, keyed by its downcased name so that lookups are
         # case-insensitive.
         #
+        # +AzureGermanCloud+ is kept only so that an existing kitchen.yml naming
+        # it still loads: Microsoft closed that cloud in 2021, and its endpoints
+        # no longer answer.
+        #
         # @return [Hash{String => Environment}]
         ALL = [
           Environment.new("Azure",
